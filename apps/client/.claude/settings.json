@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const fs=require('fs'),p=require('path').join(process.cwd(),'.claude','session-summary.md');try{const c=fs.readFileSync(p,'utf8');console.log(JSON.stringify({hookSpecificOutput:{hookEventName:'SessionStart',additionalContext:'=== PROJECT CONTEXT ===\\n'+c.substring(0,8000)+'\\n=== END PROJECT CONTEXT ==='}}));}catch(e){console.log(JSON.stringify({suppressOutput:true}));}\"",
+            "timeout": 5,
+            "statusMessage": "Loading project context..."
+          }
+        ]
+      }
+    ]
+  }
+}

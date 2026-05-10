@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal AI — Product Vision</title>
+<style>
+  :root {
+    --blue: #2563EB;
+    --blue-light: #EFF6FF;
+    --blue-mid: #BFDBFE;
+    --green: #10B981;
+    --green-light: #ECFDF5;
+    --orange: #F59E0B;
+    --orange-light: #FFFBEB;
+    --red: #EF4444;
+    --red-light: #FEF2F2;
+    --purple: #8B5CF6;
+    --purple-light: #F5F3FF;
+    --gray-50: #F8FAFC;
+    --gray-100: #F1F5F9;
+    --gray-200: #E2E8F0;
+    --gray-400: #94A3B8;
+    --gray-600: #475569;
+    --gray-800: #1E293B;
+    --gray-900: #0F172A;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--gray-900);
+    color: #fff;
+    line-height: 1.6;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(135deg, #0F172A 0%, #1E3A5F 50%, #0F172A 100%);
+    padding: 80px 40px 60px;
+    text-align: center;
+    border-bottom: 1px solid rgba(37,99,235,0.3);
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(37,99,235,0.15) 0%, transparent 70%);
+  }
+  .hero-tag {
+    display: inline-block;
+    background: rgba(37,99,235,0.2);
+    border: 1px solid rgba(37,99,235,0.4);
+    color: #93C5FD;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 100px;
+    margin-bottom: 24px;
+  }
+  .hero h1 {
+    font-size: clamp(36px, 5vw, 64px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, #fff 0%, #93C5FD 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    position: relative;
+  }
+  .hero-sub {
+    font-size: 18px;
+    color: #94A3B8;
+    max-width: 640px;
+    margin: 0 auto 40px;
+    position: relative;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    position: relative;
+  }
+  .stat { text-align: center; }
+  .stat-num {
+    font-size: 32px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .stat-num span { color: #60A5FA; }
+  .stat-label {
+    font-size: 12px;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ── SECTION ── */
+  .section { padding: 64px 40px; max-width: 1200px; margin: 0 auto; }
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #60A5FA;
+    margin-bottom: 8px;
+  }
+  .section-h2 {
+    font-size: clamp(24px, 3vw, 36px);
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .section-desc {
+    color: #64748B;
+    font-size: 16px;
+    margin-bottom: 48px;
+  }
+
+  /* ── PRODUCT OVERVIEW ── */
+  .overview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+  @media(max-width: 768px) { .overview-grid { grid-template-columns: 1fr; } }
+
+  .overview-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 16px;
+    padding: 28px;
+  }
+  .overview-card.highlight {
+    border-color: rgba(37,99,235,0.4);
+    background: linear-gradient(135deg, #1E293B 0%, #1E3A5F 100%);
+  }
+  .oc-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+  .oc-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .oc-text { color: #94A3B8; font-size: 14px; line-height: 1.7; }
+
+  /* ── FLOW ── */
+  .flow-wrap { position: relative; }
+  .flow-line {
+    position: absolute;
+    left: 31px;
+    top: 44px;
+    bottom: 44px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--blue), var(--purple), var(--green));
+    opacity: 0.3;
+  }
+  .flow-step {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .step-num {
+    width: 64px;
+    height: 64px;
+    min-width: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    position: relative;
+    z-index: 1;
+    border: 2px solid;
+  }
+  .step-body {
+    flex: 1;
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .step-body:hover { border-color: #475569; }
+
+  .step-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .step-title { font-size: 16px; font-weight: 700; }
+  .step-actor {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 100px;
+    letter-spacing: 0.5px;
+  }
+  .step-text { color: #94A3B8; font-size: 14px; margin-bottom: 12px; }
+
+  .step-detail {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .tag {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── IMPROVE GRID ── */
+  .improve-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+  .improve-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .improve-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .ic-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .ic-icon {
+    width: 40px; height: 40px; min-width: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .ic-meta { flex: 1; }
+  .ic-title { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .ic-step { font-size: 11px; color: #64748B; }
+  .ic-priority {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 100px;
+    letter-spacing: 0.5px;
+  }
+  .ic-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .ic-list li {
+    font-size: 13px;
+    color: #94A3B8;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    line-height: 1.5;
+  }
+  .ic-list li::before {
+    content: '→';
+    color: #475569;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── TECH STACK ── */
+  .tech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  .tech-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .tech-icon { font-size: 28px; margin-bottom: 10px; }
+  .tech-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .tech-role { font-size: 12px; color: #64748B; }
+
+  /* ── METRICS ── */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  .metric-card {
+    background: #1E293B;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 24px;
+    text-align: center;
+  }
+  .metric-value {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .metric-label { font-size: 13px; color: #94A3B8; margin-bottom: 12px; }
+  .metric-bar {
+    height: 4px;
+    background: #334155;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .metric-fill { height: 100%; border-radius: 2px; }
+
+  /* ── DIVIDER ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #334155, transparent);
+    margin: 0 40px;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    padding: 48px 40px;
+    color: #475569;
+    font-size: 13px;
+    border-top: 1px solid #1E293B;
+  }
+  .footer strong { color: #60A5FA; }
+
+  /* Color utilities */
+  .c-blue { color: var(--blue); }
+  .c-green { color: var(--green); }
+  .c-orange { color: var(--orange); }
+  .c-purple { color: var(--purple); }
+  .c-red { color: var(--red); }
+
+  .bg-blue { background: rgba(37,99,235,0.15); border-color: rgba(37,99,235,0.3); }
+  .bg-green { background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); }
+  .bg-orange { background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.3); }
+  .bg-purple { background: rgba(139,92,246,0.15); border-color: rgba(139,92,246,0.3); }
+  .bg-red { background: rgba(239,68,68,0.15); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HERO ═══════════════════════════════ -->
+<div class="hero">
+  <div class="hero-tag">Product Vision 2026</div>
+  <h1>Legal AI Assistant</h1>
+  <p class="hero-sub">
+    Telegram Mini App, яка перетворює юридичну консультацію на 5-хвилинний процес —
+    від заповнення форми до готового документу.
+  </p>
+  <div class="hero-stats">
+    <div class="stat">
+      <div class="stat-num"><span>5</span> хв</div>
+      <div class="stat-label">від форми до документу</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num"><span>5</span> послуг</div>
+      <div class="stat-label">MVP</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num"><span>0</span> ₴</div>
+      <div class="stat-label">порог входу</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num"><span>100</span>%</div>
+      <div class="stat-label">без юриста</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ OVERVIEW ═══════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Що це таке</div>
+  <h2 class="section-h2">Продукт в 4 реченнях</h2>
+  <p class="section-desc">Хто, що, для кого і чому це працює</p>
+
+  <div class="overview-grid">
+    <div class="overview-card highlight">
+      <div class="oc-icon" style="background:rgba(37,99,235,0.2)">⚖️</div>
+      <div class="oc-title">Що це?</div>
+      <div class="oc-text">
+        Telegram Mini App (TWA) — юридичний AI-асистент. Користувач заповнює розумну форму
+        прямо в Telegram, AI генерує готовий юридичний документ і надсилає посилання на Google Docs.
+      </div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon" style="background:rgba(16,185,129,0.2)">🎯</div>
+      <div class="oc-title">Для кого?</div>
+      <div class="oc-text">
+        Українці, яким потрібна юридична допомога (розлучення, аліменти, ТЦК, бізнес),
+        але які не хочуть або не можуть платити юристу 3000–10 000 ₴ за документ.
+      </div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon" style="background:rgba(245,158,11,0.2)">💡</div>
+      <div class="oc-title">Ключова ідея</div>
+      <div class="oc-text">
+        Замість "чату з AI" — структурована форма. Це дозволяє зібрати рівно ті дані,
+        які потрібні для конкретного документу, і гарантовано отримати якісний результат.
+      </div>
+    </div>
+    <div class="overview-card">
+      <div class="oc-icon" style="background:rgba(139,92,246,0.2)">💰</div>
+      <div class="oc-title">Бізнес-модель</div>
+      <div class="oc-text">
+        Freemium: базовий документ безкоштовно, преміум версія (нотаріальна, з адвокатом,
+        подача в суд) — за підписку або разову оплату. LTV клієнта зростає через довіру.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════ FLOW ═══════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Як це працює</div>
+  <h2 class="section-h2">Повний шлях користувача</h2>
+  <p class="section-desc">Від першого дотику до готового документу — кожен крок детально</p>
+
+  <div class="flow-wrap">
+    <div class="flow-line"></div>
+
+    <!-- STEP 1 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(37,99,235,0.15);border-color:rgba(37,99,235,0.5);color:#60A5FA">1</div>
+      <div class="step-body" style="border-left: 3px solid rgba(37,99,235,0.5)">
+        <div class="step-header">
+          <div class="step-title">🤖 Telegram Bot — точка входу</div>
+          <div class="step-actor" style="background:rgba(37,99,235,0.15);color:#93C5FD">Telegram Bot</div>
+        </div>
+        <div class="step-text">
+          Користувач знаходить бота через пошук або рекламу. Надсилає /start.
+          Бот показує меню із 5 послугами через inline-кнопки.
+          При натисканні — відкривається Telegram Mini App з параметром <code style="background:#0F172A;padding:2px 6px;border-radius:4px;font-size:12px">?service=divorce&uid=123</code>
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(37,99,235,0.1);color:#93C5FD">n8n Telegram Trigger</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">inline keyboard</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">webAppUrl</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(37,99,235,0.15);border-color:rgba(37,99,235,0.5);color:#60A5FA">2</div>
+      <div class="step-body" style="border-left: 3px solid rgba(37,99,235,0.5)">
+        <div class="step-header">
+          <div class="step-title">📋 Завантаження форми з Supabase</div>
+          <div class="step-actor" style="background:rgba(37,99,235,0.15);color:#93C5FD">React TWA</div>
+        </div>
+        <div class="step-text">
+          Додаток зчитує <code style="background:#0F172A;padding:2px 6px;border-radius:4px;font-size:12px">?service=slug</code> з URL.
+          Робить запит до Supabase: <strong>services</strong> таблиця → поле <strong>form_config</strong> (JSON).
+          <code>form_config</code> описує всі таби, кроки, поля і умовну логіку (<code>show_if</code>).
+          Поки завантажується — показує спіннер.
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(37,99,235,0.1);color:#93C5FD">Supabase SELECT</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">anon key</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">form_config JSON</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">RLS public read</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.5);color:#34D399">3</div>
+      <div class="step-body" style="border-left: 3px solid rgba(16,185,129,0.5)">
+        <div class="step-header">
+          <div class="step-title">✍️ Заповнення форми</div>
+          <div class="step-actor" style="background:rgba(16,185,129,0.15);color:#6EE7B7">Користувач</div>
+        </div>
+        <div class="step-text">
+          DynamicLegalFormBuilder рендерить форму по JSON-конфігу.
+          Таби (до 4) → кроки (поля) → кнопка "Далі". Умовна логіка show_if приховує/показує
+          поля залежно від попередніх відповідей. Прогрес-бар показує скільки залишилось.
+          Всі відповіді зберігаються в об'єкті <code style="background:#0F172A;padding:2px 6px;border-radius:4px;font-size:12px">answers</code>.
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(16,185,129,0.1);color:#6EE7B7">DynamicLegalFormBuilder</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">show_if logic</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">Framer Motion</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">8–30 полів</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.5);color:#34D399">4</div>
+      <div class="step-body" style="border-left: 3px solid rgba(16,185,129,0.5)">
+        <div class="step-header">
+          <div class="step-title">📤 Відправка відповідей в n8n</div>
+          <div class="step-actor" style="background:rgba(16,185,129,0.15);color:#6EE7B7">React TWA</div>
+        </div>
+        <div class="step-text">
+          POST на n8n webhook з трьома полями:
+          <code style="background:#0F172A;padding:2px 6px;border-radius:4px;font-size:12px">{ service_slug, user_id, answers }</code>.
+          Таймаут 15 секунд — якщо не відповіли але дані збережено, показуємо успіх.
+          Бот закривається і показує SuccessScreen.
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(16,185,129,0.1);color:#6EE7B7">POST webhook</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">15s timeout</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">AbortController</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.5);color:#A78BFA">5</div>
+      <div class="step-body" style="border-left: 3px solid rgba(139,92,246,0.5)">
+        <div class="step-header">
+          <div class="step-title">🗄️ Збереження кейсу в Supabase</div>
+          <div class="step-actor" style="background:rgba(139,92,246,0.15);color:#C4B5FD">n8n</div>
+        </div>
+        <div class="step-text">
+          n8n отримує дані → генерує <code>_case_id</code> (UUID) →
+          INSERT в таблицю <strong>cases</strong>: user_id, service_slug, answers (JSONB), status="processing".
+          Це гарантує що дані не загубляться навіть якщо наступні кроки впадуть.
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(139,92,246,0.1);color:#C4B5FD">Supabase INSERT</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">cases table</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">UUID case_id</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">status: processing</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 6 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(139,92,246,0.15);border-color:rgba(139,92,246,0.5);color:#A78BFA">6</div>
+      <div class="step-body" style="border-left: 3px solid rgba(139,92,246,0.5)">
+        <div class="step-header">
+          <div class="step-title">🤖 AI генерує зміст документу</div>
+          <div class="step-actor" style="background:rgba(139,92,246,0.15);color:#C4B5FD">n8n + Groq</div>
+        </div>
+        <div class="step-text">
+          n8n відправляє answers + service_slug в Groq (llama-3.3-70b).
+          Промпт: "ти юрист, склади текст позовної заяви в українському праві".
+          Groq повертає готовий текст документу з усіма реквізитами.
+          Час генерації: 3–8 секунд.
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(139,92,246,0.1);color:#C4B5FD">Groq API</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">llama-3.3-70b</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">structured prompt</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">~3–8s</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 7 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(245,158,11,0.15);border-color:rgba(245,158,11,0.5);color:#FCD34D">7</div>
+      <div class="step-body" style="border-left: 3px solid rgba(245,158,11,0.5)">
+        <div class="step-header">
+          <div class="step-title">📄 Створення Google Doc</div>
+          <div class="step-actor" style="background:rgba(245,158,11,0.15);color:#FCD34D">n8n + Google</div>
+        </div>
+        <div class="step-text">
+          Копіює шаблон Google Doc у папку користувача (Drive API → Files.copy).
+          Замінює плейсхолдер <code>{{DOCUMENT_CONTENT}}</code> на текст від Groq (Docs API → batchUpdate).
+          Відкриває доступ "всі з посиланням" (Permissions.create).
+          Авторизація через OAuth2 — документ зберігається в акаунті власника бота.
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(245,158,11,0.1);color:#FCD34D">Google Drive API</span>
+          <span class="tag" style="background:rgba(245,158,11,0.1);color:#FCD34D">Google Docs API</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">OAuth2</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">Files.copy</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">batchUpdate</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 8 -->
+    <div class="flow-step">
+      <div class="step-num" style="background:rgba(16,185,129,0.15);border-color:rgba(16,185,129,0.5);color:#34D399">8</div>
+      <div class="step-body" style="border-left: 3px solid rgba(16,185,129,0.5)">
+        <div class="step-header">
+          <div class="step-title">📩 Telegram: відправка посилання</div>
+          <div class="step-actor" style="background:rgba(16,185,129,0.15);color:#6EE7B7">n8n → User</div>
+        </div>
+        <div class="step-text">
+          n8n надсилає Telegram повідомлення користувачу (по user_id):
+          "Ваша позовна заява готова! 📄" + посилання на Google Doc.
+          Оновлює статус кейсу в Supabase: <code>status="completed"</code>, <code>doc_url=link</code>.
+          Весь процес від відправки форми: ~15–30 секунд.
+        </div>
+        <div class="step-detail">
+          <span class="tag" style="background:rgba(16,185,129,0.1);color:#6EE7B7">sendMessage</span>
+          <span class="tag" style="background:rgba(16,185,129,0.1);color:#6EE7B7">Supabase UPDATE</span>
+          <span class="tag" style="background:#1E293B;color:#64748B">~15–30s total</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════ TECH STACK ═══════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Архітектура</div>
+  <h2 class="section-h2">Технологічний стек</h2>
+  <p class="section-desc">Кожен інструмент вибраний по принципу "мінімум коду — максимум результату"</p>
+
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tech-icon">⚛️</div>
+      <div class="tech-name">React + Vite</div>
+      <div class="tech-role">Frontend TWA</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🎨</div>
+      <div class="tech-name">Tailwind CSS</div>
+      <div class="tech-role">Styling</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🎭</div>
+      <div class="tech-name">Framer Motion</div>
+      <div class="tech-role">Анімації форми</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🔷</div>
+      <div class="tech-name">TypeScript</div>
+      <div class="tech-role">Type safety</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🔄</div>
+      <div class="tech-name">n8n Cloud</div>
+      <div class="tech-role">Оркестрація</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🐘</div>
+      <div class="tech-name">Supabase</div>
+      <div class="tech-role">DB + Auth + API</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">🤖</div>
+      <div class="tech-name">Groq / Llama</div>
+      <div class="tech-role">AI генерація</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">📄</div>
+      <div class="tech-name">Google Docs</div>
+      <div class="tech-role">Документи</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">✈️</div>
+      <div class="tech-name">Telegram Bot</div>
+      <div class="tech-role">Дистрибуція</div>
+    </div>
+    <div class="tech-card">
+      <div class="tech-icon">▲</div>
+      <div class="tech-name">Vercel</div>
+      <div class="tech-role">Хостинг TWA</div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════ IMPROVEMENTS ═══════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Що покращити</div>
+  <h2 class="section-h2">Детальний roadmap поліпшень</h2>
+  <p class="section-desc">По кожному кроку — конкретні ідеї з пріоритетами</p>
+
+  <div class="improve-grid">
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#EF4444,#F97316)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(239,68,68,0.15)">🎯</div>
+        <div class="ic-meta">
+          <div class="ic-title">Онбординг та перший крок</div>
+          <div class="ic-step">Крок 1 — Telegram Bot</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(239,68,68,0.15);color:#FCA5A5">MUST</div>
+      </div>
+      <ul class="ic-list">
+        <li>Привітальне відео/GIF що пояснює як це працює</li>
+        <li>Кнопка "Як це працює?" з короткою інструкцією</li>
+        <li>Локалізація: мова визначається автоматично</li>
+        <li>Реферальна система: /invite → унікальне посилання</li>
+      </ul>
+    </div>
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#EF4444,#F97316)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(239,68,68,0.15)">⚡</div>
+        <div class="ic-meta">
+          <div class="ic-title">Швидкість завантаження форми</div>
+          <div class="ic-step">Крок 2 — Завантаження</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(239,68,68,0.15);color:#FCA5A5">MUST</div>
+      </div>
+      <ul class="ic-list">
+        <li>Кешування form_config в localStorage (TTL 1 год)</li>
+        <li>Skeleton loading замість простого спіннера</li>
+        <li>Prefetch конфігу ще до кліку кнопки</li>
+        <li>Edge function для прискорення DB запиту</li>
+      </ul>
+    </div>
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F59E0B,#EAB308)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(245,158,11,0.15)">✨</div>
+        <div class="ic-meta">
+          <div class="ic-title">UX форми</div>
+          <div class="ic-step">Крок 3 — Заповнення</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(245,158,11,0.15);color:#FCD34D">HIGH</div>
+      </div>
+      <ul class="ic-list">
+        <li>Автозбереження в localStorage — не загубиш прогрес</li>
+        <li>Підказки на кожному полі (юридичні пояснення)</li>
+        <li>Валідація в реальному часі (ПІБ, дати, ЄДРПОУ)</li>
+        <li>Голосовий ввід через Telegram (voice → text)</li>
+        <li>Smart defaults — підтягувати ім'я з Telegram профілю</li>
+      </ul>
+    </div>
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#F59E0B,#EAB308)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(245,158,11,0.15)">🧠</div>
+        <div class="ic-meta">
+          <div class="ic-title">Якість AI генерації</div>
+          <div class="ic-step">Крок 6 — Groq</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(245,158,11,0.15);color:#FCD34D">HIGH</div>
+      </div>
+      <ul class="ic-list">
+        <li>RAG: Supabase pgvector + актуальна судова практика</li>
+        <li>Перевірка документу другою моделлю (self-critique)</li>
+        <li>Шаблони по регіонах (різні суди мають різні вимоги)</li>
+        <li>Версіонування: зберігати всі варіанти документу</li>
+        <li>Fine-tuned модель на реальних українських документах</li>
+      </ul>
+    </div>
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#10B981,#06B6D4)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(16,185,129,0.15)">📑</div>
+        <div class="ic-meta">
+          <div class="ic-title">Формат документу</div>
+          <div class="ic-step">Крок 7 — Google Docs</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(16,185,129,0.15);color:#6EE7B7">MEDIUM</div>
+      </div>
+      <ul class="ic-list">
+        <li>PDF експорт (зараз тільки Google Doc)</li>
+        <li>Word (.docx) для нотаріусів</li>
+        <li>Брендований шаблон з логотипом Legal AI</li>
+        <li>Водяний знак "Чернетка" на безкоштовній версії</li>
+        <li>Власна папка для кожного користувача в Drive</li>
+      </ul>
+    </div>
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#10B981,#06B6D4)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(16,185,129,0.15)">💬</div>
+        <div class="ic-meta">
+          <div class="ic-title">Комунікація після</div>
+          <div class="ic-step">Крок 8 — Доставка</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(16,185,129,0.15);color:#6EE7B7">MEDIUM</div>
+      </div>
+      <ul class="ic-list">
+        <li>Follow-up через 24г: "Документ підписано?"</li>
+        <li>Нагадування про суд (дата + адреса)</li>
+        <li>Upsell: "Хочете щоб адвокат перевірив документ?"</li>
+        <li>NPS опитування після отримання документу</li>
+      </ul>
+    </div>
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#8B5CF6,#EC4899)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(139,92,246,0.15)">📊</div>
+        <div class="ic-meta">
+          <div class="ic-title">Аналітика та монетизація</div>
+          <div class="ic-step">Вся система</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(139,92,246,0.15);color:#C4B5FD">GROWTH</div>
+      </div>
+      <ul class="ic-list">
+        <li>Dashboard: конверсія по крокам форми (де кидають)</li>
+        <li>A/B тест форм: коротка vs повна</li>
+        <li>Stripe / Monobank підписка для преміум послуг</li>
+        <li>Партнерська програма для юридичних фірм</li>
+        <li>API для інтеграції з іншими сервісами</li>
+      </ul>
+    </div>
+
+    <div class="improve-card">
+      <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#8B5CF6,#EC4899)"></div>
+      <div class="ic-head">
+        <div class="ic-icon" style="background:rgba(139,92,246,0.15)">🚀</div>
+        <div class="ic-meta">
+          <div class="ic-title">Масштабування послуг</div>
+          <div class="ic-step">Продукт</div>
+        </div>
+        <div class="ic-priority" style="background:rgba(139,92,246,0.15);color:#C4B5FD">GROWTH</div>
+      </div>
+      <ul class="ic-list">
+        <li>Трудові спори (звільнення, невиплата зарплати)</li>
+        <li>Захист прав споживача</li>
+        <li>Нерухомість (оренда, купівля)</li>
+        <li>Спадщина та заповіти</li>
+        <li>CMS для non-tech команди додавати послуги</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ═══════════════════════════════ METRICS ═══════════════════════════════ -->
+<div class="section">
+  <div class="section-title">Цільові метрики</div>
+  <h2 class="section-h2">Як міряти успіх</h2>
+  <p class="section-desc">KPI для кожного етапу воронки</p>
+
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-value" style="color:#60A5FA">70<span style="font-size:20px">%</span></div>
+      <div class="metric-label">Form Completion Rate<br><span style="color:#475569;font-size:11px">ціль: 70% хто відкрив — заповнив</span></div>
+      <div class="metric-bar"><div class="metric-fill" style="width:70%;background:#2563EB"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:#34D399">30<span style="font-size:20px">s</span></div>
+      <div class="metric-label">Time to Document<br><span style="color:#475569;font-size:11px">від сабміту до Telegram повідомлення</span></div>
+      <div class="metric-bar"><div class="metric-fill" style="width:60%;background:#10B981"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:#A78BFA">4.5<span style="font-size:20px">⭐</span></div>
+      <div class="metric-label">User Satisfaction<br><span style="color:#475569;font-size:11px">NPS після отримання документу</span></div>
+      <div class="metric-bar"><div class="metric-fill" style="width:90%;background:#8B5CF6"></div></div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-value" style="color:#FCD34D">15<span style="font-size:20px">%</span></div>
+      <div class="metric-label">Upsell Rate<br><span style="color:#475569;font-size:11px">безкоштовні → преміум</span></div>
+      <div class="metric-bar"><div class="metric-fill" style="width:15%;background:#F59E0B"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ FOOTER ═══════════════════════════════ -->
+<div class="footer">
+  <p>Legal AI — Product Vision · Згенеровано <strong>Claude</strong> · Збережено як <strong>product-vision.html</strong></p>
+  <p style="margin-top:8px;color:#334155">C:\Users\serge\Legal-AI\product-vision.html</p>
+</div>
+
+</body>
+</html>

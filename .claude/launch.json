@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "legal-twa",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["legal-twa/node_modules/vite/bin/vite.js", "legal-twa", "--port", "5173"],
+      "port": 5173
+    },
+    {
+      "name": "legal-admin",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["legal-twa/node_modules/vite/bin/vite.js", "legal-twa", "--config", "legal-twa/vite.config.admin.ts", "--port", "5175"],
+      "port": 5175
+    },
+    {
+      "name": "product-vision",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "const h=require('http'),fs=require('fs'),p=require('path');h.createServer((q,r)=>{const f=p.join('C:/Users/serge/Legal-AI',q.url==='/'?'product-vision.html':q.url);fs.readFile(f,(e,d)=>{if(e){r.writeHead(404);r.end();}else{r.writeHead(200,{'Content-Type':'text/html'});r.end(d);}});}).listen(5174)"],
+      "port": 5174
+    }
+  ]
+}

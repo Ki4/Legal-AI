@@ -1,0 +1,363 @@
+﻿{
+  "name": "Legal AI — Form Submit v5 (RAG + ai_prompt від юриста)",
+  "nodes": [
+
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "form-submit",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-800, 1700],
+      "webhookId": "form-submit-webhook"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════\n// GLOBAL CONFIG — заміна n8n Variables (Starter plan)\n// Заповни свої ключі тут. Всі інші вузли посилаються на\n// $('Global Config').item.json.XXXX\n// ═══════════════════════════════════════════════════════\nreturn [{ json: {\n  GEMINI_API_KEY:       'YOUR_GEMINI_API_KEY',\n  SUPABASE_URL:         'https://nexkairsedqtczievxpa.supabase.co',\n  SUPABASE_SERVICE_KEY: 'YOUR_SUPABASE_SERVICE_ROLE_KEY'\n}}];"
+      },
+      "id": "global-config-001",
+      "name": "Global Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-800, 1500],
+      "notes": "⚙️ Ключі API. Starter plan не має Variables, тому тримаємо тут."
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst { service_slug, user_id, answers } = body;\n\nif (!user_id) return [{ json: { _valid: false, _error: 'missing user_id' } }];\nif (!service_slug) return [{ json: { _valid: false, _error: 'missing service_slug' } }];\nif (!answers || Object.keys(answers).length === 0) return [{ json: { _valid: false, _error: 'empty answers' } }];\n\nreturn [{ json: {\n  _valid: true,\n  _user_id: String(user_id),\n  _service_slug: service_slug,\n  _answers: answers,\n  _submitted_at: new Date().toISOString()\n}}];"
+      },
+      "id": "validate-001",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-560, 1700]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{ $json._valid }}", "value2": true }]
+        }
+      },
+      "id": "valid-if-001",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-320, 1700]
+    },
+
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "services",
+        "filters": {
+          "conditions": [{ "keyName": "slug", "condition": "eq", "keyValue": "={{ $json._service_slug }}" }]
+        }
+      },
+      "id": "get-service-001",
+      "name": "Get Service",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-80, 1580],
+      "credentials": { "supabaseApi": { "id": "2hBYjVwFlJbTj7AK", "name": "Supabase account" } }
+    },
+
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "identities",
+        "filters": {
+          "conditions": [{ "keyName": "external_id", "condition": "eq", "keyValue": "={{ $('Validate').item.json._user_id }}" }]
+        }
+      },
+      "id": "get-profile-001",
+      "name": "Get Profile",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [160, 1580],
+      "credentials": { "supabaseApi": { "id": "2hBYjVwFlJbTj7AK", "name": "Supabase account" } }
+    },
+
+    {
+      "parameters": {
+        "tableId": "cases",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldId": "user_id", "fieldValue": "={{ $('Validate').item.json._user_id }}" },
+            { "fieldId": "service_id", "fieldValue": "={{ $('Get Service').item.json.id }}" },
+            { "fieldId": "status", "fieldValue": "submitted" },
+            { "fieldId": "encrypted_data", "fieldValue": "={{ JSON.stringify($('Validate').item.json._answers) }}" },
+            { "fieldId": "expires_at", "fieldValue": "={{ new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() }}" }
+          ]
+        }
+      },
+      "id": "insert-case-001",
+      "name": "Insert Case",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [400, 1580],
+      "credentials": { "supabaseApi": { "id": "2hBYjVwFlJbTj7AK", "name": "Supabase account" } }
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// =============================================================\n// RAG STEP 1: Будуємо пошуковий запит з відповідей форми\n// Чим точніший запит — тим релевантніший контекст отримаємо\n// =============================================================\nconst answers = $('Validate').item.json._answers || {};\nconst serviceSlug = $('Validate').item.json._service_slug;\n\nconst terms = [];\n\n// Базовий контекст по послузі\nif (serviceSlug === 'divorce') {\n  terms.push('розірвання шлюбу підстави порядок');\n}\n\n// Контекстні уточнення за відповідями\nif (answers.has_children === true || answers.has_children === 'true') {\n  terms.push('місце проживання дітей після розлучення аліменти на дитину');\n}\nif (answers.alimony_claim === true || answers.alimony_claim === 'true') {\n  terms.push('стягнення аліментів розмір аліментів');\n}\nif (answers.has_joint_property === true || answers.has_joint_property === 'true') {\n  terms.push('поділ спільного майна подружжя');\n}\nif (answers.debt_claim === true || answers.debt_claim === 'true') {\n  terms.push('спільні боргові зобовязання');\n}\n\n// Завжди додаємо процесуальний контекст\nterms.push('позовна заява до суду судовий збір');\n\nconst queryText = terms.join(' ');\nconsole.log('[RAG] Query:', queryText);\n\nreturn [{ json: { query_text: queryText, service_slug: serviceSlug } }];"
+      },
+      "id": "build-rag-query-001",
+      "name": "Build RAG Query",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 1580],
+      "notes": "RAG Step 1: будуємо пошуковий запит з відповідей форми"
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-exp-03-07:embedContent?key={{ $('Global Config').item.json.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: 'models/gemini-embedding-exp-03-07', content: { parts: [{ text: $json.query_text }] } }) }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "get-gemini-embedding-001",
+      "name": "Get Gemini Embedding",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 1580],
+      "notes": "RAG Step 2: отримуємо вектор запиту від Gemini (3072 dims)"
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Global Config').item.json.SUPABASE_URL }}/rest/v1/rpc/search_law_chunks_hybrid",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $('Global Config').item.json.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $('Global Config').item.json.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  query_embedding: $('Get Gemini Embedding').item.json.embedding.values,\n  query_text: $('Build RAG Query').item.json.query_text,\n  target_service: $('Build RAG Query').item.json.service_slug,\n  match_count: 5,\n  vector_weight: 0.7,\n  text_weight: 0.3\n}) }}",
+        "options": { "timeout": 15000 }
+      },
+      "id": "search-law-chunks-001",
+      "name": "Search Law Chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 1580],
+      "notes": "RAG Step 3: hybrid search — vector (70%) + keyword (30%)"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// =============================================================\n// Формуємо запит до Groq з RAG-контекстом\n// ai_prompt береться з Supabase services.ai_prompt (від юриста)\n// Якщо порожній — використовуємо дефолтний промпт\n// =============================================================\n\nconst answers = $('Validate').item.json._answers || {};\nconst service = $('Get Service').item.json;\nconst caseId = $('Insert Case').item.json.id;\nconst today = new Date().toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit', year:'numeric'});\n\n// RAG: отримуємо знайдені статті\nconst rawChunks = $json;\nconst lawChunks = Array.isArray(rawChunks) ? rawChunks : [];\n\n// Форматуємо правовий контекст\nlet lawContext = '';\nif (lawChunks.length > 0) {\n  lawContext = '\\n\\n=== ПРАВОВА БАЗА (релевантні статті, знайдені через RAG) ===\\n';\n  for (const chunk of lawChunks) {\n    lawContext += `\\n📖 ${chunk.law_title}, Стаття ${chunk.article_num}`;\n    if (chunk.article_title) lawContext += ` — ${chunk.article_title}`;\n    lawContext += ` [${chunk.match_type}, score: ${(chunk.similarity || 0).toFixed(3)}]:\\n`;\n    lawContext += (chunk.full_content || '').trim() + '\\n';\n  }\n  lawContext += '\\n=== КІНЕЦЬ ПРАВОВОЇ БАЗИ ===\\n';\n  lawContext += '\\nВИКОРИСТАЙ ці статті для правового обґрунтування. Посилайся на них у документі (\"На підставі ст. X Сімейного кодексу України...\").';\n} else {\n  lawContext = '\\n\\n[Примітка: правова база недоступна, складай документ на основі загальних знань]';\n}\n\n// ai_prompt від юриста (з Supabase) або дефолтний\nconst defaultPrompt = `Ти — досвідчений юрист-практик, спеціалізуєшся на сімейному праві України. Склади офіційну ПОЗОВНУ ЗАЯВУ про розірвання шлюбу на підставі даних клієнта.\n\nСТРОГА СТРУКТУРА ДОКУМЕНТА:\n\nДо [назва суду за місцем проживання відповідача]\n(Знайти ваш суд: https://court.gov.ua/)\n\nПозивач: [ПІБ позивача у Н.в.]\nАдреса: [адреса]\nТел.: [телефон, якщо вказано]\n\nВідповідач: [ПІБ відповідача у Н.в.]\nАдреса: [адреса відповідача, якщо вказана]\n\nПОЗОВНА ЗАЯВА\nпро розірвання шлюбу\n\n[ДАТА реєстрації шлюбу] між мною, [ПІБ позивача], та [ПІБ відповідача], було зареєстровано шлюб у [місце реєстрації].\n\n[ЯКЩО has_children = true]: Від шлюбу народились спільні неповнолітні діти: [список дітей з датами народження]\n\nСпільне подружнє та сімейне життя між нами не склалося. Шлюбні відносини фактично припинились, примирення неможливе.\n\n[ЯКЩО has_joint_property = true]: Між нами наявне спільне майно: [перелік].\n\nНа підставі статей Сімейного кодексу України та ЦПК України (точні посилання — з правової бази вище),\n\nПРОШУ:\n1. Розірвати шлюб між [ПІБ позивача у Р.в.] та [ПІБ відповідача у Р.в.], зареєстрований [дата] у [місце].\n[ЯКЩО has_children = true і children_with = 'me']: 2. Визначити місце проживання [ПІБ дітей] зі мною.\n[ЯКЩО alimony_claim = true]: [номер]. Стягнути аліменти у розмірі [25%/33%/50%] від доходу.\n\nПЕРЕЛІК ДОДАНИХ ДОКУМЕНТІВ:\n1. Копія паспорта позивача — 2 прим.\n2. Копія свідоцтва про шлюб — 2 прим.\n[ЯКЩО has_children = true]: 3. Копії свідоцтв про народження — [кількість] прим.\n4. Квитанція про сплату судового збору — 1 прим.\n\n[ПІБ позивача] _______________   ${today}\n\nПРАВИЛА:\n- Мова: виключно українська, офіційно-діловий стиль\n- Суд: НЕ вказуй назву, тільки посилання на court.gov.ua\n- Якщо поле не заповнено — пропусти рядок без заглушок`;\n\nconst basePrompt = (service.ai_prompt && service.ai_prompt.trim().length > 50)\n  ? service.ai_prompt\n  : defaultPrompt;\n\nconst systemPrompt = basePrompt + lawContext;\n\nconst userContent = `Дані клієнта (JSON-анкета):\\n${JSON.stringify(answers, null, 2)}\\n\\nПослуга: ${service.title || 'Розірвання шлюбу'}\\nКейс №: ${caseId}\\nПоточна дата: ${today}\\nРелевантних статей знайдено: ${lawChunks.length}`;\n\nconsole.log('[RAG] Знайдено статей:', lawChunks.length);\nconsole.log('[RAG] Джерела:', lawChunks.map(c => `Ст.${c.article_num} ${c.law_title} (${c.match_type})`).join(', '));\nconsole.log('[Prompt] Використано ai_prompt:', !!(service.ai_prompt && service.ai_prompt.trim().length > 50));\n\nreturn [{\n  json: {\n    model: 'llama-3.3-70b-versatile',\n    max_tokens: 3500,\n    temperature: 0.15,\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userContent }\n    ]\n  }\n}];"
+      },
+      "id": "prepare-doc-001",
+      "name": "Prepare Doc Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1360, 1580],
+      "notes": "Формує запит до Groq: ai_prompt (від юриста) + RAG контекст з law_chunks"
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "generate-doc-001",
+      "name": "Generate Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1600, 1580],
+      "credentials": { "httpHeaderAuth": { "id": "groq-http-auth", "name": "Groq HTTP Auth" } }
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "text": "=✅ *Дякуємо! Дані отримано.*\n\n📋 Послуга: {{ $('Get Service').item.json.title }}\n🔢 Кейс №: {{ $('Insert Case').item.json.id }}\n\nAI-юрист складає вашу позовну заяву... ⏳",
+        "additionalFields": { "appendAttribution": false, "parse_mode": "Markdown" }
+      },
+      "id": "notify-user-001",
+      "name": "Notify User",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1840, 1580],
+      "credentials": { "telegramApi": { "id": "6OfTH9OBUuEgKALQ", "name": "Telegram account" } }
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, case_id: $('Insert Case').item.json.id }) }}"
+      },
+      "id": "respond-ok-001",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2080, 1580]
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const content = $('Generate Document').item.json?.choices?.[0]?.message?.content || 'Помилка генерації документа.';\nconst caseId = $('Insert Case').item.json.id;\nreturn [{ json: { _content: content, _case_id: caseId } }];"
+      },
+      "id": "prepare-content-001",
+      "name": "Prepare Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2320, 1580]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/drive/v3/files/1KHtchwlBKlTNDnK8uH0uxpKOXc6V-69zPRTDHxny1xI/copy",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ name: 'Позовна заява — ' + $json._case_id, parents: ['1mKnckHIFjhAH0MAzE073fqU4_6tZW5FI'] }) }}",
+        "options": {}
+      },
+      "id": "copy-template-001",
+      "name": "Copy Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2560, 1580],
+      "credentials": { "googleOAuth2Api": { "id": "google-oauth2-001", "name": "Google OAuth2" } }
+    },
+
+    {
+      "parameters": {
+        "jsCode": "const content = $('Prepare Content').item.json._content;\nconst newDocId = $json.id;\nreturn [{\n  json: {\n    _new_doc_id: newDocId,\n    _new_doc_url: 'https://docs.google.com/document/d/' + newDocId + '/edit',\n    _batch_request: {\n      requests: [{\n        replaceAllText: {\n          containsText: { text: '{{DOCUMENT_CONTENT}}', matchCase: true },\n          replaceText: content\n        }\n      }]\n    }\n  }\n}];"
+      },
+      "id": "build-replace-001",
+      "name": "Build Replace Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2800, 1580]
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://docs.googleapis.com/v1/documents/{{ $json._new_doc_id }}:batchUpdate",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._batch_request) }}",
+        "options": {}
+      },
+      "id": "replace-text-001",
+      "name": "Replace Placeholder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3040, 1580],
+      "credentials": { "googleOAuth2Api": { "id": "google-oauth2-001", "name": "Google OAuth2" } }
+    },
+
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Build Replace Request').item.json._new_doc_id }}/permissions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'anyone', role: 'reader' }) }}",
+        "options": {}
+      },
+      "id": "share-doc-001",
+      "name": "Share Document",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3280, 1580],
+      "credentials": { "googleOAuth2Api": { "id": "google-oauth2-001", "name": "Google OAuth2" } }
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "text": "=📄 *Ваша позовна заява готова!*\n\n👇 Відкрийте, перегляньте та завантажте як PDF:\n{{ $('Build Replace Request').item.json._new_doc_url }}\n\n💡 _Файл → Завантажити → PDF_ для друку та подачі до суду.",
+        "additionalFields": { "appendAttribution": false, "parse_mode": "Markdown" }
+      },
+      "id": "send-link-001",
+      "name": "Send Doc Link",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3520, 1580],
+      "credentials": { "telegramApi": { "id": "6OfTH9OBUuEgKALQ", "name": "Telegram account" } }
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: $('Validate').item.json._error }) }}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "respond-err-001",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-80, 1880]
+    }
+
+  ],
+
+  "connections": {
+    "Webhook":              { "main": [[{ "node": "Validate", "type": "main", "index": 0 }, { "node": "Global Config", "type": "main", "index": 0 }]] },
+    "Validate":             { "main": [[{ "node": "Is Valid?",           "type": "main", "index": 0 }]] },
+    "Is Valid?":            { "main": [
+      [{ "node": "Get Service",       "type": "main", "index": 0 }],
+      [{ "node": "Respond Error",     "type": "main", "index": 0 }]
+    ]},
+    "Get Service":          { "main": [[{ "node": "Get Profile",         "type": "main", "index": 0 }]] },
+    "Get Profile":          { "main": [[{ "node": "Insert Case",         "type": "main", "index": 0 }]] },
+    "Insert Case":          { "main": [[{ "node": "Build RAG Query",     "type": "main", "index": 0 }]] },
+    "Build RAG Query":      { "main": [[{ "node": "Get Gemini Embedding","type": "main", "index": 0 }]] },
+    "Get Gemini Embedding": { "main": [[{ "node": "Search Law Chunks",   "type": "main", "index": 0 }]] },
+    "Search Law Chunks":    { "main": [[{ "node": "Prepare Doc Request", "type": "main", "index": 0 }]] },
+    "Prepare Doc Request":  { "main": [[{ "node": "Generate Document",   "type": "main", "index": 0 }]] },
+    "Generate Document":    { "main": [[{ "node": "Notify User",         "type": "main", "index": 0 }]] },
+    "Notify User":          { "main": [[{ "node": "Respond OK",          "type": "main", "index": 0 }]] },
+    "Respond OK":           { "main": [[{ "node": "Prepare Content",     "type": "main", "index": 0 }]] },
+    "Prepare Content":      { "main": [[{ "node": "Copy Template",       "type": "main", "index": 0 }]] },
+    "Copy Template":        { "main": [[{ "node": "Build Replace Request","type": "main", "index": 0 }]] },
+    "Build Replace Request":{ "main": [[{ "node": "Replace Placeholder", "type": "main", "index": 0 }]] },
+    "Replace Placeholder":  { "main": [[{ "node": "Share Document",      "type": "main", "index": 0 }]] },
+    "Share Document":       { "main": [[{ "node": "Send Doc Link",       "type": "main", "index": 0 }]] }
+  },
+
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["rag", "v5"]
+}

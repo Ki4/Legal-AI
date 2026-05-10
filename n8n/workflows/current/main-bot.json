@@ -1,0 +1,570 @@
+{
+  "name": "Legal AI Bot v2",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message", "callback_query"],
+        "additionalFields": {}
+      },
+      "id": "7e007f99-154e-47c3-b954-12eda7c8feae",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-2000, 1700],
+      "webhookId": "tg-webhook",
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "id": "wait-001",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [-1820, 1700],
+      "webhookId": "f69ce145-28cc-4796-822d-4ecc13bb2ad4"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Normalize: works for both message and callback_query events\nconst data = $input.first().json;\nconst cb = data.callback_query;\nconst msg = data.message;\n\nreturn [{\n  json: {\n    ...data,\n    _chatId:     cb ? cb.message.chat.id         : msg?.chat.id,\n    _userId:     String(cb ? cb.from.id          : msg?.from?.id || ''),\n    _text:       cb ? cb.data                    : (msg?.text || ''),\n    _firstName:  cb ? cb.from.first_name         : (msg?.from?.first_name || 'Клієнт'),\n    _type:       cb ? 'callback_query'           : 'message'\n  }\n}];"
+      },
+      "id": "normalize-001",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1600, 1700]
+    },
+
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "identities",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "external_id",
+              "condition": "eq",
+              "keyValue": "={{ $json._userId }}"
+            }
+          ]
+        }
+      },
+      "id": "f1eba47c-8f93-4d31-94e6-f92f4a500d30",
+      "name": "Check Identity",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-1580, 1700],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.id }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "id": "243f2a96-f11d-4959-bf10-048091861089",
+      "name": "User Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-1360, 1700]
+    },
+
+    {
+      "parameters": {
+        "tableId": "profiles",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "full_name",
+              "fieldValue": "={{ $('Normalize').item.json._firstName }}"
+            }
+          ]
+        }
+      },
+      "id": "8c4ba4e8-415a-4c58-bd58-3937ae9807cd",
+      "name": "Create Profile",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-1100, 1520],
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "tableId": "identities",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.id }}"
+            },
+            {
+              "fieldId": "provider",
+              "fieldValue": "telegram"
+            },
+            {
+              "fieldId": "external_id",
+              "fieldValue": "={{ $('Normalize').item.json._userId }}"
+            }
+          ]
+        }
+      },
+      "id": "d18d1ef6-a075-4c17-b0cb-f31ac3158191",
+      "name": "Create Identity",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-860, 1520],
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "text": "=Вітаю, {{ $('Normalize').item.json._firstName }}! ⚖️\n\nЯ твій персональний AI-юрист. Допоможу з:\n• Розлучення та аліменти\n• Спори з ТЦК/ВЛК\n• Реєстрація ФОП\n• Пошук суду\n\nПросто напиши своє питання або опиши ситуацію ✍️",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "3dfb8e2f-82be-423b-9a11-f6c5f404887b",
+      "name": "Welcome New User",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-620, 1520],
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Pre-filter: catch obvious greetings and off-topic BEFORE hitting AI (saves tokens)\n// NOTE: $json here is the Supabase identity row — must read Normalize data explicitly\nconst norm = $('Normalize').item.json;\nconst text = (norm._text || '').toLowerCase().trim();\n\n// Very short or empty\nif (text.length < 3) {\n  return [{ json: { ...norm, _skip_ai: true, _skip_reason: 'too_short' } }];\n}\n\n// Bot commands and greetings\nconst GREETINGS = ['/start', '/help', '/menu', '/services', 'привіт', 'привет', 'hello', 'hi ', 'hey', 'добрий', 'добрый', 'вітаю', 'здравствуй', 'хай', 'ку'];\nif (GREETINGS.some(g => text.startsWith(g) || text === g.trim())) {\n  return [{ json: { ...norm, _skip_ai: true, _skip_reason: 'greeting' } }];\n}\n\n// Obviously off-topic\nconst OFF_TOPIC = ['погода', 'weather', 'рецепт', 'recipe', 'pizza', 'піца', 'їжа', 'еда', 'музик', 'кіно', 'movie', 'спорт', 'футбол', 'ігр', 'game', 'анекдот', 'joke'];\nif (OFF_TOPIC.some(w => text.includes(w))) {\n  return [{ json: { ...norm, _skip_ai: true, _skip_reason: 'off_topic' } }];\n}\n\n// Looks like a legal query — pass to AI\nreturn [{ json: { ...norm, _skip_ai: false } }];"
+      },
+      "id": "prefilter-001",
+      "name": "Pre-filter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-1100, 1880]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._skip_ai }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "prefilter-if-001",
+      "name": "Skip AI?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-860, 1880]
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $json._chatId }}",
+        "text": "🏛️ *Юридична допомога*\n\nЯ спеціалізуюся на юридичних питаннях. Опишіть вашу ситуацію або оберіть послугу:\n\n📋 _Розлучення та поділ майна_\n💰 _Аліменти_\n🪖 _Спори з ТЦК/ВЛК_\n💼 _Реєстрація ФОП_\n🔍 _Пошук суду за адресою_\n\nПросто напишіть своє питання ✍️",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "show-menu-001",
+      "name": "Show Menu",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [-620, 2080],
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json._text }}",
+        "options": {
+          "systemMessage": "Ти — професійний юридичний диспетчер. Твоя задача — визначити ID послуги та рівень впевненості на основі запиту користувача.\n\nСписок доступних послуг:\nID 1: 'divorce' (розлучення, поділ майна, шлюб)\nID 2: 'alimony' (аліменти, утримання дітей)\nID 3: 'military' (спори з ТЦК, ВЛК, мобілізація, відстрочка)\nID 4: 'business' (бізнес, ФОП, реєстрація, договори)\nID 5: 'court_search' (пошук суду, підсудність)\n\nПравила:\n1. Поверни ТІЛЬКИ чистий JSON: {\"service_id\": число_або_null, \"confidence\": число_від_0_до_1}\n2. Чіткий запит → confidence 0.9–1.0\n3. Розмитий або кілька тем → confidence 0.4–0.8\n4. Не юридичний або незрозумілий → {\"service_id\": null, \"confidence\": 0}\n5. Ніяких пояснень, тільки JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [-620, 1880],
+      "id": "afaddb91-fd62-4277-a397-808a5bf5fb82",
+      "name": "AI Agent"
+    },
+
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [-780, 2080],
+      "id": "8a6b8c44-a78b-4701-8521-9bc6f97346e9",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "JOX7DgjaUmYY5SG8",
+          "name": "Groq account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "conf-001",
+              "name": "confidence",
+              "value": "={{ (() => { try { return JSON.parse($json.output).confidence } catch(e) { return 0 } })() }}",
+              "type": "number"
+            },
+            {
+              "id": "svcid-001",
+              "name": "service_id_parsed",
+              "value": "={{ (() => { try { return JSON.parse($json.output).service_id } catch(e) { return null } })() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-380, 1880],
+      "id": "3bd7d6ee-7084-473b-b5e1-3612a3c9382c",
+      "name": "Edit Fields"
+    },
+
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict", "version": 3 },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.confidence }}",
+                    "rightValue": 0.9,
+                    "operator": { "type": "number", "operation": "gte" },
+                    "id": "a6b2ebd4-c127-4bfd-9e96-96a7cde33b8d"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict", "version": 3 },
+                "conditions": [
+                  {
+                    "id": "0edb0e0e-e529-471b-8e50-635e24400bae",
+                    "leftValue": "={{ $json.confidence }}",
+                    "rightValue": 0.4,
+                    "operator": { "type": "number", "operation": "gte" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "strict", "version": 3 },
+                "conditions": [
+                  {
+                    "id": "2fadd1a3-caa8-45c2-87b7-d9cb8e095bbb",
+                    "leftValue": "={{ $json.confidence }}",
+                    "rightValue": 0,
+                    "operator": { "type": "number", "operation": "gte" }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [-140, 1880],
+      "id": "7a0fc903-aef9-4f39-bfef-dcc1a0f15dcb",
+      "name": "Switch"
+    },
+
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "services",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.service_id_parsed }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [100, 1700],
+      "id": "a299de20-dc9e-42fb-ad84-dde70e54ee08",
+      "name": "Get Service (high)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "text": "=⚖️ *{{ $json.title }}*\n\n{{ $json.description }}\n\nНатисніть кнопку нижче, щоб заповнити форму та отримати готовий документ:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📝 Заповнити форму",
+                    "additionalFields": {
+                      "webAppUrl": "=https://legal-twa.vercel.app?service={{ $json.slug }}&uid={{ $('Normalize').item.json._userId }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, 1700],
+      "id": "send-twa-001",
+      "name": "Send TWA Button",
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "services",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.service_id_parsed }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [100, 1880],
+      "id": "0fde74e3-5ccb-421a-a876-a8e14b02779f",
+      "name": "Get Service (medium)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "text": "=🤔 Схоже, ваш запит стосується: *{{ $json.title }}*\n\nЯ правильно зрозумів?",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "=✅ Так, це {{ $json.title }}",
+                    "additionalFields": {
+                      "callback_data": "=confirm_service_{{ $json.id }}"
+                    }
+                  },
+                  {
+                    "text": "❌ Ні, показати меню",
+                    "additionalFields": {
+                      "callback_data": "show_menu"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, 1880],
+      "id": "da2b4d6a-d479-4eb6-8609-f4994d616cee",
+      "name": "Ask Confirm",
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "text": "🏛️ *Не зовсім зрозумів ваше питання*\n\nЯ можу допомогти з:\n• Розлучення та поділ майна\n• Аліменти\n• Спори з ТЦК/ВЛК\n• Реєстрація ФОП\n• Пошук суду\n\nСпробуйте переформулювати або опишіть ситуацію детальніше ✍️",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [340, 2080],
+      "id": "a7f85a3a-d6a3-4b22-a31d-e62a63fc7e07",
+      "name": "Send Help",
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "Wait", "type": "main", "index": 0 }]]
+    },
+    "Wait": {
+      "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]]
+    },
+    "Normalize": {
+      "main": [[{ "node": "Check Identity", "type": "main", "index": 0 }]]
+    },
+    "Check Identity": {
+      "main": [[{ "node": "User Exists?", "type": "main", "index": 0 }]]
+    },
+    "User Exists?": {
+      "main": [
+        [{ "node": "Create Profile", "type": "main", "index": 0 }],
+        [{ "node": "Pre-filter", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Profile": {
+      "main": [[{ "node": "Create Identity", "type": "main", "index": 0 }]]
+    },
+    "Create Identity": {
+      "main": [[{ "node": "Welcome New User", "type": "main", "index": 0 }]]
+    },
+    "Welcome New User": {
+      "main": [[]]
+    },
+    "Pre-filter": {
+      "main": [[{ "node": "Skip AI?", "type": "main", "index": 0 }]]
+    },
+    "Skip AI?": {
+      "main": [
+        [{ "node": "Show Menu", "type": "main", "index": 0 }],
+        [{ "node": "AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Show Menu": {
+      "main": [[]]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent": {
+      "main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+    },
+    "Edit Fields": {
+      "main": [[{ "node": "Switch", "type": "main", "index": 0 }]]
+    },
+    "Switch": {
+      "main": [
+        [{ "node": "Get Service (high)", "type": "main", "index": 0 }],
+        [{ "node": "Get Service (medium)", "type": "main", "index": 0 }],
+        [{ "node": "Send Help", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Service (high)": {
+      "main": [[{ "node": "Send TWA Button", "type": "main", "index": 0 }]]
+    },
+    "Get Service (medium)": {
+      "main": [[{ "node": "Ask Confirm", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

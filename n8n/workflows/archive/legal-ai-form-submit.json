@@ -1,0 +1,225 @@
+{
+  "name": "Legal AI — Form Submit",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "form-submit",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-800, 1700],
+      "webhookId": "form-submit-webhook"
+    },
+
+    {
+      "parameters": {
+        "jsCode": "// Validate required fields from TWA form submission\nconst body = $json.body || $json;\nconst { service_slug, user_id, answers } = body;\n\nif (!user_id) {\n  return [{ json: { _valid: false, _error: 'missing user_id' } }];\n}\nif (!service_slug) {\n  return [{ json: { _valid: false, _error: 'missing service_slug' } }];\n}\nif (!answers || Object.keys(answers).length === 0) {\n  return [{ json: { _valid: false, _error: 'empty answers' } }];\n}\n\nreturn [{\n  json: {\n    _valid: true,\n    _user_id: String(user_id),\n    _service_slug: service_slug,\n    _answers: answers,\n    _submitted_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "validate-001",
+      "name": "Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-560, 1700]
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json._valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "valid-if-001",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-320, 1700]
+    },
+
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "services",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "slug",
+              "condition": "eq",
+              "keyValue": "={{ $json._service_slug }}"
+            }
+          ]
+        }
+      },
+      "id": "get-service-001",
+      "name": "Get Service",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-80, 1580],
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "identities",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "external_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Validate').item.json._user_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-profile-001",
+      "name": "Get Profile",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [160, 1580],
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "tableId": "cases",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.user_id }}"
+            },
+            {
+              "fieldId": "service_id",
+              "fieldValue": "={{ $('Get Service').item.json.id }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "submitted"
+            },
+            {
+              "fieldId": "encrypted_data",
+              "fieldValue": "={{ JSON.stringify($('Validate').item.json._answers) }}"
+            },
+            {
+              "fieldId": "expires_at",
+              "fieldValue": "={{ new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "insert-case-001",
+      "name": "Insert Case",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [400, 1580],
+      "credentials": {
+        "supabaseApi": {
+          "id": "2hBYjVwFlJbTj7AK",
+          "name": "Supabase account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "text": "=✅ *Дякуємо! Дані отримано.*\n\n📋 Послуга: {{ $('Get Service').item.json.title }}\n🔢 Кейс №: {{ $json.id }}\n\nAI-юрист вже аналізує вашу справу. Документ буде готовий протягом *5 хвилин*.\n\nМи повідомимо вас, коли все буде готово 📄",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "notify-user-001",
+      "name": "Notify User",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [640, 1580],
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, case_id: $('Insert Case').item.json.id }) }}"
+      },
+      "id": "respond-ok-001",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [880, 1580]
+    },
+
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: $('Validate').item.json._error }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "respond-err-001",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-80, 1880]
+    }
+  ],
+
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Validate", "type": "main", "index": 0 }]]
+    },
+    "Validate": {
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{ "node": "Get Service", "type": "main", "index": 0 }],
+        [{ "node": "Respond Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Service": {
+      "main": [[{ "node": "Get Profile", "type": "main", "index": 0 }]]
+    },
+    "Get Profile": {
+      "main": [[{ "node": "Insert Case", "type": "main", "index": 0 }]]
+    },
+    "Insert Case": {
+      "main": [[{ "node": "Notify User", "type": "main", "index": 0 }]]
+    },
+    "Notify User": {
+      "main": [[{ "node": "Respond OK", "type": "main", "index": 0 }]]
+    }
+  },
+
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": []
+}

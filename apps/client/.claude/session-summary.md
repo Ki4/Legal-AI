@@ -1,10 +1,101 @@
 # Legal AI — Master Context Document
-> Updated: 2026-05-10 (session 8 end)
+> Updated: 2026-05-12 (session 9 end)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 8 (2026-05-10) — Монорепо реструктуризация + защита секретов
+## 🆕 Session 9 (2026-05-12) — Ротация ключей + n8n локально + полный флоу протестирован
+
+### Что сделано
+
+#### 1. Ротация ключей (все скомпрометированные заменены)
+- `SUPABASE_SERVICE_KEY` — новый `sb_secret_...` (старый удалён из Supabase)
+- `VITE_SUPABASE_ANON_KEY` — скопирован (не менялся)
+- `GEMINI_API_KEY` — новый (старый удалён из Google AI Studio)
+- `ENCRYPTION_KEY` — новый 64-hex, вставлен в `.env.local` и n8n Global Config
+- Все 4 ключа в `apps/client/.env.local` (gitignored)
+
+#### 2. GitHub + Vercel
+- `Ki4/Legal-AI` — запушен (private), старый `Ki4/legal-twa` — архивирован
+- Vercel: оба проекта (`legal-twa`, `legal-ai-admin`) переподключены к `Ki4/Legal-AI`, Root Dir = `apps/client`
+- `VITE_N8N_WEBHOOK_URL` в Vercel Production = ngrok URL (временно, до VPS)
+
+#### 3. n8n локально (Docker)
+- Запуск: `docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n -e NODE_FUNCTION_ALLOW_BUILTIN=crypto -e WEBHOOK_URL=https://rosy-caution-progeny.ngrok-free.dev docker.n8n.io/n8nio/n8n`
+- **Важно**: флаг `NODE_FUNCTION_ALLOW_BUILTIN=crypto` обязателен — без него Encrypt Data нода падает
+- **Важно**: `WEBHOOK_URL` нужен чтобы Telegram webhook зарегистрировался правильно
+- Оба воркфлоу импортированы и активированы: `form-submit` и `main-bot`
+- Credentials созданы: Supabase, Telegram, Groq (Header Auth: `Authorization: Bearer gsk_...`), Google OAuth2
+- Исправлено: Groq credential — header name должен быть `Authorization`, не отображаемое имя
+
+#### 4. ngrok
+- Установлен: `winget install ngrok.ngrok` → `ngrok update` → `ngrok config add-authtoken ...`
+- Статичный домен (FREE): `https://rosy-caution-progeny.ngrok-free.dev`
+- Запуск: `ngrok http 5678` (нужен новый терминал, блокирует)
+- Authtoken сохранён в `C:\Users\serge\AppData\Local\ngrok\ngrok.yml`
+
+#### 5. Полный флоу — ПРОТЕСТИРОВАН ✅
+- Telegram `/start` → бот отвечает меню
+- "Розлучення" → бот отправляет кнопку с формой (Vercel URL)
+- Форма заполняется → отправляет на ngrok → n8n обрабатывает
+- Supabase: кейс создан, данные зашифрованы AES-256
+- Groq: отмена ФИО (6 полей)
+- JS шаблон: документ сгенерирован
+- Google Docs: документ создан и расшарен
+- Telegram: "✅ Дані отримано" + "📄 Ваша позовна заява готова!" + ссылка на Google Doc
+
+#### 6. Тестовый пользователь в Supabase
+- `identities.external_id = '236581343'` (реальный Telegram ID Сергея)
+- `profiles.id = 0b0bedd2-caab-4a90-b14a-931a86883f41`
+
+---
+
+### 🔴 СЛЕДУЮЩАЯ СЕССИЯ — план
+
+#### Приоритет 1: VPS деплой
+У Сергея есть домен, на котором уже 1 сервер. Нужно разместить n8n на VPS.
+
+**Задачи:**
+1. Hetzner CX22 (~€5/мес) — заказать новый сервер (или поддомен на существующем)
+2. Docker + nginx + SSL (Let's Encrypt) на VPS
+3. n8n на `n8n.yourdomain.com` с переменными:
+   - `NODE_FUNCTION_ALLOW_BUILTIN=crypto`
+   - `WEBHOOK_URL=https://n8n.yourdomain.com`
+4. Перенести credentials из локального n8n на VPS (экспорт/импорт)
+5. Vercel `VITE_N8N_WEBHOOK_URL` → VPS URL (убрать зависимость от ngrok навсегда)
+
+**Environments после VPS:**
+- **prod**: Vercel production → VPS n8n
+- **dev**: локальный Vite → локальный n8n (localhost:5678), ngrok только при тесте Telegram
+
+#### Приоритет 2: Новый сервис — Аліменти
+После VPS (чтобы сразу идти в прод):
+- `alimonyConfig.ts` уже есть в `apps/client/src/data/`
+- Нужен: `alimony-document.js` шаблон (аналог divorce)
+- Нужен: запись в Supabase `services` (slug='alimony')
+- Тест end-to-end
+
+---
+
+### Локальный запуск (памятка)
+```
+# 1. n8n
+docker start n8n   # если контейнер уже есть
+# ИЛИ docker run -d --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n \
+#   -e NODE_FUNCTION_ALLOW_BUILTIN=crypto \
+#   -e WEBHOOK_URL=https://rosy-caution-progeny.ngrok-free.dev \
+#   docker.n8n.io/n8nio/n8n
+
+# 2. ngrok (новый терминал)
+ngrok http 5678
+
+# 3. dev сервер
+cd apps/client && npm run dev
+```
+
+---
+
+## Session 8 (2026-05-10) — Монорепо реструктуризация + защита секретов
 
 ### Что сделано и почему
 

@@ -68,6 +68,34 @@
 - **prod**: Vercel production → VPS n8n
 - **dev**: локальный Vite → локальный n8n (localhost:5678), ngrok только при тесте Telegram
 
+#### Dev/Prod разделение — архитектура
+
+**Схема:**
+```
+DEV                              PROD
+──────────────────────           ──────────────────────
+Vercel Preview (авто)            Vercel Production (main)
+  ↓                                ↓
+n8n локальный (Docker)           n8n на VPS (n8n.domain.com)
+  ↓                                ↓
+Supabase (один проект, dev-данные) Supabase (один проект, prod-данные)
+```
+
+**Ключевая переменная** — `VITE_N8N_WEBHOOK_URL`:
+| Среда | Значение |
+|-------|----------|
+| Local (`.env.local`) | `http://localhost:5678/webhook/form-submit` |
+| Vercel Preview | `https://n8n.domain.com/webhook/form-submit` (или ngrok) |
+| Vercel Production | `https://n8n.domain.com/webhook/form-submit` |
+
+**Workflow разработки после VPS:**
+1. Новая фича → пишешь локально → тестируешь на `localhost:5173` + локальный n8n
+2. Пушишь в GitHub → Vercel делает Preview URL автоматически
+3. Проверил на Preview → мёрджишь в `main` → Vercel автодеплоит в Production
+4. n8n воркфлоу обновляешь вручную: экспорт JSON → импорт на VPS
+
+**Vercel env vars** задаются раздельно для каждой среды (Preview / Production) — это и есть механизм разделения.
+
 #### Приоритет 2: Новый сервис — Аліменти
 После VPS (чтобы сразу идти в прод):
 - `alimonyConfig.ts` уже есть в `apps/client/src/data/`

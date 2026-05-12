@@ -183,6 +183,13 @@ ALTER TABLE services ADD COLUMN needs_law_review BOOLEAN DEFAULT false;
 - **Пріоритет:** 🟢 nice-to-have
 - **Актуальність:** Не блокує нічого
 
+### 10а. DatePickerField — навігація по роках незручна
+- **Зараз:** Вибір дати далекого року (напр. 1985) вимагає багато кліків через сторінки по 12 років
+- **Як краще:** Додати поле ручного введення дати у форматі ДД.ММ.РРРР поруч з кнопкою календаря — для швидкого вводу без навігації
+- **Альтернатива:** При кліку на рік — показувати input з числом замість grid
+- **Пріоритет:** 🟡 важливо (UX — багато клієнтів вводять дату народження 30+ років назад)
+- **Файл:** `apps/client/src/components/form/fields/DatePickerField.tsx`
+
 ### 10. Drag & drop полів у конструкторі
 - **Зараз:** Кнопки ↑↓ для переміщення полів
 - **Як краще:** `@dnd-kit/core` для drag & drop
@@ -333,6 +340,16 @@ CREATE TABLE invites (
   4. ⬜ **Data minimization** — не зберігати поля які не потрібні для документа
 - **Пріоритет:** 🟢 nice-to-have (основне GDPR зроблено)
 - **Актуальність:** Self-service видалення — до масштабування (>100 юзерів)
+
+### 13а. Global Config нода — секрети в коді замість n8n Variables
+- **Зараз:** `SUPABASE_SERVICE_KEY` і `ENCRYPTION_KEY` захардкоджені прямо в JS-коді ноди Global Config
+- **Чому так:** Обхідний шлях для n8n Cloud Starter plan (Variables там платні)
+- **Як краще:** Self-hosted n8n (локально або VPS) має Variables безкоштовно:
+  1. n8n Settings → Variables → додати `SUPABASE_SERVICE_KEY`, `ENCRYPTION_KEY`
+  2. В Global Config ноді: `$vars.SUPABASE_SERVICE_KEY` замість хардкоду
+  3. Секрети більше не в коді — безпечніше, легше ротувати
+- **Пріоритет:** 🟡 важливо (безпека)
+- **Актуальність:** Зробити при переносі на VPS — тоді налаштовуємо Variables один раз
 
 ### 13. `supabase-migrations.sql` — ручне виконання
 - **Зараз:** Треба відкривати Supabase SQL Editor і копіювати вручну

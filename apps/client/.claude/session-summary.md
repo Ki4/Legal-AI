@@ -1,6 +1,89 @@
 # Legal AI — Master Context Document
-> Updated: 2026-04-08 (session 7 end)
-> Copy this file path into new chat: `.claude/session-summary.md`
+> Updated: 2026-05-10 (session 8 end)
+> Прочитай эту секцию первой — она самая свежая.
+
+---
+
+## 🆕 Session 8 (2026-05-10) — Монорепо реструктуризация + защита секретов
+
+### Что сделано и почему
+
+#### 1. Монорепо структура (`C:/Users/serge/Legal-AI/`)
+Проект был нечитаем: n8n, суpabase, скрипты, доки — всё вперемешку внутри `legal-twa/`.
+Реструктурировано в монорепо:
+
+```
+Legal-AI/                 ← git root (новый, чистая история)
+├── apps/client/          ← был legal-twa/ (React TWA + admin)
+├── n8n/
+│   ├── workflows/
+│   │   ├── current/      ← form-submit.json, main-bot.json (АКТИВНЫЕ)
+│   │   └── archive/      ← v1-v5 (старые версии)
+│   ├── templates/        ← JS Code node скрипты + тесты
+│   └── prompts/          ← AI промпты
+├── supabase/migrations/  ← SQL миграции
+├── docs/
+│   ├── strategy/         ← notebooklm, product-vision, презентация юристу
+│   ├── research/         ← маркетинг-ресёрч
+│   ├── architecture/     ← ARCHITECTURE, DECISIONS, IMPROVEMENTS
+│   └── runbooks/         ← операционные гайды
+├── scripts/              ← scaffold, check-law-updates, decrypt-case, etc.
+├── CLAUDE.md             ← правила структуры монорепо (Claude читает каждую сессию)
+├── .gitignore
+└── .gitattributes
+```
+
+**Git**: новый `git init` в `Legal-AI/`, начальный коммит сделан. Старый `.git` из `legal-twa/` удалён.
+**Vercel**: ещё НЕ переподключён (ждём ротации ключей и создания GitHub репо).
+
+#### 2. Секреты — найдено и исправлено
+В старом `Ki4/legal-twa` (публичный GitHub) были захардкожены в JSON воркфлоу:
+- `SUPABASE_SERVICE_KEY` (legacy JWT)
+- `ENCRYPTION_KEY` (64-char hex)
+- `GEMINI_API_KEY`
+
+Исправлено:
+- В `n8n/workflows/current/form-submit.json` и `archive/v5-rag.json` — заменены на плейсхолдеры
+- `apps/client/.env.local` — очищен от старых ключей, структура с плейсхолдерами
+- Pre-commit hook установлен: блокирует JWT/Google/Anthropic ключи при коммите
+- `scripts/hooks/pre-commit` — committed copy хука
+- `scripts/setup-hooks.sh` — установка хуков после git clone
+- `docs/runbooks/secrets-management.md` — инструкция где брать каждый ключ
+
+---
+
+### 🔴 ЧТО ОСТАЛОСЬ — нужны действия Сергея
+
+#### Срочно (безопасность):
+1. **Supabase Secret key** — скопировать `sb_secret_...` (вкладка "Publishable and secret API keys")
+   → вставить в `apps/client/.env.local` → `SUPABASE_SERVICE_KEY`
+2. **Gemini API key** — зайти на `aistudio.google.com` → удалить старый → создать новый
+   → вставить в `apps/client/.env.local` → `GEMINI_API_KEY`
+3. **Encryption key** — сгенерировать новый:
+   `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
+   → вставить в `apps/client/.env.local` → `ENCRYPTION_KEY`
+   → тот же ключ вставить в `n8n/workflows/current/form-submit.json` → Global Config node
+4. **Legacy anon key** — скопировать с Supabase Legacy tab
+   → вставить в `apps/client/.env.local` → `VITE_SUPABASE_ANON_KEY`
+
+#### GitHub (после ротации ключей):
+5. Создать GitHub репо `Legal-AI` (можно приватный)
+6. В терминале: `! git -C "C:/Users/serge/Legal-AI" remote add origin https://github.com/Ki4/Legal-AI.git`
+7. `! git -C "C:/Users/serge/Legal-AI" push -u origin main`
+8. Архивировать старый `Ki4/legal-twa` (GitHub → Settings → Archive repository)
+
+#### Vercel (после пуша):
+9. Vercel Dashboard → оба проекта (client + admin) → Settings → Git → отключить старый репо → подключить `Legal-AI` → Root Directory: `apps/client`
+
+#### n8n (следующая сессия):
+10. Установить n8n локально через Docker:
+    `! docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n`
+11. Для Telegram вебхуков локально — нужен ngrok или cloudflared tunnel
+
+---
+
+### Как начать следующую сессию
+Скажи Клоду: **"Прочитай apps/client/.claude/session-summary.md — верхняя секция Session 8."**
 
 ---
 

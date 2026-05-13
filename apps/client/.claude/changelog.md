@@ -15,6 +15,39 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
+### Group 6 — Alimony service + monorepo test infra fixes (session 10, 2026-05-13)
+**Status:** PENDING COMMIT — готово до коміту, всі тести зелені
+**Why:** New service "Стягнення аліментів" added end-to-end. Also fixed Playwright-encoding issue documentation and fixed monorepo paths in test runner and scaffold scripts.
+
+**Files:**
+- `n8n/templates/alimony-document.js` — **NEW** — JS template for alimony lawsuit (3 marital statuses, 1-N children, percent/fixed alimony)
+- `n8n/workflows/current/form-submit.json` — updated Prepare Declension (unified `defendant_*` fields, handles divorce+alimony) + Build Document (dispatches to per-service builder)
+- `n8n/templates/divorce-document.js` — accepts both `defendant_*` and legacy `spouse_*` AI field names
+- `apps/client/src/data/alimonyFormConfig.ts` — **NEW** — 4-tab form config for alimony
+- `supabase/migrations/010_alimony_service.sql` — **NEW** — INSERT alimony into services table with watched_laws (СК 180-184)
+- `test-data/alimony/fixtures/scenario-1.mjs` — 1 дитина, після розлучення, % від доходу
+- `test-data/alimony/fixtures/scenario-2.mjs` — **NEW** — 2 дитини, у шлюбі, фіксована сума
+- `test-data/alimony/fixtures/scenario-3.mjs` — **NEW** — 1 дитина, ніколи не одружені, % невідомого доходу
+- `test-data/alimony/assertions.mjs` — **NEW** — 17 структурних перевірок
+- `test-data/alimony/expected/scenario-{1,2,3}.txt` — **NEW** — golden files
+- `test-data/divorce/` — скопійовано з `apps/client/test-data/divorce/` в корінь монорепо
+- `docs/templates/alimony-reference.docx` — **NEW** — Word-шаблон як референс
+- `scripts/test-document.mjs` — виправлено шлях `n8n-templates/` → `n8n/templates/`
+- `scripts/scaffold-service.mjs` — виправлено всі шляхи `n8n-templates/` → `n8n/templates/` та `prompts/` → `n8n/prompts/`
+- `scripts/test-webhook.mjs` — URL оновлено на `http://localhost:5678/webhook/form-submit`
+- `scripts/test-scenarios.md` — додано секцію "⚠️ Playwright + кирилиця → знаки питання"
+
+**Test results:** divorce 4/4 ✅ | alimony 3/3 ✅ | all structural 17/17
+
+**Next steps:**
+1. Виконати `supabase/migrations/010_alimony_service.sql` в Supabase SQL Editor
+2. Додати form_config в Admin Panel (Service Builder) для slug='alimony'
+3. Або завантажити `alimonyFormConfig.ts` через `scripts/update-form-configs.ts`
+4. Імпортувати оновлений `form-submit.json` в локальний n8n
+5. Тест end-to-end через `node scripts/test-webhook.mjs` (додати scenario для alimony)
+
+---
+
 ### Group 4 — Task #2 runbook + session notes
 **Status:** PENDING COMMIT (from session 7)
 **Why:** prepare everything tomorrow-morning Sergey needs to execute Task #2 (secrets rotation) without re-loading context from the session.

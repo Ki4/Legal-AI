@@ -30,7 +30,7 @@ const serviceFilter = process.argv.slice(2).find(a => !a.startsWith('-'));
 // the original file (which must remain plain JS for n8n copy-paste).
 
 function loadTemplate(service) {
-  const templatePath = join(ROOT, 'n8n-templates', `${service}-document.js`);
+  const templatePath = join(ROOT, 'n8n', 'templates', `${service}-document.js`);
   const code = readFileSync(templatePath, 'utf-8');
   const sandbox = { console };
   vm.createContext(sandbox);

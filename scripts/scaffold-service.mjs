@@ -7,7 +7,7 @@
  *   node scripts/scaffold-service.mjs alimony "Стягнення аліментів"
  *
  * Creates:
- *   n8n-templates/{slug}-document.js       — document builder skeleton
+ *   n8n/templates/{slug}-document.js       — document builder skeleton
  *   prompts/{slug}-declension-prompt.txt   — declension prompt (copied from divorce)
  *   test-data/{slug}/fixtures/scenario-1.mjs — test fixture skeleton
  *   test-data/{slug}/expected/.gitkeep     — golden files directory
@@ -40,9 +40,9 @@ console.log(`   Function name: ${fnName}\n`);
 
 // ─── Safety check ───────────────────────────────────────────────────────────
 
-const templatePath = join(ROOT, 'n8n-templates', `${slug}-document.js`);
+const templatePath = join(ROOT, 'n8n/templates', `${slug}-document.js`);
 if (existsSync(templatePath)) {
-  console.error(`❌ Template already exists: n8n-templates/${slug}-document.js`);
+  console.error(`❌ Template already exists: n8n/templates/${slug}-document.js`);
   console.error('   Use a different slug or delete the existing file.');
   process.exit(1);
 }
@@ -59,7 +59,7 @@ for (const dir of dirs) {
 
 // ─── Read shared utils for inline copy ──────────────────────────────────────
 
-const sharedUtilsPath = join(ROOT, 'n8n-templates', 'shared', 'utils.js');
+const sharedUtilsPath = join(ROOT, 'n8n/templates', 'shared', 'utils.js');
 let sharedHelpers = '';
 if (existsSync(sharedUtilsPath)) {
   const content = readFileSync(sharedUtilsPath, 'utf-8');
@@ -146,14 +146,14 @@ ${sharedHelpers}
 `;
 
 writeFileSync(templatePath, documentTemplate, 'utf-8');
-console.log(`  ✅ n8n-templates/${slug}-document.js`);
+console.log(`  ✅ n8n/templates/${slug}-document.js`);
 
 // ─── 2. Declension prompt ───────────────────────────────────────────────────
 
-const promptPath = join(ROOT, 'prompts', `${slug}-declension-prompt.txt`);
+const promptPath = join(ROOT, 'n8n', 'prompts', `${slug}-declension-prompt.txt`);
 if (!existsSync(promptPath)) {
   // Copy from divorce as starting point
-  const divorcePromptPath = join(ROOT, 'prompts', 'divorce-declension-prompt.txt');
+  const divorcePromptPath = join(ROOT, 'n8n', 'prompts', 'divorce-declension-prompt.txt');
   let promptContent;
   if (existsSync(divorcePromptPath)) {
     promptContent = readFileSync(divorcePromptPath, 'utf-8');
@@ -227,7 +227,7 @@ console.log(`  ✅ test-data/${slug}/assertions.mjs`);
 console.log(`
 🎉 Scaffold complete! Next steps:
    1. Create form_config in Admin Panel (Service Builder)
-   2. Fill n8n-templates/${slug}-document.js with actual document template
+   2. Fill n8n/templates/${slug}-document.js with actual document template
    3. Fill prompts/${slug}-declension-prompt.txt (if declension needed)
    4. Fill test-data/${slug}/fixtures/scenario-1.mjs with test data
    5. Run: npm run test:docs:update -- ${slug}

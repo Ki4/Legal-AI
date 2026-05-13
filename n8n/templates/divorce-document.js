@@ -135,12 +135,13 @@ function buildDivorceDocument(answers, ai) {
   const isFemale      = detectGender(a.middle_name)       === 'female';
   const spouseIsFemale = detectGender(a.spouse_middle_name) === 'female';
 
-  const plaintiffInstrumental  = (ai && ai.plaintiff_instrumental)  || plaintiffName;
-  const plaintiffGenitive      = (ai && ai.plaintiff_genitive)     || plaintiffName;
-  const spouseInstrumental     = (ai && ai.spouse_instrumental)    || spouseName;
-  const spouseGenitive         = (ai && ai.spouse_genitive)        || spouseName;
-  const marriagePlaceLocative  = (ai && ai.marriage_place_locative) || val('marriage_place');
-  const childrenGenitive       = (ai && ai.children_genitive)      || inlineChildren(a.children_details);
+  const plaintiffInstrumental  = (ai && ai.plaintiff_instrumental)                               || plaintiffName;
+  const plaintiffGenitive      = (ai && ai.plaintiff_genitive)                                  || plaintiffName;
+  // Accept both defendant_* (unified) and legacy spouse_* keys
+  const spouseInstrumental     = (ai && (ai.defendant_instrumental || ai.spouse_instrumental))  || spouseName;
+  const spouseGenitive         = (ai && (ai.defendant_genitive     || ai.spouse_genitive))      || spouseName;
+  const marriagePlaceLocative  = (ai && ai.marriage_place_locative)                             || val('marriage_place');
+  const childrenGenitive       = (ai && ai.children_genitive)                                   || inlineChildren(a.children_details);
 
   // ─── ШАПКА ───────────────────────────────────────────────────────────────────
 

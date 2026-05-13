@@ -1,628 +1,636 @@
 ﻿{
-  "name": "Legal AI — Form Submit v6 (Hybrid Template)",
-  "nodes": [
-    {
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "form-submit",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "id": "webhook-001",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        -800,
-        1700
-      ],
-      "webhookId": "form-submit-webhook"
-    },
-    {
-      "parameters": {
-        "jsCode": "// ═══════════════════════════════════════════════════════\n// GLOBAL CONFIG — заміна n8n Variables (Starter plan)\n// ═══════════════════════════════════════════════════════\nreturn [{ json: {\n  SUPABASE_URL:         'https://nexkairsedqtczievxpa.supabase.co',\n  SUPABASE_SERVICE_KEY: 'YOUR_SUPABASE_SERVICE_ROLE_KEY',\n  ENCRYPTION_KEY:       'YOUR_ENCRYPTION_KEY_64_HEX'\n}}];"
-      },
-      "id": "global-config-001",
-      "name": "Global Config",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -800,
-        1500
-      ],
-      "notes": "⚙️ Ключі API. Starter plan не має Variables, тому тримаємо тут. GEMINI_API_KEY видалено — RAG не потрібен для hybrid підходу."
-    },
-    {
-      "parameters": {
-        "jsCode": "const body = $('Webhook').first().json.body;\nconst { service_slug, user_id, answers, consented_at } = body;\n\nif (!user_id) return [{ json: { _valid: false, _error: 'missing user_id' } }];\nif (!service_slug) return [{ json: { _valid: false, _error: 'missing service_slug' } }];\nif (!answers || Object.keys(answers).length === 0) return [{ json: { _valid: false, _error: 'empty answers' } }];\n\nreturn [{ json: {\n  _valid: true,\n  _user_id: String(user_id),\n  _service_slug: service_slug,\n  _answers: answers,\n  _consented_at: consented_at || new Date().toISOString(),\n  _submitted_at: new Date().toISOString()\n}}];"
-      },
-      "id": "validate-001",
-      "name": "Validate",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -560,
-        1700
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            {
-              "value1": "={{ $json._valid }}",
-              "value2": true
-            }
-          ]
-        }
-      },
-      "id": "valid-if-001",
-      "name": "Is Valid?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        -320,
-        1700
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "tableId": "services",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "slug",
-              "condition": "eq",
-              "keyValue": "={{ $json._service_slug }}"
-            }
-          ]
-        }
-      },
-      "id": "get-service-001",
-      "name": "Get Service",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        -80,
-        1580
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "2hBYjVwFlJbTj7AK",
-          "name": "Supabase account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "operation": "getAll",
-        "tableId": "identities",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "external_id",
-              "condition": "eq",
-              "keyValue": "={{ $('Validate').item.json._user_id }}"
-            }
-          ]
-        }
-      },
-      "id": "get-profile-001",
-      "name": "Get Profile",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        160,
-        1580
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "2hBYjVwFlJbTj7AK",
-          "name": "Supabase account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// ═══════════════════════════════════════════════════════\n// Encrypt Data — AES-256-GCM шифрування PII перед збереженням\n// Формат: v1:<iv_hex>:<authTag_hex>:<ciphertext_hex>\n// ═══════════════════════════════════════════════════════\nconst crypto = require('crypto');\n\nconst key = Buffer.from($('Global Config').first().json.ENCRYPTION_KEY, 'hex');\nconst plaintext = JSON.stringify($('Validate').first().json._answers);\n\nconst iv = crypto.randomBytes(12);\nconst cipher = crypto.createCipheriv('aes-256-gcm', key, iv);\n\nlet encrypted = cipher.update(plaintext, 'utf8', 'hex');\nencrypted += cipher.final('hex');\nconst authTag = cipher.getAuthTag().toString('hex');\n\nconst result = 'v1:' + iv.toString('hex') + ':' + authTag + ':' + encrypted;\nconsole.log('[Encrypt] Data encrypted, length:', result.length);\n\nreturn [{ json: {\n  _encrypted_data: result,\n  _answers: $('Validate').first().json._answers\n}}];"
-      },
-      "id": "encrypt-data-001",
-      "name": "Encrypt Data",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        280,
-        1580
-      ],
-      "notes": "🔐 AES-256-GCM шифрування PII. Ключ в Global Config, дані в Supabase → взлом одного не розкриває інше."
-    },
-    {
-      "parameters": {
-        "tableId": "cases",
-        "fieldsUi": {
-          "fieldValues": [
-            {
-              "fieldId": "user_id",
-              "fieldValue": "={{ $('Get Profile').first().json.user_id }}"
-            },
-            {
-              "fieldId": "service_id",
-              "fieldValue": "={{ $('Get Service').item.json.id }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "submitted"
-            },
-            {
-              "fieldId": "encrypted_data",
-              "fieldValue": "={{ $('Encrypt Data').first().json._encrypted_data }}"
-            },
-            {
-              "fieldId": "consented_at",
-              "fieldValue": "={{ $('Validate').first().json._consented_at }}"
-            },
-            {
-              "fieldId": "expires_at",
-              "fieldValue": "={{ new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() }}"
-            }
-          ]
-        }
-      },
-      "id": "insert-case-001",
-      "name": "Insert Case",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [
-        400,
-        1580
-      ],
-      "credentials": {
-        "supabaseApi": {
-          "id": "2hBYjVwFlJbTj7AK",
-          "name": "Supabase account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "// ═══════════════════════════════════════════════════════\n// Prepare Declension — маленький запит до Groq\n// Тільки відмінювання ПІБ, установ та дітей (6 полів JSON)\n// ═══════════════════════════════════════════════════════\nconst answers = $('Validate').item.json._answers || {};\n\nconst plaintiffName = [answers.last_name, answers.first_name, answers.middle_name].filter(Boolean).join(' ');\nconst spouseName = [answers.spouse_last_name, answers.spouse_first_name, answers.spouse_middle_name].filter(Boolean).join(' ');\n\nlet prompt = \"Ти — помічник для відмінювання українських ПІБ та назв установ. Відповідай ТІЛЬКИ JSON, без markdown, без пояснень.\\r\\n\\r\\nОтримані дані:\\r\\nПозивач: {{plaintiff_full_name}}\\r\\nВідповідач: {{spouse_full_name}}\\r\\nМісце реєстрації шлюбу: {{marriage_place}}\\r\\n{{#if children_details}}Діти: {{children_details}}{{/if}}\\r\\n\\r\\nПоверни JSON:\\r\\n- plaintiff_instrumental: ПІБ позивача в орудному відмінку (між мною, ким?)\\r\\n- plaintiff_genitive: ПІБ позивача в родовому відмінку (кого?)\\r\\n- spouse_instrumental: ПІБ відповідача в орудному відмінку (із ким?)\\r\\n- spouse_genitive: ПІБ відповідача в родовому відмінку (кого? стягнути з кого?)\\r\\n- marriage_place_locative: назва установи в місцевому відмінку (зареєстрував шлюб — де? у/в + місцевий)\\r\\n- children_genitive: ПІБ дітей в родовому відмінку з датами (на утримання кого?). Формат: \\\"ПІБ, дата р.н.\\\" через \\\"; \\\". Якщо дітей немає — null.\\r\\n\\r\\nПриклад 1 (без дітей):\\r\\nВхід: Петренко Оксана Іванівна / Петренко Андрій Сергійович / Шевченківський відділ РАЦС у м. Києві\\r\\nВихід: {\\\"plaintiff_instrumental\\\":\\\"Петренко Оксаною Іванівною\\\",\\\"plaintiff_genitive\\\":\\\"Петренко Оксани Іванівни\\\",\\\"spouse_instrumental\\\":\\\"Петренком Андрієм Сергійовичем\\\",\\\"spouse_genitive\\\":\\\"Петренка Андрія Сергійовича\\\",\\\"marriage_place_locative\\\":\\\"Шевченківському відділі РАЦС у м. Києві\\\",\\\"children_genitive\\\":null}\\r\\n\\r\\nПриклад 2 (з дітьми):\\r\\nВхід: Коваленко Марія Олександрівна / Коваленко Віктор Петрович / Приморський відділ РАЦС Одеського міського управління юстиції / Діти: Коваленко Олена Вікторівна, 15.05.2012; Коваленко Максим Вікторович, 22.08.2015\\r\\nВихід: {\\\"plaintiff_instrumental\\\":\\\"Коваленко Марією Олександрівною\\\",\\\"plaintiff_genitive\\\":\\\"Коваленко Марії Олександрівни\\\",\\\"spouse_instrumental\\\":\\\"Коваленком Віктором Петровичем\\\",\\\"spouse_genitive\\\":\\\"Коваленка Віктора Петровича\\\",\\\"marriage_place_locative\\\":\\\"Приморському відділі РАЦС Одеського міського управління юстиції\\\",\\\"children_genitive\\\":\\\"Коваленко Олени Вікторівни, 15.05.2012 р.н.; Коваленко Максима Вікторовича, 22.08.2015 р.н.\\\"}\\r\\n\";\n\n// Підставляємо реальні дані в промпт\nprompt = prompt.replace('{{plaintiff_full_name}}', plaintiffName);\nprompt = prompt.replace('{{spouse_full_name}}', spouseName);\nprompt = prompt.replace('{{marriage_place}}', answers.marriage_place || '________');\n\n// Діти (умовний блок)\nif (answers.has_children && answers.children_details) {\n  prompt = prompt.replace('{{#if children_details}}', '');\n  prompt = prompt.replace('{{/if}}', '');\n  prompt = prompt.replace('{{children_details}}', String(answers.children_details).replace(/\\n/g, '; '));\n} else {\n  // Видаляємо блок дітей\n  prompt = prompt.replace(/\\{\\{#if children_details\\}\\}.*?\\{\\{\\/if\\}\\}/s, '');\n}\n\nconsole.log('[Declension] Plaintiff:', plaintiffName);\nconsole.log('[Declension] Spouse:', spouseName);\nconsole.log('[Declension] Has children:', !!answers.children_details);\n\nreturn [{ json: {\n  model: 'llama-3.3-70b-versatile',\n  max_tokens: 300,\n  temperature: 0,\n  messages: [\n    { role: 'system', content: prompt },\n    { role: 'user', content: 'Відміни вказані дані. Поверни ТІЛЬКИ JSON.' }\n  ]\n}}];"
-      },
-      "id": "prepare-declension-001",
-      "name": "Prepare Declension",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        640,
-        1580
-      ],
-      "notes": "Формує запит до Groq для відмінювання ПІБ, назв установ та дітей (6 полів). Промпт ~200 токенів."
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://api.groq.com/openai/v1/chat/completions",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
-        "options": {
-          "timeout": 30000
-        }
-      },
-      "id": "ai-declension-001",
-      "name": "AI Declension",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        880,
-        1580
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "groq-http-auth",
-          "name": "Groq HTTP Auth"
-        }
-      },
-      "notes": "Groq API — лише відмінювання (6 полів JSON). ~200 токенів, температура 0."
-    },
-    {
-      "parameters": {
-        "jsCode": "// ═══════════════════════════════════════════════════════\n// Build Document — JS шаблон позовної заяви\n// 95% документа детерміновано (адреси, дати, ІПН, статті)\n// AI використовується тільки для 6 відмінкових форм\n// ═══════════════════════════════════════════════════════\n\n// 1. Парсимо відповідь AI Declension\nlet ai = {};\ntry {\n  const raw = $('AI Declension').item.json?.choices?.[0]?.message?.content || '{}';\n  // Видаляємо markdown code block якщо є\n  const cleaned = raw.replace(/```json?\\n?/g, '').replace(/```/g, '').trim();\n  ai = JSON.parse(cleaned);\n  console.log('[Build] AI declension parsed OK:', Object.keys(ai).join(', '));\n} catch (e) {\n  console.log('[Build] ⚠️ AI declension parse failed, using fallbacks:', e.message);\n}\n\n// 2. Отримуємо дані з форми\nconst answers = $('Validate').item.json._answers || {};\nconst caseId = $('Insert Case').item.json.id;\n\n// 3. Шаблон документа\n/**\r\n * divorce-document.js\r\n * n8n Code Node — будує позовну заяву про розірвання шлюбу\r\n *\r\n * Вхід:\r\n *   answers   — об'єкт з відповідями форми (field_id: value)\r\n *   ai        — об'єкт з відміненими формами від AI:\r\n *               { plaintiff_instrumental, plaintiff_genitive,\r\n *                 spouse_instrumental, spouse_genitive,\r\n *                 marriage_place_locative, children_genitive }\r\n *\r\n * Вихід: рядок — готовий текст документа\r\n *\r\n * n8n entry point (Code node):\r\n *   const answers = $('Webhook').item.json.body.answers;\r\n *   const ai = JSON.parse($('AI Declension').item.json.choices[0].message.content);\r\n *   const document = buildDivorceDocument(answers, ai);\r\n *   return [{ json: { document } }];\r\n */\r\n\r\nfunction buildDivorceDocument(answers, ai) {\r\n  const a = answers;\r\n\r\n  // ─── Helpers ────────────────────────────────────────────────────────────────\r\n\r\n  const MONTHS = [\r\n    'січня','лютого','березня','квітня','травня','червня',\r\n    'липня','серпня','вересня','жовтня','листопада','грудня'\r\n  ];\r\n\r\n  /** ISO дата → \"20 червня 2015\" */\r\n  function formatDate(iso) {\r\n    if (!iso) return '________';\r\n    const d = new Date(iso);\r\n    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\r\n  }\r\n\r\n  /** ISO дата → \"«20» червня 2015\" (для початку речення) */\r\n  function formatDateQuoted(iso) {\r\n    if (!iso) return '«___» _______ _____';\r\n    const d = new Date(iso);\r\n    return `«${d.getUTCDate()}» ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\r\n  }\r\n\r\n  /** Значення поля або прочерк */\r\n  function val(field, fallback = '________') {\r\n    const v = a[field];\r\n    if (v === null || v === undefined || v === '') return fallback;\r\n    return v;\r\n  }\r\n\r\n  /** Чи заповнено поле */\r\n  function has(field) {\r\n    const v = a[field];\r\n    return v !== null && v !== undefined && v !== '' && v !== false;\r\n  }\r\n\r\n  /** Стать за по батькові */\r\n  function detectGender(middleName) {\r\n    if (!middleName) return 'male';\r\n    const m = String(middleName).trim();\r\n    if (m.endsWith('івна') || m.endsWith('ївна') || m.endsWith('овна')) return 'female';\r\n    return 'male';\r\n  }\r\n\r\n  /** Булевий або рядковий \"true\"/\"false\" → boolean */\r\n  function isTrue(v) {\r\n    return v === true || v === 'true';\r\n  }\r\n\r\n  const REASONS_MAP = {\r\n    'no_common_interests':  'відсутність спільних інтересів',\r\n    'no_understanding':     'відсутність взаєморозуміння',\r\n    'different_views':      'різні погляди на сімейне життя та обов\\'язки подружжя',\r\n    'lost_feelings':        'втрата почуття любові та поваги один до одного',\r\n    'incompatibility':      'несумісність характерів',\r\n    'alcohol':              'зловживання алкоголем з боку відповідача',\r\n    'abuse':                'жорстоке поводження з членами сім\\'ї з боку відповідача',\r\n    'no_financial_support': 'відсутність фінансової підтримки сім\\'ї з боку відповідача',\r\n    'no_child_care':        'ухилення від виховання дітей з боку відповідача',\r\n  };\r\n\r\n  /** Масив кодів причин → природній текст (\"а також\" перед останньою) */\r\n  function formatReasons(reasons) {\r\n    if (!reasons || !reasons.length) return '________';\r\n    const texts = (Array.isArray(reasons) ? reasons : [reasons])\r\n      .map(r => REASONS_MAP[r] || r)\r\n      .filter(Boolean);\r\n    if (texts.length === 0) return '________';\r\n    if (texts.length === 1) return texts[0];\r\n    const last = texts.pop();\r\n    return texts.join(', ') + ', а також ' + last;\r\n  }\r\n\r\n  /** Частка аліментів залежно від кількості дітей */\r\n  function alimonyFraction(n) {\r\n    if (n >= 3) return '1/2 (50%)';\r\n    if (n === 2) return '1/3 (33%)';\r\n    return '1/4 (25%)';\r\n  }\r\n\r\n  /** Кількість дітей з рядка children_details (один запис на рядок) */\r\n  function countChildren(details) {\r\n    if (!details) return 1;\r\n    const lines = String(details).split(/\\n/).filter(l => l.trim());\r\n    return Math.max(1, lines.length);\r\n  }\r\n\r\n  /** \"дитиною\" / \"дітьми\" */\r\n  function childWord(n) {\r\n    return n === 1 ? 'дитиною' : 'дітьми';\r\n  }\r\n\r\n  /** Parse children_details → масив рядків */\r\n  function parseChildren(details) {\r\n    if (!details) return [];\r\n    return String(details).split(/\\n/).map(l => l.trim()).filter(Boolean);\r\n  }\r\n\r\n  /** Масив дітей → нумерований список з \"р.н.\" для вбудовування в речення */\r\n  function inlineChildren(details) {\r\n    const kids = parseChildren(details);\r\n    if (kids.length === 0) return '________';\r\n    if (kids.length === 1) return `${kids[0]} р.н.`;\r\n    return kids.map((k, i) => `${i + 1}) ${k} р.н.`).join('; ');\r\n  }\r\n\r\n  // ─── Базові дані ─────────────────────────────────────────────────────────────\r\n\r\n  const plaintiffName = [val('last_name'), val('first_name'), val('middle_name')]\r\n    .filter(s => s !== '________').join(' ') || '________';\r\n  const spouseName = [val('spouse_last_name'), val('spouse_first_name'), val('spouse_middle_name')]\r\n    .filter(s => s !== '________').join(' ') || '________';\r\n\r\n  const isFemale      = detectGender(a.middle_name)       === 'female';\r\n  const spouseIsFemale = detectGender(a.spouse_middle_name) === 'female';\r\n\r\n  const plaintiffInstrumental  = (ai && ai.plaintiff_instrumental)  || plaintiffName;\r\n  const plaintiffGenitive      = (ai && ai.plaintiff_genitive)     || plaintiffName;\r\n  const spouseInstrumental     = (ai && ai.spouse_instrumental)    || spouseName;\r\n  const spouseGenitive         = (ai && ai.spouse_genitive)        || spouseName;\r\n  const marriagePlaceLocative  = (ai && ai.marriage_place_locative) || val('marriage_place');\r\n  const childrenGenitive       = (ai && ai.children_genitive)      || inlineChildren(a.children_details);\r\n\r\n  // ─── ШАПКА ───────────────────────────────────────────────────────────────────\r\n\r\n  let doc = '';\r\n\r\n  doc += 'До суду за місцем проживання відповідача\\n';\r\n  doc += '(Знайти ваш суд: https://court.gov.ua/)\\n\\n';\r\n\r\n  // Позивач\r\n  doc += `Позивач: ${plaintiffName}\\n`;\r\n  doc += `Зареєстроване місце проживання: ${val('registered_address')}\\n`;\r\n  if (!isTrue(a.same_actual_address) && has('actual_address')) {\r\n    doc += `Фактичне місце проживання: ${a.actual_address}\\n`;\r\n  }\r\n  if (!isTrue(a.has_no_ipn) && has('tax_number')) {\r\n    doc += `(реєстраційний номер облікової картки платника податків (ІПН): ${a.tax_number})\\n`;\r\n  } else if (isTrue(a.has_no_ipn) && has('passport_series')) {\r\n    doc += `(серія та номер паспорта: ${a.passport_series})\\n`;\r\n  }\r\n  if (has('plaintiff_phone')) doc += `Тел.: ${a.plaintiff_phone}\\n`;\r\n  if (has('plaintiff_email')) doc += `Адреса електронної пошти: ${a.plaintiff_email}\\n`;\r\n  doc += (a.plaintiff_official_email === 'present')\r\n    ? 'Офіційна електронна адреса: наявна в ЄСІТС\\n'\r\n    : 'Офіційна електронна адреса — відсутня\\n';\r\n\r\n  doc += '\\n';\r\n\r\n  // Відповідач\r\n  doc += `Відповідач: ${spouseName}\\n`;\r\n  if (has('spouse_registered_address')) {\r\n    doc += `Зареєстроване місце проживання: ${a.spouse_registered_address}\\n`;\r\n  }\r\n  if (a.spouse_actual_address_known === 'different' && has('spouse_actual_address')) {\r\n    doc += `Фактичне місце проживання: ${a.spouse_actual_address}\\n`;\r\n  } else if (a.spouse_actual_address_known === 'unknown') {\r\n    doc += 'Фактичне місце проживання невідоме\\n';\r\n  }\r\n  if (!isTrue(a.spouse_has_no_ipn) && has('spouse_tax_number')) {\r\n    doc += `(ІПН: ${a.spouse_tax_number})\\n`;\r\n  } else if (isTrue(a.spouse_has_no_ipn) && has('spouse_passport_series')) {\r\n    doc += `(серія та номер паспорта: ${a.spouse_passport_series})\\n`;\r\n  }\r\n  if (has('spouse_phone')) doc += `Тел.: ${a.spouse_phone}\\n`;\r\n  if (has('spouse_email')) doc += `Адреса електронної пошти: ${a.spouse_email}\\n`;\r\n  if (a.spouse_official_email === 'present') {\r\n    doc += 'Офіційна електронна адреса: наявна в ЄСІТС\\n';\r\n  } else if (a.spouse_official_email === 'unknown') {\r\n    doc += 'Офіційна електронна адреса — невідома\\n';\r\n  } else {\r\n    doc += 'Офіційна електронна адреса — відсутня\\n';\r\n  }\r\n\r\n  // ─── ЗАГОЛОВОК ───────────────────────────────────────────────────────────────\r\n\r\n  doc += '\\n\\nПОЗОВНА ЗАЯВА\\nпро розірвання шлюбу\\n\\n\\n';\r\n\r\n  // ─── ФАКТИЧНА ЧАСТИНА ────────────────────────────────────────────────────────\r\n\r\n  const marriageDateQuoted = formatDateQuoted(a.marriage_date);\r\n  const marriageVerb = isFemale ? 'зареєструвала' : 'зареєстрував';\r\n  const actNum = has('marriage_act_number') ? `актовий запис № ${a.marriage_act_number}` : 'актовий запис № ________';\r\n  let marriageCert = '';\r\n  if (has('marriage_cert_series')) {\r\n    marriageCert = ` (копія свідоцтва про шлюб Серії ${a.marriage_cert_series}`;\r\n    if (has('marriage_cert_date')) {\r\n      marriageCert += ` від ${formatDate(a.marriage_cert_date)} року`;\r\n    }\r\n    marriageCert += ')';\r\n  }\r\n\r\n  doc += `${marriageDateQuoted} року я, ${plaintiffName} (надалі за текстом – Позивач) ${marriageVerb} шлюб із ${spouseInstrumental} у ${marriagePlaceLocative}, ${actNum}${marriageCert}.\\n\\n`;\r\n\r\n  // Згода відповідача\r\n  if (isTrue(a.spouse_consents)) {\r\n    doc += `Відповідач ${spouseIsFemale ? 'згодна' : 'згоден'} на розірвання шлюбу.\\n\\n`;\r\n  } else {\r\n    doc += 'Відповідач не дає згоди на розірвання шлюбу.\\n\\n';\r\n  }\r\n\r\n  // Діти\r\n  if (isTrue(a.has_children)) {\r\n    if (has('children_details')) {\r\n      const childrenText = inlineChildren(a.children_details);\r\n      const period = childrenText.endsWith('.') ? '' : '.';\r\n      doc += `Від даного шлюбу у сторін є спільні неповнолітні діти: ${childrenText}${period}\\n`;\r\n    } else {\r\n      doc += 'Від даного шлюбу у сторін є спільні неповнолітні діти: ________ (ПІБ та дати народження).\\n';\r\n    }\r\n    if (a.children_live_with === 'plaintiff')        doc += 'Діти проживають з позивачем.\\n';\r\n    else if (a.children_live_with === 'defendant')   doc += 'Діти проживають з відповідачем.\\n';\r\n    else if (a.children_live_with === 'both')        doc += 'Діти проживають частково з кожним із батьків.\\n';\r\n    doc += '\\n';\r\n  } else {\r\n    doc += 'Від даного шлюбу спільних дітей у сторін немає.\\n\\n';\r\n  }\r\n\r\n  // ─── ПРАВОВЕ ОБҐРУНТУВАННЯ ───────────────────────────────────────────────────\r\n\r\n  doc += 'Відповідно до ч.3 ст.105 СК України шлюб припиняється внаслідок його розірвання за позовом одного з подружжя на підставі рішення суду.\\n\\n';\r\n  doc += 'Розірвання шлюбу судом відбувається за позовом одного з подружжя відповідно до ст.110 СК України.\\n\\n';\r\n  doc += 'Відповідно до ст.112 Сімейного кодексу України суд постановляє рішення про розірвання шлюбу, якщо буде встановлено, що подальше спільне життя подружжя і збереження шлюбу суперечило б інтересам одного з них, інтересам їхніх дітей, що мають істотне значення.\\n\\n';\r\n\r\n  const reasonsText = formatReasons(a.divorce_reasons);\r\n  doc += `Підставами для розірвання шлюбу є: ${reasonsText}.\\n\\n`;\r\n\r\n  doc += (a.joint_household === 'yes')\r\n    ? 'З відповідачем продовжуємо вести спільне господарство.\\n\\n'\r\n    : 'З відповідачем спільного господарства не ведемо.\\n\\n';\r\n\r\n  doc += 'З урахуванням викладеного, вважаю, що подружні відносини між мною та відповідачем фактично припинилися. Подальше спільне життя та збереження шлюбу суперечить моїм інтересам, у зв\\'язку з чим наполягаю на його розірванні.\\n\\n';\r\n\r\n  // Спір про дітей\r\n  if (isTrue(a.has_children)) {\r\n    if (a.children_dispute === 'separate') {\r\n      doc += 'Спір щодо місця проживання та виховання дітей є, але буде вирішуватися в окремому провадженні.\\n\\n';\r\n    } else {\r\n      doc += 'Спір щодо місця проживання та виховання дітей відсутній.\\n\\n';\r\n    }\r\n  }\r\n\r\n  // Спільне майно\r\n  if (isTrue(a.has_joint_property)) {\r\n    if (a.property_dispute === 'separate') {\r\n      doc += 'За час шлюбу сторонами набуто спільне майно. Спір щодо поділу буде вирішуватися в окремому провадженні.\\n\\n';\r\n    } else {\r\n      const propDetails = has('property_details') ? a.property_details : '________';\r\n      const propEnd = propDetails.endsWith('.') ? '' : '.';\r\n      doc += `За час шлюбу сторонами набуто спільне майно: ${propDetails}${propEnd}\\n`;\r\n      doc += `Позивач просить визнати за ${isFemale ? 'нею' : 'ним'} право на 1/2 частку зазначеного майна.\\n\\n`;\r\n    }\r\n  }\r\n\r\n  // Боргові зобов'язання\r\n  if (isTrue(a.debt_claim)) {\r\n    const debtDetails = has('debt_details') ? a.debt_details : '________';\r\n    const debtEnd = debtDetails.endsWith('.') ? '' : '.';\r\n    doc += `Між сторонами є спільні боргові зобов'язання: ${debtDetails}${debtEnd} Відповідно до ст.65 Сімейного кодексу України, позивач просить розподілити зазначені боргові зобов'язання між сторонами.\\n\\n`;\r\n  }\r\n\r\n  // ─── ПРОЦЕСУАЛЬНІ ВИМОГИ (ст.175 ЦПК, пп.6-10) ──────────────────────────────\r\n\r\n  doc += 'Відповідно до ст.27 ЦПК України позови до фізичної особи пред\\'являються в суд за зареєстрованим у встановленому законом порядку місцем її проживання або перебування, якщо інше не передбачено законом.\\n\\n';\r\n\r\n  // п.6 — досудове врегулювання\r\n  doc += (a.pretrial_settlement === 'conducted')\r\n    ? 'Згідно з п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору проводилися (медіація / листування).\\n\\n'\r\n    : 'Згідно з п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору не проводилися.\\n\\n';\r\n\r\n  // п.7 — забезпечення доказів\r\n  doc += (a.evidence_preservation === 'conducted')\r\n    ? 'Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що заходи забезпечення доказів або позову здійснювалися.\\n\\n'\r\n    : 'Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що вжиття заходів забезпечення доказів або позову до подання позовної заяви не здійснювалось.\\n\\n';\r\n\r\n  // п.8 — оригінали документів\r\n  doc += (a.originals_location === 'partial' || a.originals_location === 'defendant')\r\n    ? 'Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що частина оригіналів документів перебуває у відповідача. Прошу суд витребувати їх у встановленому порядку.\\n\\n'\r\n    : 'Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що у позивача перебувають оригінали письмових або електронних доказів, копії яких додано до заяви.\\n\\n';\r\n\r\n  // п.9 — судовий збір\r\n  doc += (a.court_fee_exempt === 'yes')\r\n    ? 'Згідно з п.9 ч.3 ст.175 ЦПК України повідомляю, що витрати на оплату судового збору відсутні у зв\\'язку зі звільненням від його сплати.\\n\\n'\r\n    : 'Згідно з п.9 ч.3 ст.175 ЦПК України повідомляю, що понесені мною витрати становлять __________ грн. (оплата судового збору), що підтверджується квитанцією.\\n\\n';\r\n\r\n  // п.10 — інший позов\r\n  doc += 'Відповідно до п.10 ч.3 ст.175 ЦПК України підтверджую, що мною не подано іншого позову (позовів) до цього ж відповідача (відповідачів) з тим самим предметом та з тих самих підстав.\\n\\n';\r\n\r\n  // ─── СУДОВИЙ ЗБІР ────────────────────────────────────────────────────────────\r\n\r\n  const EXEMPT_REASONS = {\r\n    'disability_1_2':  { article: 'п.1 ч.1 ст.5', status: 'особи з інвалідністю I або II групи' },\r\n    'child_disability':{ article: 'п.2 ч.1 ст.5', status: 'законного представника дитини з інвалідністю' },\r\n    'chornobyl':       { article: 'п.11 ч.1 ст.5', status: 'постраждалого від Чорнобильської катастрофи 1–2 категорії' },\r\n  };\r\n\r\n  if (a.court_fee_exempt === 'yes') {\r\n    const info = EXEMPT_REASONS[a.court_fee_exempt_reason] || { article: '________', status: '________' };\r\n    const exemptWord = isFemale ? 'звільнена' : 'звільнений';\r\n    doc += `Від сплати судового збору ${exemptWord} на підставі ${info.article} Закону України «Про судовий збір» у зв'язку з наявністю статусу ${info.status}. Посвідчення №________ від ________ додається.\\n\\n`;\r\n  } else {\r\n    doc += 'Судовий збір сплачений мною в повному обсязі на підставі пп.3 п.1 ч.2 ст.4 Закону України «Про судовий збір».\\n\\n';\r\n  }\r\n\r\n  // ─── ПРОШУ ───────────────────────────────────────────────────────────────────\r\n\r\n  doc += 'На підставі вищевикладеного та керуючись ст.ст.105, 110, 112 Сімейного Кодексу України, ст.ст.175, 187, 274 ЦПК України,—\\n\\n';\r\n  doc += 'П Р О Ш У :\\n\\n';\r\n\r\n  let n = 1;\r\n\r\n  // 1. Тип провадження\r\n  doc += (a.simplified_proceedings === 'no')\r\n    ? `${n++}. Відкрити провадження та призначити справу до розгляду в порядку загального позовного провадження.\\n\\n`\r\n    : `${n++}. Відкрити провадження та призначити справу до розгляду в спрощеному позовному провадженні.\\n\\n`;\r\n\r\n  // 2. Розірвати шлюб\r\n  const birthText       = has('birth_date')       ? `${formatDate(a.birth_date)} року народження`       : 'року народження ________';\r\n  const spouseBirthText = has('spouse_birth_date') ? `${formatDate(a.spouse_birth_date)} року народження` : '________ року народження';\r\n  const marriageDateText = has('marriage_date')    ? `${formatDate(a.marriage_date)} року`               : '________ року';\r\n  const actNumShort = has('marriage_act_number') ? a.marriage_act_number : '________';\r\n\r\n  doc += `${n++}. Розірвати шлюб, укладений між мною, ${plaintiffInstrumental}, ${birthText}, та ${spouseInstrumental}, ${spouseBirthText}, зареєстрований ${marriageDateText} у ${marriagePlaceLocative}, актовий запис № ${actNumShort}.\\n\\n`;\r\n\r\n  // 3. Прізвище\r\n  if (a.surname_after_divorce === 'maiden' && has('maiden_name')) {\r\n    doc += `${n++}. Після розірвання шлюбу повернути дошлюбне прізвище – ${a.maiden_name}.\\n\\n`;\r\n  } else {\r\n    doc += `${n++}. Після розірвання шлюбу залишити прізвище – ${val('last_name')}.\\n\\n`;\r\n  }\r\n\r\n  // 4. Судові витрати\r\n  doc += (a.court_costs_on === 'plaintiff')\r\n    ? `${n++}. Судові витрати по сплаті судового збору залишити за позивачем.\\n\\n`\r\n    : `${n++}. Судові витрати по сплаті судового збору покласти на відповідача.\\n\\n`;\r\n\r\n  // 5. Місце проживання дітей (якщо є і спір не окремо)\r\n  if (isTrue(a.has_children) && a.children_dispute !== 'separate') {\r\n    const childrenNamesGen = childrenGenitive || '________';\r\n    let livingWith = '________';\r\n    if (a.children_live_with === 'plaintiff')      livingWith = 'позивачем';\r\n    else if (a.children_live_with === 'defendant') livingWith = 'відповідачем';\r\n    doc += `${n++}. Визначити місце проживання ${childrenNamesGen} з ${livingWith}.\\n\\n`;\r\n  }\r\n\r\n  // Аліменти\r\n  if (isTrue(a.alimony_claim)) {\r\n    const nChildren = countChildren(a.children_details);\r\n    const childrenNamesGen = childrenGenitive || '________';\r\n    const cWord = childWord(nChildren);\r\n    let alimonyLine = `${n++}. Стягнути з відповідача, ${spouseGenitive}, аліменти на утримання ${childrenNamesGen} `;\r\n    if (a.alimony_amount === 'percent') {\r\n      alimonyLine += `у розмірі ${alimonyFraction(nChildren)} частини від заробітку та/або іншого доходу щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    } else if (a.alimony_amount === 'fixed') {\r\n      alimonyLine += `у твердій грошовій сумі в розмірі __________ грн. щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    } else if (a.alimony_amount === 'mixed') {\r\n      alimonyLine += `у розмірі ${alimonyFraction(nChildren)} частини від заробітку та/або іншого доходу, але не менше __________ грн. щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    } else {\r\n      alimonyLine += `у розмірі __________ щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    }\r\n    doc += alimonyLine;\r\n  }\r\n\r\n  // Майно (якщо спір не окремо)\r\n  if (isTrue(a.has_joint_property) && a.property_dispute !== 'separate') {\r\n    const propDetails = has('property_details') ? a.property_details : '________';\r\n    const pe = propDetails.endsWith('.') ? '' : '.';\r\n    doc += `${n++}. Визнати за позивачем право на 1/2 частку спільного майна подружжя, а саме: ${propDetails}${pe}\\n\\n`;\r\n  }\r\n\r\n  // Борги\r\n  if (isTrue(a.debt_claim)) {\r\n    const debtDetails = has('debt_details') ? a.debt_details : '________';\r\n    const de = debtDetails.endsWith('.') ? '' : '.';\r\n    doc += `${n++}. Розподілити між сторонами спільні боргові зобов'язання: ${debtDetails}${de}\\n\\n`;\r\n  }\r\n\r\n  // ─── ДОДАТКИ ─────────────────────────────────────────────────────────────────\r\n\r\n  doc += 'Додатки:\\n';\r\n  if (a.court_fee_exempt === 'yes') {\r\n    doc += '- копія посвідчення про право на звільнення від судового збору — 2 примірники;\\n';\r\n  } else {\r\n    doc += '- квитанція про сплату судового збору (оригінал для суду, копія — відповідачу);\\n';\r\n  }\r\n  doc += '- свідоцтво про шлюб (оригінал для суду, копія — відповідачу);\\n';\r\n  doc += '- копія паспорта та РНОКПП позивача — 2 примірники;\\n';\r\n  if (isTrue(a.has_children)) {\r\n    doc += '- копія/копії свідоцтва/свідоцтв про народження дитини/дітей — по 2 примірники;\\n';\r\n  }\r\n  if (isTrue(a.has_joint_property)) {\r\n    doc += '- документи, що підтверджують право власності на спільне майно — по 2 примірники;\\n';\r\n  }\r\n  if (isTrue(a.debt_claim)) {\r\n    doc += '- копії документів щодо боргових зобов\\'язань (кредитні договори тощо) — по 2 примірники;\\n';\r\n  }\r\n  doc += '- 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.\\n';\r\n\r\n  // ─── ПІДПИС ──────────────────────────────────────────────────────────────────\r\n\r\n  doc += `\\n\\n«___» _______ 20__ року                                              (підпис)    ${plaintiffName}\\n`;\r\n\r\n  return doc;\r\n}\r\n\r\n\r\n// ─── ШВИДКИЙ ТЕСТ (запусти node divorce-document.js щоб перевірити) ────────────\r\n\r\nif (typeof module !== 'undefined' && require.main === module) {\r\n  // Сценарій 2: Розлучення з дітьми + аліменти\r\n  const testAnswers = {\r\n    last_name: 'Коваленко', first_name: 'Марія', middle_name: 'Олександрівна',\r\n    birth_date: '1985-11-08',\r\n    registered_address: 'м. Одеса, вул. Дерибасівська, 5, кв. 12',\r\n    same_actual_address: false,\r\n    actual_address: 'м. Одеса, вул. Рішельєвська, 3, кв. 8',\r\n    tax_number: '2756789012', has_no_ipn: false,\r\n    plaintiff_phone: '+380931234567', plaintiff_email: 'kovalenko.maria@ukr.net',\r\n    plaintiff_official_email: 'absent',\r\n    surname_after_divorce: 'keep',\r\n\r\n    spouse_last_name: 'Коваленко', spouse_first_name: 'Віктор', spouse_middle_name: 'Петрович',\r\n    spouse_birth_date: '1983-02-14',\r\n    spouse_registered_address: 'м. Одеса, вул. Пушкінська, 20, кв. 8',\r\n    spouse_actual_address_known: 'same',\r\n    spouse_tax_number: '2667890123', spouse_has_no_ipn: false,\r\n    spouse_phone: '+380951234567', spouse_email: 'kovalenko.viktor@ukr.net',\r\n    spouse_official_email: 'unknown',\r\n\r\n    marriage_date: '2010-09-10',\r\n    marriage_place: 'Приморський відділ РАЦС Одеського міського управління юстиції',\r\n    marriage_act_number: '312',\r\n    marriage_cert_series: 'І-ОД № 456789',\r\n    marriage_cert_date: '2010-09-10',\r\n    spouse_consents: false,\r\n    has_children: true,\r\n    children_details: 'Коваленко Олена Вікторівна, 15.05.2012\\nКоваленко Максим Вікторович, 22.08.2015',\r\n    children_live_with: 'plaintiff',\r\n    children_dispute: 'none',\r\n    alimony_claim: true,\r\n    alimony_amount: 'percent',\r\n    divorce_reasons: ['no_understanding', 'different_views', 'no_financial_support'],\r\n    joint_household: 'no',\r\n\r\n    has_joint_property: false,\r\n    debt_claim: false,\r\n    simplified_proceedings: 'yes',\r\n    court_fee_exempt: 'no',\r\n    court_costs_on: 'defendant',\r\n    pretrial_settlement: 'not_conducted',\r\n    evidence_preservation: 'not_conducted',\r\n    originals_location: 'plaintiff',\r\n    no_other_lawsuits: true,\r\n  };\r\n\r\n  const testAi = {\r\n    plaintiff_instrumental: 'Коваленко Марією Олександрівною',\r\n    plaintiff_genitive:     'Коваленко Марії Олександрівни',\r\n    spouse_instrumental:    'Коваленком Віктором Петровичем',\r\n    spouse_genitive:        'Коваленка Віктора Петровича',\r\n  };\r\n\r\n  const result = buildDivorceDocument(testAnswers, testAi);\r\n  console.log(result);\r\n  console.log('\\n--- СИМВОЛІВ:', result.length, '---');\r\n}\r\n\n\n// 4. Генеруємо документ\nconst document = buildDivorceDocument(answers, ai);\nconsole.log('[Build] Document generated:', document.length, 'chars');\n\n// 5. Виводимо\nreturn [{ json: { _content: document, _case_id: caseId } }];"
-      },
-      "id": "build-doc-001",
-      "name": "Build Document",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1120,
-        1580
-      ],
-      "notes": "JS шаблон — 95% документа детерміновано, 0% галюцинацій для даних. AI використовується тільки для відмінків."
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Validate').item.json._user_id }}",
-        "text": "=✅ *Дякуємо! Дані отримано.*\n\n📋 Послуга: {{ $('Get Service').item.json.title }}\n🔢 Кейс №: {{ $('Insert Case').item.json.id }}\n\nДокумент готується... ⏳",
-        "additionalFields": {
-          "appendAttribution": false,
-          "parse_mode": "Markdown"
-        }
-      },
-      "id": "notify-user-001",
-      "name": "Notify User",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        1360,
-        1580
-      ],
-      "credentials": {
-        "telegramApi": {
-          "id": "6OfTH9OBUuEgKALQ",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: true, case_id: $('Insert Case').item.json.id }) }}"
-      },
-      "id": "respond-ok-001",
-      "name": "Respond OK",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        1600,
-        1580
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://www.googleapis.com/drive/v3/files/1KHtchwlBKlTNDnK8uH0uxpKOXc6V-69zPRTDHxny1xI/copy",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ name: 'Позовна заява — ' + $('Insert Case').item.json.id, parents: ['1mKnckHIFjhAH0MAzE073fqU4_6tZW5FI'] }) }}",
-        "options": {}
-      },
-      "id": "copy-template-001",
-      "name": "Copy Template",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        1840,
-        1580
-      ],
-      "credentials": {
-        "googleOAuth2Api": {
-          "id": "google-oauth2-001",
-          "name": "Google OAuth2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const content = $('Build Document').item.json._content;\nconst newDocId = $json.id;\nreturn [{\n  json: {\n    _new_doc_id: newDocId,\n    _new_doc_url: 'https://docs.google.com/document/d/' + newDocId + '/edit',\n    _batch_request: {\n      requests: [{\n        replaceAllText: {\n          containsText: { text: '{{DOCUMENT_CONTENT}}', matchCase: true },\n          replaceText: content\n        }\n      }]\n    }\n  }\n}];"
-      },
-      "id": "build-replace-001",
-      "name": "Build Replace Request",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2080,
-        1580
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://docs.googleapis.com/v1/documents/{{ $json._new_doc_id }}:batchUpdate",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json._batch_request) }}",
-        "options": {}
-      },
-      "id": "replace-text-001",
-      "name": "Replace Placeholder",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2320,
-        1580
-      ],
-      "credentials": {
-        "googleOAuth2Api": {
-          "id": "google-oauth2-001",
-          "name": "Google OAuth2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Build Replace Request').item.json._new_doc_id }}/permissions",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "googleOAuth2Api",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ type: 'anyone', role: 'reader' }) }}",
-        "options": {}
-      },
-      "id": "share-doc-001",
-      "name": "Share Document",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2560,
-        1580
-      ],
-      "credentials": {
-        "googleOAuth2Api": {
-          "id": "google-oauth2-001",
-          "name": "Google OAuth2"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Validate').item.json._user_id }}",
-        "text": "=📄 <b>Ваша позовна заява готова!</b>\n\n👇 Відкрийте, перегляньте та завантажте як PDF:\n{{ $('Build Replace Request').item.json._new_doc_url }}\n\n💡 <i>Файл → Завантажити → PDF</i> для друку та подачі до суду.",
-        "additionalFields": {
-          "appendAttribution": false,
-          "parse_mode": "HTML"
-        }
-      },
-      "id": "send-link-001",
-      "name": "Send Doc Link",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [
-        2800,
-        1580
-      ],
-      "credentials": {
-        "telegramApi": {
-          "id": "6OfTH9OBUuEgKALQ",
-          "name": "Telegram account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ success: false, error: $('Validate').item.json._error }) }}",
-        "options": {
-          "responseCode": 400
-        }
-      },
-      "id": "respond-err-001",
-      "name": "Respond Error",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1,
-      "position": [
-        -80,
-        1880
-      ]
-    }
-  ],
-  "connections": {
-    "Webhook": {
-      "main": [
-        [
-          {
-            "node": "Global Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Global Config": {
-      "main": [
-        [
-          {
-            "node": "Validate",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Validate": {
-      "main": [
-        [
-          {
-            "node": "Is Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Is Valid?": {
-      "main": [
-        [
-          {
-            "node": "Get Service",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Respond Error",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Service": {
-      "main": [
-        [
-          {
-            "node": "Get Profile",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Profile": {
-      "main": [
-        [
-          {
-            "node": "Encrypt Data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Encrypt Data": {
-      "main": [
-        [
-          {
-            "node": "Insert Case",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Insert Case": {
-      "main": [
-        [
-          {
-            "node": "Prepare Declension",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Prepare Declension": {
-      "main": [
-        [
-          {
-            "node": "AI Declension",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "AI Declension": {
-      "main": [
-        [
-          {
-            "node": "Build Document",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Document": {
-      "main": [
-        [
-          {
-            "node": "Notify User",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Notify User": {
-      "main": [
-        [
-          {
-            "node": "Respond OK",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Respond OK": {
-      "main": [
-        [
-          {
-            "node": "Copy Template",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Copy Template": {
-      "main": [
-        [
-          {
-            "node": "Build Replace Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build Replace Request": {
-      "main": [
-        [
-          {
-            "node": "Replace Placeholder",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Replace Placeholder": {
-      "main": [
-        [
-          {
-            "node": "Share Document",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Share Document": {
-      "main": [
-        [
-          {
-            "node": "Send Doc Link",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    "hybrid",
-    "v6"
-  ]
+    "name":  "Legal AI — Form Submit v6 (Hybrid Template)",
+    "nodes":  [
+                  {
+                      "parameters":  {
+                                         "httpMethod":  "POST",
+                                         "path":  "form-submit",
+                                         "responseMode":  "responseNode",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "webhook-001",
+                      "name":  "Webhook",
+                      "type":  "n8n-nodes-base.webhook",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -800,
+                                       1700
+                                   ],
+                      "webhookId":  "form-submit-webhook"
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// ═══════════════════════════════════════════════════════\n// GLOBAL CONFIG — заміна n8n Variables (Starter plan)\n// ═══════════════════════════════════════════════════════\nreturn [{ json: {\n  SUPABASE_URL:         \u0027https://nexkairsedqtczievxpa.supabase.co\u0027,\n  SUPABASE_SERVICE_KEY: \u0027YOUR_SUPABASE_SERVICE_ROLE_KEY\u0027,\n  ENCRYPTION_KEY:       \u0027YOUR_ENCRYPTION_KEY_64_HEX\u0027\n}}];"
+                                     },
+                      "id":  "global-config-001",
+                      "name":  "Global Config",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -800,
+                                       1500
+                                   ],
+                      "notes":  "⚙️ Ключі API. Starter plan не має Variables, тому тримаємо тут. GEMINI_API_KEY видалено — RAG не потрібен для hybrid підходу."
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const body = $(\u0027Webhook\u0027).first().json.body;\nconst { service_slug, user_id, answers, consented_at } = body;\n\nif (!user_id) return [{ json: { _valid: false, _error: \u0027missing user_id\u0027 } }];\nif (!service_slug) return [{ json: { _valid: false, _error: \u0027missing service_slug\u0027 } }];\nif (!answers || Object.keys(answers).length === 0) return [{ json: { _valid: false, _error: \u0027empty answers\u0027 } }];\n\nreturn [{ json: {\n  _valid: true,\n  _user_id: String(user_id),\n  _service_slug: service_slug,\n  _answers: answers,\n  _consented_at: consented_at || new Date().toISOString(),\n  _submitted_at: new Date().toISOString()\n}}];"
+                                     },
+                      "id":  "validate-001",
+                      "name":  "Validate",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       -560,
+                                       1700
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "conditions":  {
+                                                            "boolean":  [
+                                                                            {
+                                                                                "value1":  "={{ $json._valid }}",
+                                                                                "value2":  true
+                                                                            }
+                                                                        ]
+                                                        }
+                                     },
+                      "id":  "valid-if-001",
+                      "name":  "Is Valid?",
+                      "type":  "n8n-nodes-base.if",
+                      "typeVersion":  1,
+                      "position":  [
+                                       -320,
+                                       1700
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "tableId":  "services",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "slug",
+                                                                                "condition":  "eq",
+                                                                                "keyValue":  "={{ $json._service_slug }}"
+                                                                            }
+                                                                        ]
+                                                     }
+                                     },
+                      "id":  "get-service-001",
+                      "name":  "Get Service",
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       -80,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "2hBYjVwFlJbTj7AK",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "operation":  "getAll",
+                                         "tableId":  "identities",
+                                         "filters":  {
+                                                         "conditions":  [
+                                                                            {
+                                                                                "keyName":  "external_id",
+                                                                                "condition":  "eq",
+                                                                                "keyValue":  "={{ $(\u0027Validate\u0027).item.json._user_id }}"
+                                                                            }
+                                                                        ]
+                                                     }
+                                     },
+                      "id":  "get-profile-001",
+                      "name":  "Get Profile",
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       160,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "2hBYjVwFlJbTj7AK",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// ═══════════════════════════════════════════════════════\n// Encrypt Data — AES-256-GCM шифрування PII перед збереженням\n// Формат: v1:\u003civ_hex\u003e:\u003cauthTag_hex\u003e:\u003cciphertext_hex\u003e\n// ═══════════════════════════════════════════════════════\nconst crypto = require(\u0027crypto\u0027);\n\nconst key = Buffer.from($(\u0027Global Config\u0027).first().json.ENCRYPTION_KEY, \u0027hex\u0027);\nconst plaintext = JSON.stringify($(\u0027Validate\u0027).first().json._answers);\n\nconst iv = crypto.randomBytes(12);\nconst cipher = crypto.createCipheriv(\u0027aes-256-gcm\u0027, key, iv);\n\nlet encrypted = cipher.update(plaintext, \u0027utf8\u0027, \u0027hex\u0027);\nencrypted += cipher.final(\u0027hex\u0027);\nconst authTag = cipher.getAuthTag().toString(\u0027hex\u0027);\n\nconst result = \u0027v1:\u0027 + iv.toString(\u0027hex\u0027) + \u0027:\u0027 + authTag + \u0027:\u0027 + encrypted;\nconsole.log(\u0027[Encrypt] Data encrypted, length:\u0027, result.length);\n\nreturn [{ json: {\n  _encrypted_data: result,\n  _answers: $(\u0027Validate\u0027).first().json._answers\n}}];"
+                                     },
+                      "id":  "encrypt-data-001",
+                      "name":  "Encrypt Data",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       280,
+                                       1580
+                                   ],
+                      "notes":  "🔐 AES-256-GCM шифрування PII. Ключ в Global Config, дані в Supabase → взлом одного не розкриває інше."
+                  },
+                  {
+                      "parameters":  {
+                                         "tableId":  "cases",
+                                         "fieldsUi":  {
+                                                          "fieldValues":  [
+                                                                              {
+                                                                                  "fieldId":  "user_id",
+                                                                                  "fieldValue":  "={{ $(\u0027Get Profile\u0027).first().json.user_id }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "service_id",
+                                                                                  "fieldValue":  "={{ $(\u0027Get Service\u0027).item.json.id }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "status",
+                                                                                  "fieldValue":  "submitted"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "encrypted_data",
+                                                                                  "fieldValue":  "={{ $(\u0027Encrypt Data\u0027).first().json._encrypted_data }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "consented_at",
+                                                                                  "fieldValue":  "={{ $(\u0027Validate\u0027).first().json._consented_at }}"
+                                                                              },
+                                                                              {
+                                                                                  "fieldId":  "expires_at",
+                                                                                  "fieldValue":  "={{ new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString() }}"
+                                                                              }
+                                                                          ]
+                                                      }
+                                     },
+                      "id":  "insert-case-001",
+                      "name":  "Insert Case",
+                      "type":  "n8n-nodes-base.supabase",
+                      "typeVersion":  1,
+                      "position":  [
+                                       400,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "supabaseApi":  {
+                                                              "id":  "2hBYjVwFlJbTj7AK",
+                                                              "name":  "Supabase account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const answers = $(\u0027Validate\u0027).item.json._answers || {};\nconst serviceSlug = $(\u0027Validate\u0027).item.json._service_slug || \u0027divorce\u0027;\n\nconst plaintiffName = [answers.last_name, answers.first_name, answers.middle_name].filter(Boolean).join(\u0027 \u0027);\n\n// divorce: spouse_*, alimony: defendant_* — handle both\nconst defLast   = answers.defendant_last_name   || answers.spouse_last_name   || \u0027\u0027;\nconst defFirst  = answers.defendant_first_name  || answers.spouse_first_name  || \u0027\u0027;\nconst defMiddle = answers.defendant_middle_name || answers.spouse_middle_name || \u0027\u0027;\nconst defendantName = [defLast, defFirst, defMiddle].filter(Boolean).join(\u0027 \u0027);\n\nconst marriagePlace = answers.marriage_place || \u0027\u0027;\n\n// Extract children (alimony has cert info after 3rd comma — strip it)\nlet childrenLine = \u0027\u0027;\nif (answers.children_details) {\n  childrenLine = String(answers.children_details).split(\u0027\\n\u0027)\n    .map(line =\u003e {\n      const parts = line.split(/,\\s*/);\n      return [parts[0], parts[1]].filter(Boolean).join(\u0027, \u0027);\n    })\n    .filter(Boolean).join(\u0027; \u0027);\n}\n\nconst serviceLabel = serviceSlug === \u0027alimony\u0027 ? \u0027аліменти\u0027 : \u0027розлучення\u0027;\nlet prompt = \u0027Ти — помічник для відмінювання українських ПІБ та назв установ для позову про \u0027 + serviceLabel + \u0027. Відповідай ТІЛЬКИ JSON, без markdown, без пояснень.\\r\\n\\r\\nОтримані дані:\\r\\nПозивач: \u0027 + plaintiffName + \u0027\\r\\nВідповідач: \u0027 + defendantName + \u0027\\r\\n\u0027;\nif (marriagePlace) prompt += \u0027Місце реєстрації шлюбу: \u0027 + marriagePlace + \u0027\\r\\n\u0027;\nif (childrenLine)  prompt += \u0027Діти: \u0027 + childrenLine + \u0027\\r\\n\u0027;\n\nprompt += \u0027\\r\\nПоверни JSON з 6 полями:\\r\\n- plaintiff_instrumental: ПІБ позивача в орудному відмінку\\r\\n- plaintiff_genitive: ПІБ позивача в родовому відмінку\\r\\n- defendant_instrumental: ПІБ відповідача в орудному відмінку (уклали шлюб з ким? або стосунки з ким?)\\r\\n- defendant_genitive: ПІБ відповідача в родовому відмінку (стягнути з кого?)\\r\\n- marriage_place_locative: назва установи в місцевому відмінку — null якщо немає\\r\\n- children_genitive: ПІБ дітей в родовому відмінку з датами \"ПІБ, дата р.н.\" через \"; \" — null якщо немає\\r\\n\\r\\nПриклад:\\r\\nВхід: Іванова Інна Петрівна / Іванов Іван Іванович / Шевченківський відділ РАЦС у м. Києві / Іванов Олег Іванович, 15.05.2018\\r\\nВихід: {\"plaintiff_instrumental\":\"Іванову Інну Петрівну\",\"plaintiff_genitive\":\"Іванової Інни Петрівни\",\"defendant_instrumental\":\"Івановим Іваном Івановичем\",\"defendant_genitive\":\"Іванова Івана Івановича\",\"marriage_place_locative\":\"Шевченківському відділі РАЦС у м. Києві\",\"children_genitive\":\"Іванова Олега Івановича, 15.05.2018 р.н.\"}\\r\\n\u0027;\n\nconsole.log(\u0027[Declension] service:\u0027, serviceSlug, \u0027| plaintiff:\u0027, plaintiffName, \u0027| defendant:\u0027, defendantName);\n\nreturn [{ json: {\n  model: \u0027llama-3.3-70b-versatile\u0027,\n  max_tokens: 400,\n  temperature: 0,\n  messages: [\n    { role: \u0027system\u0027, content: prompt },\n    { role: \u0027user\u0027, content: \u0027Відміни вказані дані. Поверни ТІЛЬКИ JSON.\u0027 }\n  ]\n}}];"
+                                     },
+                      "id":  "prepare-declension-001",
+                      "name":  "Prepare Declension",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       640,
+                                       1580
+                                   ],
+                      "notes":  "Формує запит до Groq для відмінювання ПІБ, назв установ та дітей (6 полів). Промпт ~200 токенів."
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "https://api.groq.com/openai/v1/chat/completions",
+                                         "authentication":  "genericCredentialType",
+                                         "genericAuthType":  "httpHeaderAuth",
+                                         "sendHeaders":  true,
+                                         "headerParameters":  {
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "Content-Type",
+                                                                                         "value":  "application/json"
+                                                                                     }
+                                                                                 ]
+                                                              },
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify($json) }}",
+                                         "options":  {
+                                                         "timeout":  30000
+                                                     }
+                                     },
+                      "id":  "ai-declension-001",
+                      "name":  "AI Declension",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.2,
+                      "position":  [
+                                       880,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "httpHeaderAuth":  {
+                                                                 "id":  "groq-http-auth",
+                                                                 "name":  "Groq HTTP Auth"
+                                                             }
+                                      },
+                      "notes":  "Groq API — лише відмінювання (6 полів JSON). ~200 токенів, температура 0."
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "// ═══════════════════════════════════════════════════════\n// Build Document — dispatches to per-service builder\n// ═══════════════════════════════════════════════════════\n\n// 1. Parse AI declension\nlet ai = {};\ntry {\n  const raw = $(\u0027AI Declension\u0027).item.json?.choices?.[0]?.message?.content || \u0027{}\u0027;\n  const cleaned = raw.replace(/`json?\\\\n?/g, \u0027\u0027).replace(/`/g, \u0027\u0027).trim();\n  ai = JSON.parse(cleaned);\n  console.log(\u0027[Build] AI parsed OK:\u0027, Object.keys(ai).join(\u0027, \u0027));\n} catch (e) {\n  console.log(\u0027[Build] AI parse failed, using fallbacks:\u0027, e.message);\n}\n\n// 2. Service data\nconst serviceSlug = $(\u0027Validate\u0027).item.json._service_slug || \u0027divorce\u0027;\nconst answers = $(\u0027Validate\u0027).item.json._answers || {};\nconst caseId = $(\u0027Insert Case\u0027).item.json.id;\n\n// 3. Template: divorce\n/**\r\n * divorce-document.js\r\n * n8n Code Node — будує позовну заяву про розірвання шлюбу\r\n *\r\n * Вхід:\r\n *   answers   — об\u0027єкт з відповідями форми (field_id: value)\r\n *   ai        — об\u0027єкт з відміненими формами від AI:\r\n *               { plaintiff_instrumental, plaintiff_genitive,\r\n *                 spouse_instrumental, spouse_genitive,\r\n *                 marriage_place_locative, children_genitive }\r\n *\r\n * Вихід: рядок — готовий текст документа\r\n *\r\n * n8n entry point (Code node):\r\n *   const answers = $(\u0027Webhook\u0027).item.json.body.answers;\r\n *   const ai = JSON.parse($(\u0027AI Declension\u0027).item.json.choices[0].message.content);\r\n *   const document = buildDivorceDocument(answers, ai);\r\n *   return [{ json: { document } }];\r\n */\r\n\r\nfunction buildDivorceDocument(answers, ai) {\r\n  const a = answers;\r\n\r\n  // ─── Helpers ────────────────────────────────────────────────────────────────\r\n\r\n  const MONTHS = [\r\n    \u0027січня\u0027,\u0027лютого\u0027,\u0027березня\u0027,\u0027квітня\u0027,\u0027травня\u0027,\u0027червня\u0027,\r\n    \u0027липня\u0027,\u0027серпня\u0027,\u0027вересня\u0027,\u0027жовтня\u0027,\u0027листопада\u0027,\u0027грудня\u0027\r\n  ];\r\n\r\n  /** ISO дата → \"20 червня 2015\" */\r\n  function formatDate(iso) {\r\n    if (!iso) return \u0027________\u0027;\r\n    const d = new Date(iso);\r\n    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\r\n  }\r\n\r\n  /** ISO дата → \"«20» червня 2015\" (для початку речення) */\r\n  function formatDateQuoted(iso) {\r\n    if (!iso) return \u0027«___» _______ _____\u0027;\r\n    const d = new Date(iso);\r\n    return `«${d.getUTCDate()}» ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\r\n  }\r\n\r\n  /** Значення поля або прочерк */\r\n  function val(field, fallback = \u0027________\u0027) {\r\n    const v = a[field];\r\n    if (v === null || v === undefined || v === \u0027\u0027) return fallback;\r\n    return v;\r\n  }\r\n\r\n  /** Чи заповнено поле */\r\n  function has(field) {\r\n    const v = a[field];\r\n    return v !== null \u0026\u0026 v !== undefined \u0026\u0026 v !== \u0027\u0027 \u0026\u0026 v !== false;\r\n  }\r\n\r\n  /** Стать за по батькові */\r\n  function detectGender(middleName) {\r\n    if (!middleName) return \u0027male\u0027;\r\n    const m = String(middleName).trim();\r\n    if (m.endsWith(\u0027івна\u0027) || m.endsWith(\u0027ївна\u0027) || m.endsWith(\u0027овна\u0027)) return \u0027female\u0027;\r\n    return \u0027male\u0027;\r\n  }\r\n\r\n  /** Булевий або рядковий \"true\"/\"false\" → boolean */\r\n  function isTrue(v) {\r\n    return v === true || v === \u0027true\u0027;\r\n  }\r\n\r\n  const REASONS_MAP = {\r\n    \u0027no_common_interests\u0027:  \u0027відсутність спільних інтересів\u0027,\r\n    \u0027no_understanding\u0027:     \u0027відсутність взаєморозуміння\u0027,\r\n    \u0027different_views\u0027:      \u0027різні погляди на сімейне життя та обов\\\u0027язки подружжя\u0027,\r\n    \u0027lost_feelings\u0027:        \u0027втрата почуття любові та поваги один до одного\u0027,\r\n    \u0027incompatibility\u0027:      \u0027несумісність характерів\u0027,\r\n    \u0027alcohol\u0027:              \u0027зловживання алкоголем з боку відповідача\u0027,\r\n    \u0027abuse\u0027:                \u0027жорстоке поводження з членами сім\\\u0027ї з боку відповідача\u0027,\r\n    \u0027no_financial_support\u0027: \u0027відсутність фінансової підтримки сім\\\u0027ї з боку відповідача\u0027,\r\n    \u0027no_child_care\u0027:        \u0027ухилення від виховання дітей з боку відповідача\u0027,\r\n  };\r\n\r\n  /** Масив кодів причин → природній текст (\"а також\" перед останньою) */\r\n  function formatReasons(reasons) {\r\n    if (!reasons || !reasons.length) return \u0027________\u0027;\r\n    const texts = (Array.isArray(reasons) ? reasons : [reasons])\r\n      .map(r =\u003e REASONS_MAP[r] || r)\r\n      .filter(Boolean);\r\n    if (texts.length === 0) return \u0027________\u0027;\r\n    if (texts.length === 1) return texts[0];\r\n    const last = texts.pop();\r\n    return texts.join(\u0027, \u0027) + \u0027, а також \u0027 + last;\r\n  }\r\n\r\n  /** Частка аліментів залежно від кількості дітей */\r\n  function alimonyFraction(n) {\r\n    if (n \u003e= 3) return \u00271/2 (50%)\u0027;\r\n    if (n === 2) return \u00271/3 (33%)\u0027;\r\n    return \u00271/4 (25%)\u0027;\r\n  }\r\n\r\n  /** Кількість дітей з рядка children_details (один запис на рядок) */\r\n  function countChildren(details) {\r\n    if (!details) return 1;\r\n    const lines = String(details).split(/\\n/).filter(l =\u003e l.trim());\r\n    return Math.max(1, lines.length);\r\n  }\r\n\r\n  /** \"дитиною\" / \"дітьми\" */\r\n  function childWord(n) {\r\n    return n === 1 ? \u0027дитиною\u0027 : \u0027дітьми\u0027;\r\n  }\r\n\r\n  /** Parse children_details → масив рядків */\r\n  function parseChildren(details) {\r\n    if (!details) return [];\r\n    return String(details).split(/\\n/).map(l =\u003e l.trim()).filter(Boolean);\r\n  }\r\n\r\n  /** Масив дітей → нумерований список з \"р.н.\" для вбудовування в речення */\r\n  function inlineChildren(details) {\r\n    const kids = parseChildren(details);\r\n    if (kids.length === 0) return \u0027________\u0027;\r\n    if (kids.length === 1) return `${kids[0]} р.н.`;\r\n    return kids.map((k, i) =\u003e `${i + 1}) ${k} р.н.`).join(\u0027; \u0027);\r\n  }\r\n\r\n  // ─── Базові дані ─────────────────────────────────────────────────────────────\r\n\r\n  const plaintiffName = [val(\u0027last_name\u0027), val(\u0027first_name\u0027), val(\u0027middle_name\u0027)]\r\n    .filter(s =\u003e s !== \u0027________\u0027).join(\u0027 \u0027) || \u0027________\u0027;\r\n  const spouseName = [val(\u0027spouse_last_name\u0027), val(\u0027spouse_first_name\u0027), val(\u0027spouse_middle_name\u0027)]\r\n    .filter(s =\u003e s !== \u0027________\u0027).join(\u0027 \u0027) || \u0027________\u0027;\r\n\r\n  const isFemale      = detectGender(a.middle_name)       === \u0027female\u0027;\r\n  const spouseIsFemale = detectGender(a.spouse_middle_name) === \u0027female\u0027;\r\n\r\n  const plaintiffInstrumental  = (ai \u0026\u0026 ai.plaintiff_instrumental)                               || plaintiffName;\r\n  const plaintiffGenitive      = (ai \u0026\u0026 ai.plaintiff_genitive)                                  || plaintiffName;\r\n  // Accept both defendant_* (unified) and legacy spouse_* keys\r\n  const spouseInstrumental     = (ai \u0026\u0026 (ai.defendant_instrumental || ai.spouse_instrumental))  || spouseName;\r\n  const spouseGenitive         = (ai \u0026\u0026 (ai.defendant_genitive     || ai.spouse_genitive))      || spouseName;\r\n  const marriagePlaceLocative  = (ai \u0026\u0026 ai.marriage_place_locative)                             || val(\u0027marriage_place\u0027);\r\n  const childrenGenitive       = (ai \u0026\u0026 ai.children_genitive)                                   || inlineChildren(a.children_details);\r\n\r\n  // ─── ШАПКА ───────────────────────────────────────────────────────────────────\r\n\r\n  let doc = \u0027\u0027;\r\n\r\n  doc += \u0027До суду за місцем проживання відповідача\\n\u0027;\r\n  doc += \u0027(Знайти ваш суд: https://court.gov.ua/)\\n\\n\u0027;\r\n\r\n  // Позивач\r\n  doc += `Позивач: ${plaintiffName}\\n`;\r\n  doc += `Зареєстроване місце проживання: ${val(\u0027registered_address\u0027)}\\n`;\r\n  if (!isTrue(a.same_actual_address) \u0026\u0026 has(\u0027actual_address\u0027)) {\r\n    doc += `Фактичне місце проживання: ${a.actual_address}\\n`;\r\n  }\r\n  if (!isTrue(a.has_no_ipn) \u0026\u0026 has(\u0027tax_number\u0027)) {\r\n    doc += `(реєстраційний номер облікової картки платника податків (ІПН): ${a.tax_number})\\n`;\r\n  } else if (isTrue(a.has_no_ipn) \u0026\u0026 has(\u0027passport_series\u0027)) {\r\n    doc += `(серія та номер паспорта: ${a.passport_series})\\n`;\r\n  }\r\n  if (has(\u0027plaintiff_phone\u0027)) doc += `Тел.: ${a.plaintiff_phone}\\n`;\r\n  if (has(\u0027plaintiff_email\u0027)) doc += `Адреса електронної пошти: ${a.plaintiff_email}\\n`;\r\n  doc += (a.plaintiff_official_email === \u0027present\u0027)\r\n    ? \u0027Офіційна електронна адреса: наявна в ЄСІТС\\n\u0027\r\n    : \u0027Офіційна електронна адреса — відсутня\\n\u0027;\r\n\r\n  doc += \u0027\\n\u0027;\r\n\r\n  // Відповідач\r\n  doc += `Відповідач: ${spouseName}\\n`;\r\n  if (has(\u0027spouse_registered_address\u0027)) {\r\n    doc += `Зареєстроване місце проживання: ${a.spouse_registered_address}\\n`;\r\n  }\r\n  if (a.spouse_actual_address_known === \u0027different\u0027 \u0026\u0026 has(\u0027spouse_actual_address\u0027)) {\r\n    doc += `Фактичне місце проживання: ${a.spouse_actual_address}\\n`;\r\n  } else if (a.spouse_actual_address_known === \u0027unknown\u0027) {\r\n    doc += \u0027Фактичне місце проживання невідоме\\n\u0027;\r\n  }\r\n  if (!isTrue(a.spouse_has_no_ipn) \u0026\u0026 has(\u0027spouse_tax_number\u0027)) {\r\n    doc += `(ІПН: ${a.spouse_tax_number})\\n`;\r\n  } else if (isTrue(a.spouse_has_no_ipn) \u0026\u0026 has(\u0027spouse_passport_series\u0027)) {\r\n    doc += `(серія та номер паспорта: ${a.spouse_passport_series})\\n`;\r\n  }\r\n  if (has(\u0027spouse_phone\u0027)) doc += `Тел.: ${a.spouse_phone}\\n`;\r\n  if (has(\u0027spouse_email\u0027)) doc += `Адреса електронної пошти: ${a.spouse_email}\\n`;\r\n  if (a.spouse_official_email === \u0027present\u0027) {\r\n    doc += \u0027Офіційна електронна адреса: наявна в ЄСІТС\\n\u0027;\r\n  } else if (a.spouse_official_email === \u0027unknown\u0027) {\r\n    doc += \u0027Офіційна електронна адреса — невідома\\n\u0027;\r\n  } else {\r\n    doc += \u0027Офіційна електронна адреса — відсутня\\n\u0027;\r\n  }\r\n\r\n  // ─── ЗАГОЛОВОК ───────────────────────────────────────────────────────────────\r\n\r\n  doc += \u0027\\n\\nПОЗОВНА ЗАЯВА\\nпро розірвання шлюбу\\n\\n\\n\u0027;\r\n\r\n  // ─── ФАКТИЧНА ЧАСТИНА ────────────────────────────────────────────────────────\r\n\r\n  const marriageDateQuoted = formatDateQuoted(a.marriage_date);\r\n  const marriageVerb = isFemale ? \u0027зареєструвала\u0027 : \u0027зареєстрував\u0027;\r\n  const actNum = has(\u0027marriage_act_number\u0027) ? `актовий запис № ${a.marriage_act_number}` : \u0027актовий запис № ________\u0027;\r\n  let marriageCert = \u0027\u0027;\r\n  if (has(\u0027marriage_cert_series\u0027)) {\r\n    marriageCert = ` (копія свідоцтва про шлюб Серії ${a.marriage_cert_series}`;\r\n    if (has(\u0027marriage_cert_date\u0027)) {\r\n      marriageCert += ` від ${formatDate(a.marriage_cert_date)} року`;\r\n    }\r\n    marriageCert += \u0027)\u0027;\r\n  }\r\n\r\n  doc += `${marriageDateQuoted} року я, ${plaintiffName} (надалі за текстом – Позивач) ${marriageVerb} шлюб із ${spouseInstrumental} у ${marriagePlaceLocative}, ${actNum}${marriageCert}.\\n\\n`;\r\n\r\n  // Згода відповідача\r\n  if (isTrue(a.spouse_consents)) {\r\n    doc += `Відповідач ${spouseIsFemale ? \u0027згодна\u0027 : \u0027згоден\u0027} на розірвання шлюбу.\\n\\n`;\r\n  } else {\r\n    doc += \u0027Відповідач не дає згоди на розірвання шлюбу.\\n\\n\u0027;\r\n  }\r\n\r\n  // Діти\r\n  if (isTrue(a.has_children)) {\r\n    if (has(\u0027children_details\u0027)) {\r\n      const childrenText = inlineChildren(a.children_details);\r\n      const period = childrenText.endsWith(\u0027.\u0027) ? \u0027\u0027 : \u0027.\u0027;\r\n      doc += `Від даного шлюбу у сторін є спільні неповнолітні діти: ${childrenText}${period}\\n`;\r\n    } else {\r\n      doc += \u0027Від даного шлюбу у сторін є спільні неповнолітні діти: ________ (ПІБ та дати народження).\\n\u0027;\r\n    }\r\n    if (a.children_live_with === \u0027plaintiff\u0027)        doc += \u0027Діти проживають з позивачем.\\n\u0027;\r\n    else if (a.children_live_with === \u0027defendant\u0027)   doc += \u0027Діти проживають з відповідачем.\\n\u0027;\r\n    else if (a.children_live_with === \u0027both\u0027)        doc += \u0027Діти проживають частково з кожним із батьків.\\n\u0027;\r\n    doc += \u0027\\n\u0027;\r\n  } else {\r\n    doc += \u0027Від даного шлюбу спільних дітей у сторін немає.\\n\\n\u0027;\r\n  }\r\n\r\n  // ─── ПРАВОВЕ ОБҐРУНТУВАННЯ ───────────────────────────────────────────────────\r\n\r\n  doc += \u0027Відповідно до ч.3 ст.105 СК України шлюб припиняється внаслідок його розірвання за позовом одного з подружжя на підставі рішення суду.\\n\\n\u0027;\r\n  doc += \u0027Розірвання шлюбу судом відбувається за позовом одного з подружжя відповідно до ст.110 СК України.\\n\\n\u0027;\r\n  doc += \u0027Відповідно до ст.112 Сімейного кодексу України суд постановляє рішення про розірвання шлюбу, якщо буде встановлено, що подальше спільне життя подружжя і збереження шлюбу суперечило б інтересам одного з них, інтересам їхніх дітей, що мають істотне значення.\\n\\n\u0027;\r\n\r\n  const reasonsText = formatReasons(a.divorce_reasons);\r\n  doc += `Підставами для розірвання шлюбу є: ${reasonsText}.\\n\\n`;\r\n\r\n  doc += (a.joint_household === \u0027yes\u0027)\r\n    ? \u0027З відповідачем продовжуємо вести спільне господарство.\\n\\n\u0027\r\n    : \u0027З відповідачем спільного господарства не ведемо.\\n\\n\u0027;\r\n\r\n  doc += \u0027З урахуванням викладеного, вважаю, що подружні відносини між мною та відповідачем фактично припинилися. Подальше спільне життя та збереження шлюбу суперечить моїм інтересам, у зв\\\u0027язку з чим наполягаю на його розірванні.\\n\\n\u0027;\r\n\r\n  // Спір про дітей\r\n  if (isTrue(a.has_children)) {\r\n    if (a.children_dispute === \u0027separate\u0027) {\r\n      doc += \u0027Спір щодо місця проживання та виховання дітей є, але буде вирішуватися в окремому провадженні.\\n\\n\u0027;\r\n    } else {\r\n      doc += \u0027Спір щодо місця проживання та виховання дітей відсутній.\\n\\n\u0027;\r\n    }\r\n  }\r\n\r\n  // Спільне майно\r\n  if (isTrue(a.has_joint_property)) {\r\n    if (a.property_dispute === \u0027separate\u0027) {\r\n      doc += \u0027За час шлюбу сторонами набуто спільне майно. Спір щодо поділу буде вирішуватися в окремому провадженні.\\n\\n\u0027;\r\n    } else {\r\n      const propDetails = has(\u0027property_details\u0027) ? a.property_details : \u0027________\u0027;\r\n      const propEnd = propDetails.endsWith(\u0027.\u0027) ? \u0027\u0027 : \u0027.\u0027;\r\n      doc += `За час шлюбу сторонами набуто спільне майно: ${propDetails}${propEnd}\\n`;\r\n      doc += `Позивач просить визнати за ${isFemale ? \u0027нею\u0027 : \u0027ним\u0027} право на 1/2 частку зазначеного майна.\\n\\n`;\r\n    }\r\n  }\r\n\r\n  // Боргові зобов\u0027язання\r\n  if (isTrue(a.debt_claim)) {\r\n    const debtDetails = has(\u0027debt_details\u0027) ? a.debt_details : \u0027________\u0027;\r\n    const debtEnd = debtDetails.endsWith(\u0027.\u0027) ? \u0027\u0027 : \u0027.\u0027;\r\n    doc += `Між сторонами є спільні боргові зобов\u0027язання: ${debtDetails}${debtEnd} Відповідно до ст.65 Сімейного кодексу України, позивач просить розподілити зазначені боргові зобов\u0027язання між сторонами.\\n\\n`;\r\n  }\r\n\r\n  // ─── ПРОЦЕСУАЛЬНІ ВИМОГИ (ст.175 ЦПК, пп.6-10) ──────────────────────────────\r\n\r\n  doc += \u0027Відповідно до ст.27 ЦПК України позови до фізичної особи пред\\\u0027являються в суд за зареєстрованим у встановленому законом порядку місцем її проживання або перебування, якщо інше не передбачено законом.\\n\\n\u0027;\r\n\r\n  // п.6 — досудове врегулювання\r\n  doc += (a.pretrial_settlement === \u0027conducted\u0027)\r\n    ? \u0027Згідно з п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору проводилися (медіація / листування).\\n\\n\u0027\r\n    : \u0027Згідно з п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору не проводилися.\\n\\n\u0027;\r\n\r\n  // п.7 — забезпечення доказів\r\n  doc += (a.evidence_preservation === \u0027conducted\u0027)\r\n    ? \u0027Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що заходи забезпечення доказів або позову здійснювалися.\\n\\n\u0027\r\n    : \u0027Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що вжиття заходів забезпечення доказів або позову до подання позовної заяви не здійснювалось.\\n\\n\u0027;\r\n\r\n  // п.8 — оригінали документів\r\n  doc += (a.originals_location === \u0027partial\u0027 || a.originals_location === \u0027defendant\u0027)\r\n    ? \u0027Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що частина оригіналів документів перебуває у відповідача. Прошу суд витребувати їх у встановленому порядку.\\n\\n\u0027\r\n    : \u0027Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що у позивача перебувають оригінали письмових або електронних доказів, копії яких додано до заяви.\\n\\n\u0027;\r\n\r\n  // п.9 — судовий збір\r\n  doc += (a.court_fee_exempt === \u0027yes\u0027)\r\n    ? \u0027Згідно з п.9 ч.3 ст.175 ЦПК України повідомляю, що витрати на оплату судового збору відсутні у зв\\\u0027язку зі звільненням від його сплати.\\n\\n\u0027\r\n    : \u0027Згідно з п.9 ч.3 ст.175 ЦПК України повідомляю, що понесені мною витрати становлять __________ грн. (оплата судового збору), що підтверджується квитанцією.\\n\\n\u0027;\r\n\r\n  // п.10 — інший позов\r\n  doc += \u0027Відповідно до п.10 ч.3 ст.175 ЦПК України підтверджую, що мною не подано іншого позову (позовів) до цього ж відповідача (відповідачів) з тим самим предметом та з тих самих підстав.\\n\\n\u0027;\r\n\r\n  // ─── СУДОВИЙ ЗБІР ────────────────────────────────────────────────────────────\r\n\r\n  const EXEMPT_REASONS = {\r\n    \u0027disability_1_2\u0027:  { article: \u0027п.1 ч.1 ст.5\u0027, status: \u0027особи з інвалідністю I або II групи\u0027 },\r\n    \u0027child_disability\u0027:{ article: \u0027п.2 ч.1 ст.5\u0027, status: \u0027законного представника дитини з інвалідністю\u0027 },\r\n    \u0027chornobyl\u0027:       { article: \u0027п.11 ч.1 ст.5\u0027, status: \u0027постраждалого від Чорнобильської катастрофи 1–2 категорії\u0027 },\r\n  };\r\n\r\n  if (a.court_fee_exempt === \u0027yes\u0027) {\r\n    const info = EXEMPT_REASONS[a.court_fee_exempt_reason] || { article: \u0027________\u0027, status: \u0027________\u0027 };\r\n    const exemptWord = isFemale ? \u0027звільнена\u0027 : \u0027звільнений\u0027;\r\n    doc += `Від сплати судового збору ${exemptWord} на підставі ${info.article} Закону України «Про судовий збір» у зв\u0027язку з наявністю статусу ${info.status}. Посвідчення №________ від ________ додається.\\n\\n`;\r\n  } else {\r\n    doc += \u0027Судовий збір сплачений мною в повному обсязі на підставі пп.3 п.1 ч.2 ст.4 Закону України «Про судовий збір».\\n\\n\u0027;\r\n  }\r\n\r\n  // ─── ПРОШУ ───────────────────────────────────────────────────────────────────\r\n\r\n  doc += \u0027На підставі вищевикладеного та керуючись ст.ст.105, 110, 112 Сімейного Кодексу України, ст.ст.175, 187, 274 ЦПК України,—\\n\\n\u0027;\r\n  doc += \u0027П Р О Ш У :\\n\\n\u0027;\r\n\r\n  let n = 1;\r\n\r\n  // 1. Тип провадження\r\n  doc += (a.simplified_proceedings === \u0027no\u0027)\r\n    ? `${n++}. Відкрити провадження та призначити справу до розгляду в порядку загального позовного провадження.\\n\\n`\r\n    : `${n++}. Відкрити провадження та призначити справу до розгляду в спрощеному позовному провадженні.\\n\\n`;\r\n\r\n  // 2. Розірвати шлюб\r\n  const birthText       = has(\u0027birth_date\u0027)       ? `${formatDate(a.birth_date)} року народження`       : \u0027року народження ________\u0027;\r\n  const spouseBirthText = has(\u0027spouse_birth_date\u0027) ? `${formatDate(a.spouse_birth_date)} року народження` : \u0027________ року народження\u0027;\r\n  const marriageDateText = has(\u0027marriage_date\u0027)    ? `${formatDate(a.marriage_date)} року`               : \u0027________ року\u0027;\r\n  const actNumShort = has(\u0027marriage_act_number\u0027) ? a.marriage_act_number : \u0027________\u0027;\r\n\r\n  doc += `${n++}. Розірвати шлюб, укладений між мною, ${plaintiffInstrumental}, ${birthText}, та ${spouseInstrumental}, ${spouseBirthText}, зареєстрований ${marriageDateText} у ${marriagePlaceLocative}, актовий запис № ${actNumShort}.\\n\\n`;\r\n\r\n  // 3. Прізвище\r\n  if (a.surname_after_divorce === \u0027maiden\u0027 \u0026\u0026 has(\u0027maiden_name\u0027)) {\r\n    doc += `${n++}. Після розірвання шлюбу повернути дошлюбне прізвище – ${a.maiden_name}.\\n\\n`;\r\n  } else {\r\n    doc += `${n++}. Після розірвання шлюбу залишити прізвище – ${val(\u0027last_name\u0027)}.\\n\\n`;\r\n  }\r\n\r\n  // 4. Судові витрати\r\n  doc += (a.court_costs_on === \u0027plaintiff\u0027)\r\n    ? `${n++}. Судові витрати по сплаті судового збору залишити за позивачем.\\n\\n`\r\n    : `${n++}. Судові витрати по сплаті судового збору покласти на відповідача.\\n\\n`;\r\n\r\n  // 5. Місце проживання дітей (якщо є і спір не окремо)\r\n  if (isTrue(a.has_children) \u0026\u0026 a.children_dispute !== \u0027separate\u0027) {\r\n    const childrenNamesGen = childrenGenitive || \u0027________\u0027;\r\n    let livingWith = \u0027________\u0027;\r\n    if (a.children_live_with === \u0027plaintiff\u0027)      livingWith = \u0027позивачем\u0027;\r\n    else if (a.children_live_with === \u0027defendant\u0027) livingWith = \u0027відповідачем\u0027;\r\n    doc += `${n++}. Визначити місце проживання ${childrenNamesGen} з ${livingWith}.\\n\\n`;\r\n  }\r\n\r\n  // Аліменти\r\n  if (isTrue(a.alimony_claim)) {\r\n    const nChildren = countChildren(a.children_details);\r\n    const childrenNamesGen = childrenGenitive || \u0027________\u0027;\r\n    const cWord = childWord(nChildren);\r\n    let alimonyLine = `${n++}. Стягнути з відповідача, ${spouseGenitive}, аліменти на утримання ${childrenNamesGen} `;\r\n    if (a.alimony_amount === \u0027percent\u0027) {\r\n      alimonyLine += `у розмірі ${alimonyFraction(nChildren)} частини від заробітку та/або іншого доходу щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    } else if (a.alimony_amount === \u0027fixed\u0027) {\r\n      alimonyLine += `у твердій грошовій сумі в розмірі __________ грн. щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    } else if (a.alimony_amount === \u0027mixed\u0027) {\r\n      alimonyLine += `у розмірі ${alimonyFraction(nChildren)} частини від заробітку та/або іншого доходу, але не менше __________ грн. щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    } else {\r\n      alimonyLine += `у розмірі __________ щомісячно до досягнення ${cWord} повноліття.\\n\\n`;\r\n    }\r\n    doc += alimonyLine;\r\n  }\r\n\r\n  // Майно (якщо спір не окремо)\r\n  if (isTrue(a.has_joint_property) \u0026\u0026 a.property_dispute !== \u0027separate\u0027) {\r\n    const propDetails = has(\u0027property_details\u0027) ? a.property_details : \u0027________\u0027;\r\n    const pe = propDetails.endsWith(\u0027.\u0027) ? \u0027\u0027 : \u0027.\u0027;\r\n    doc += `${n++}. Визнати за позивачем право на 1/2 частку спільного майна подружжя, а саме: ${propDetails}${pe}\\n\\n`;\r\n  }\r\n\r\n  // Борги\r\n  if (isTrue(a.debt_claim)) {\r\n    const debtDetails = has(\u0027debt_details\u0027) ? a.debt_details : \u0027________\u0027;\r\n    const de = debtDetails.endsWith(\u0027.\u0027) ? \u0027\u0027 : \u0027.\u0027;\r\n    doc += `${n++}. Розподілити між сторонами спільні боргові зобов\u0027язання: ${debtDetails}${de}\\n\\n`;\r\n  }\r\n\r\n  // ─── ДОДАТКИ ─────────────────────────────────────────────────────────────────\r\n\r\n  doc += \u0027Додатки:\\n\u0027;\r\n  if (a.court_fee_exempt === \u0027yes\u0027) {\r\n    doc += \u0027- копія посвідчення про право на звільнення від судового збору — 2 примірники;\\n\u0027;\r\n  } else {\r\n    doc += \u0027- квитанція про сплату судового збору (оригінал для суду, копія — відповідачу);\\n\u0027;\r\n  }\r\n  doc += \u0027- свідоцтво про шлюб (оригінал для суду, копія — відповідачу);\\n\u0027;\r\n  doc += \u0027- копія паспорта та РНОКПП позивача — 2 примірники;\\n\u0027;\r\n  if (isTrue(a.has_children)) {\r\n    doc += \u0027- копія/копії свідоцтва/свідоцтв про народження дитини/дітей — по 2 примірники;\\n\u0027;\r\n  }\r\n  if (isTrue(a.has_joint_property)) {\r\n    doc += \u0027- документи, що підтверджують право власності на спільне майно — по 2 примірники;\\n\u0027;\r\n  }\r\n  if (isTrue(a.debt_claim)) {\r\n    doc += \u0027- копії документів щодо боргових зобов\\\u0027язань (кредитні договори тощо) — по 2 примірники;\\n\u0027;\r\n  }\r\n  doc += \u0027- 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.\\n\u0027;\r\n\r\n  // ─── ПІДПИС ──────────────────────────────────────────────────────────────────\r\n\r\n  doc += `\\n\\n«___» _______ 20__ року                                              (підпис)    ${plaintiffName}\\n`;\r\n\r\n  return doc;\r\n}\r\n\r\n\r\n// ─── ШВИДКИЙ ТЕСТ (запусти node divorce-document.js щоб перевірити) ────────────\r\n\r\nif (typeof module !== \u0027undefined\u0027 \u0026\u0026 require.main === module) {\r\n  // Сценарій 2: Розлучення з дітьми + аліменти\r\n  const testAnswers = {\r\n    last_name: \u0027Коваленко\u0027, first_name: \u0027Марія\u0027, middle_name: \u0027Олександрівна\u0027,\r\n    birth_date: \u00271985-11-08\u0027,\r\n    registered_address: \u0027м. Одеса, вул. Дерибасівська, 5, кв. 12\u0027,\r\n    same_actual_address: false,\r\n    actual_address: \u0027м. Одеса, вул. Рішельєвська, 3, кв. 8\u0027,\r\n    tax_number: \u00272756789012\u0027, has_no_ipn: false,\r\n    plaintiff_phone: \u0027+380931234567\u0027, plaintiff_email: \u0027kovalenko.maria@ukr.net\u0027,\r\n    plaintiff_official_email: \u0027absent\u0027,\r\n    surname_after_divorce: \u0027keep\u0027,\r\n\r\n    spouse_last_name: \u0027Коваленко\u0027, spouse_first_name: \u0027Віктор\u0027, spouse_middle_name: \u0027Петрович\u0027,\r\n    spouse_birth_date: \u00271983-02-14\u0027,\r\n    spouse_registered_address: \u0027м. Одеса, вул. Пушкінська, 20, кв. 8\u0027,\r\n    spouse_actual_address_known: \u0027same\u0027,\r\n    spouse_tax_number: \u00272667890123\u0027, spouse_has_no_ipn: false,\r\n    spouse_phone: \u0027+380951234567\u0027, spouse_email: \u0027kovalenko.viktor@ukr.net\u0027,\r\n    spouse_official_email: \u0027unknown\u0027,\r\n\r\n    marriage_date: \u00272010-09-10\u0027,\r\n    marriage_place: \u0027Приморський відділ РАЦС Одеського міського управління юстиції\u0027,\r\n    marriage_act_number: \u0027312\u0027,\r\n    marriage_cert_series: \u0027І-ОД № 456789\u0027,\r\n    marriage_cert_date: \u00272010-09-10\u0027,\r\n    spouse_consents: false,\r\n    has_children: true,\r\n    children_details: \u0027Коваленко Олена Вікторівна, 15.05.2012\\nКоваленко Максим Вікторович, 22.08.2015\u0027,\r\n    children_live_with: \u0027plaintiff\u0027,\r\n    children_dispute: \u0027none\u0027,\r\n    alimony_claim: true,\r\n    alimony_amount: \u0027percent\u0027,\r\n    divorce_reasons: [\u0027no_understanding\u0027, \u0027different_views\u0027, \u0027no_financial_support\u0027],\r\n    joint_household: \u0027no\u0027,\r\n\r\n    has_joint_property: false,\r\n    debt_claim: false,\r\n    simplified_proceedings: \u0027yes\u0027,\r\n    court_fee_exempt: \u0027no\u0027,\r\n    court_costs_on: \u0027defendant\u0027,\r\n    pretrial_settlement: \u0027not_conducted\u0027,\r\n    evidence_preservation: \u0027not_conducted\u0027,\r\n    originals_location: \u0027plaintiff\u0027,\r\n    no_other_lawsuits: true,\r\n  };\r\n\r\n  const testAi = {\r\n    plaintiff_instrumental: \u0027Коваленко Марією Олександрівною\u0027,\r\n    plaintiff_genitive:     \u0027Коваленко Марії Олександрівни\u0027,\r\n    spouse_instrumental:    \u0027Коваленком Віктором Петровичем\u0027,\r\n    spouse_genitive:        \u0027Коваленка Віктора Петровича\u0027,\r\n  };\r\n\r\n  const result = buildDivorceDocument(testAnswers, testAi);\r\n  console.log(result);\r\n  console.log(\u0027\\n--- СИМВОЛІВ:\u0027, result.length, \u0027---\u0027);\r\n}\r\n\n\n// 4. Template: alimony\n/**\n * alimony-document.js\n * n8n Code Node — будує позовну заяву про стягнення аліментів\n *\n * Вхід:\n *   answers   — об\u0027єкт з відповідями форми (field_id: value)\n *   ai        — об\u0027єкт з відміненими формами від AI:\n *               { plaintiff_instrumental, plaintiff_genitive,\n *                 defendant_instrumental, defendant_genitive,\n *                 marriage_place_locative, children_genitive }\n *\n * Вихід: рядок — готовий текст документа\n *\n * children_details format (one child per line):\n *   \"Іванов Олег Петрович, 15.05.2015, свідоцтво № ІМ-КВ 123456 від 16.05.2015\"\n */\n\nfunction buildAlimonyDocument(answers, ai) {\n  const a = answers;\n\n  // ─── Helpers ────────────────────────────────────────────────────────────────\n\n  const MONTHS = [\n    \u0027січня\u0027,\u0027лютого\u0027,\u0027березня\u0027,\u0027квітня\u0027,\u0027травня\u0027,\u0027червня\u0027,\n    \u0027липня\u0027,\u0027серпня\u0027,\u0027вересня\u0027,\u0027жовтня\u0027,\u0027листопада\u0027,\u0027грудня\u0027\n  ];\n\n  function formatDate(iso) {\n    if (!iso) return \u0027________\u0027;\n    const d = new Date(iso);\n    return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;\n  }\n\n  function val(field, fallback = \u0027________\u0027) {\n    const v = a[field];\n    if (v === null || v === undefined || v === \u0027\u0027) return fallback;\n    return v;\n  }\n\n  function has(field) {\n    const v = a[field];\n    return v !== null \u0026\u0026 v !== undefined \u0026\u0026 v !== \u0027\u0027 \u0026\u0026 v !== false;\n  }\n\n  function isTrue(v) {\n    return v === true || v === \u0027true\u0027;\n  }\n\n  function detectGender(middleName) {\n    if (!middleName) return \u0027male\u0027;\n    const m = String(middleName).trim();\n    if (m.endsWith(\u0027івна\u0027) || m.endsWith(\u0027ївна\u0027) || m.endsWith(\u0027овна\u0027)) return \u0027female\u0027;\n    return \u0027male\u0027;\n  }\n\n  /**\n   * Parse children_details — one child per line:\n   *   \"Іванов Олег Петрович, 15.05.2015, свідоцтво № ІМ-КВ 123456 від 16.05.2015\"\n   * Returns [{ name, birthDate, certInfo }]\n   */\n  function parseChildren(details) {\n    if (!details) return [];\n    return String(details)\n      .split(/\\n/)\n      .map(line =\u003e line.trim())\n      .filter(Boolean)\n      .map(line =\u003e {\n        const parts = line.split(/,\\s*/);\n        const name      = (parts[0] || \u0027\u0027).trim();\n        const birthDate = (parts[1] || \u0027\u0027).trim();\n        const certInfo  = parts.slice(2).join(\u0027, \u0027).trim();\n        return { name, birthDate, certInfo };\n      })\n      .filter(c =\u003e c.name);\n  }\n\n  function alimonyFraction(n) {\n    if (n \u003e= 3) return \u00271/2\u0027;\n    if (n === 2) return \u00271/3\u0027;\n    return \u00271/4\u0027;\n  }\n\n  // child gender from middle name (3rd word in ПІБ)\n  function childGender(child) {\n    const parts = child.name.split(/\\s+/);\n    return detectGender(parts[2]);\n  }\n\n  function childGenitivePhrase(children) {\n    if (children.length \u003e 1) return \u0027наших спільних дітей\u0027;\n    return childGender(children[0]) === \u0027female\u0027\n      ? \u0027нашої спільної доньки\u0027\n      : \u0027нашого спільного сина\u0027;\n  }\n\n  /** \"свідоцтво №...\" → \"свідоцтвом №...\" (instrumental after \"підтверджується\") */\n  function normalizeCert(certInfo) {\n    if (!certInfo) return certInfo;\n    const lc = certInfo.toLowerCase();\n    if (lc.startsWith(\u0027свідоцтво \u0027)) return \u0027свідоцтвом \u0027 + certInfo.slice(\u0027свідоцтво \u0027.length);\n    return certInfo;\n  }\n\n  function minorChildPhrase(children) {\n    if (children.length \u003e 1) return \u0027неповнолітніх дітей\u0027;\n    return childGender(children[0]) === \u0027female\u0027 ? \u0027неповнолітньої доньки\u0027 : \u0027неповнолітнього сина\u0027;\n  }\n\n  // ─── Base data ───────────────────────────────────────────────────────────────\n\n  const plaintiffName  = [val(\u0027last_name\u0027), val(\u0027first_name\u0027), val(\u0027middle_name\u0027)]\n    .filter(s =\u003e s !== \u0027________\u0027).join(\u0027 \u0027) || \u0027________\u0027;\n  const defendantName  = [val(\u0027defendant_last_name\u0027), val(\u0027defendant_first_name\u0027), val(\u0027defendant_middle_name\u0027)]\n    .filter(s =\u003e s !== \u0027________\u0027).join(\u0027 \u0027) || \u0027________\u0027;\n\n  const isFemale      = detectGender(a.middle_name) === \u0027female\u0027;\n  const isDefFemale   = detectGender(a.defendant_middle_name) === \u0027female\u0027;\n\n  const plaintiffInstrumental = (ai \u0026\u0026 ai.plaintiff_instrumental) || plaintiffName;\n  const plaintiffGenitive     = (ai \u0026\u0026 ai.plaintiff_genitive)     || plaintiffName;\n  const defendantInstrumental = (ai \u0026\u0026 ai.defendant_instrumental) || defendantName;\n  const defendantGenitive     = (ai \u0026\u0026 ai.defendant_genitive)     || defendantName;\n  const marriagePlaceLocative = (ai \u0026\u0026 ai.marriage_place_locative) || val(\u0027marriage_place\u0027);\n\n  const children  = parseChildren(a.children_details);\n  const nChildren = children.length || 1;\n\n  const childrenGenitive = (ai \u0026\u0026 ai.children_genitive)\n    || (children.length \u003e 0\n      ? children.map(c =\u003e `${c.name}, ${c.birthDate} р.н.`).join(\u0027; \u0027)\n      : \u0027________\u0027);\n\n  const maritalStatus = a.marital_status || \u0027married\u0027; // married | divorced | never_married\n  const alimonyType   = a.alimony_type   || \u0027percent\u0027; // percent | fixed\n\n  const plaintiffDOB  = has(\u0027birth_date\u0027)          ? formatDate(a.birth_date)          : \u0027________\u0027;\n  const defendantDOB  = has(\u0027defendant_birth_date\u0027) ? formatDate(a.defendant_birth_date) : \u0027________\u0027;\n\n  // ─── ШАПКА ───────────────────────────────────────────────────────────────────\n\n  let doc = \u0027\u0027;\n\n  doc += \u0027До суду за місцем проживання відповідача\\n\u0027;\n  doc += \u0027(Знайти ваш суд: https://court.gov.ua/)\\n\\n\u0027;\n\n  // Позивач\n  doc += `Позивач: ${plaintiffName}\\n`;\n  doc += `Зареєстроване місце проживання: ${val(\u0027registered_address\u0027)}\\n`;\n  if (!isTrue(a.same_actual_address) \u0026\u0026 has(\u0027actual_address\u0027)) {\n    doc += `Фактичне місце проживання: ${a.actual_address}\\n`;\n  }\n  if (!isTrue(a.has_no_ipn) \u0026\u0026 has(\u0027tax_number\u0027)) {\n    doc += `(реєстраційний номер облікової картки платника податків (ІПН): ${a.tax_number})\\n`;\n  } else if (isTrue(a.has_no_ipn) \u0026\u0026 has(\u0027passport_series\u0027)) {\n    doc += `(серія та номер паспорта: ${a.passport_series})\\n`;\n  }\n  if (has(\u0027plaintiff_phone\u0027)) doc += `Тел.: ${a.plaintiff_phone}\\n`;\n  if (has(\u0027plaintiff_email\u0027)) doc += `Адреса електронної пошти: ${a.plaintiff_email}\\n`;\n  doc += (a.plaintiff_official_email === \u0027present\u0027)\n    ? \u0027Офіційна електронна адреса: наявна в ЄСІТС\\n\u0027\n    : \u0027Офіційна електронна адреса — відсутня\\n\u0027;\n\n  doc += \u0027\\n\u0027;\n\n  // Відповідач\n  doc += `Відповідач: ${defendantName}\\n`;\n  if (has(\u0027defendant_registered_address\u0027)) {\n    doc += `Зареєстроване місце проживання: ${a.defendant_registered_address}\\n`;\n  }\n  if (a.defendant_actual_address_known === \u0027different\u0027 \u0026\u0026 has(\u0027defendant_actual_address\u0027)) {\n    doc += `Фактичне місце проживання: ${a.defendant_actual_address}\\n`;\n  } else if (a.defendant_actual_address_known === \u0027unknown\u0027) {\n    doc += \u0027Фактичне місце проживання невідоме\\n\u0027;\n  }\n  if (!isTrue(a.defendant_has_no_ipn) \u0026\u0026 has(\u0027defendant_tax_number\u0027)) {\n    doc += `(ІПН: ${a.defendant_tax_number})\\n`;\n  } else if (isTrue(a.defendant_has_no_ipn) \u0026\u0026 has(\u0027defendant_passport_series\u0027)) {\n    doc += `(серія та номер паспорта: ${a.defendant_passport_series})\\n`;\n  }\n  if (has(\u0027defendant_phone\u0027)) doc += `Тел.: ${a.defendant_phone}\\n`;\n  if (has(\u0027defendant_email\u0027)) doc += `Адреса електронної пошти: ${a.defendant_email}\\n`;\n  if (a.defendant_official_email === \u0027present\u0027) {\n    doc += \u0027Офіційна електронна адреса: наявна в ЄСІТС\\n\u0027;\n  } else if (a.defendant_official_email === \u0027unknown\u0027) {\n    doc += \u0027Офіційна електронна адреса — невідома\\n\u0027;\n  } else {\n    doc += \u0027Офіційна електронна адреса — відсутня\\n\u0027;\n  }\n\n  // ─── ЗАГОЛОВОК ───────────────────────────────────────────────────────────────\n\n  doc += \u0027\\n\\nПОЗОВНА ЗАЯВА\\nпро стягнення аліментів\\n\\n\\n\u0027;\n\n  // ─── ФАКТИЧНА ЧАСТИНА ────────────────────────────────────────────────────────\n\n  // 1. Marriage / relationship intro\n  if (maritalStatus === \u0027married\u0027 || maritalStatus === \u0027divorced\u0027) {\n    const marriageVerb = isFemale ? \u0027уклала\u0027 : \u0027уклав\u0027;\n    const marriageDate = has(\u0027marriage_date\u0027) ? formatDate(a.marriage_date) : \u0027________\u0027;\n    const actNum = has(\u0027marriage_act_number\u0027)\n      ? `актовий запис № ${a.marriage_act_number}`\n      : \u0027актовий запис № ________\u0027;\n    doc += `${marriageDate} року я, ${plaintiffName}, ${plaintiffDOB} року народження, ${marriageVerb} шлюб з ${defendantInstrumental}, ${defendantDOB} року народження, який ми зареєстрували у ${marriagePlaceLocative}, про що зроблений ${actNum}.\\n\\n`;\n  }\n\n  // 2. Divorce clause (if applicable)\n  if (maritalStatus === \u0027divorced\u0027) {\n    const divorceDate = has(\u0027divorce_date\u0027) ? formatDate(a.divorce_date) : \u0027________\u0027;\n    let divorceRef = \u0027копією рішення суду\u0027;\n    if (has(\u0027divorce_court\u0027) \u0026\u0026 has(\u0027divorce_case_number\u0027)) {\n      divorceRef = `рішенням ${a.divorce_court} від ${divorceDate} по справі № ${a.divorce_case_number}`;\n    } else if (has(\u0027divorce_court\u0027)) {\n      divorceRef = `рішенням ${a.divorce_court} від ${divorceDate}`;\n    }\n    doc += `Шлюб між мною та відповідачем розірвано ${divorceDate} року, що підтверджується ${divorceRef}.\\n\\n`;\n  }\n\n  // 3. Children\n  const bornPrefix = maritalStatus === \u0027never_married\u0027 ? \u0027Від наших стосунків у нас\u0027 : \u0027У шлюбі у нас\u0027;\n\n  if (children.length === 0) {\n    // fallback (no data)\n    doc += `${bornPrefix} народилась дитина: ________ (ПІБ дитини), ________ року народження, що підтверджується свідоцтвом про народження № ________ від ________ року.\\n\\n`;\n  } else if (children.length === 1) {\n    const c = children[0];\n    const certPart = c.certInfo\n      ? `, що підтверджується ${normalizeCert(c.certInfo)}`\n      : \u0027, що підтверджується свідоцтвом про народження № ________ від ________ року\u0027;\n    doc += `${bornPrefix} народилась дитина: ${c.name}, ${c.birthDate} року народження${certPart}.\\n\\n`;\n  } else {\n    doc += `${bornPrefix} народились діти:\\n`;\n    children.forEach((c, i) =\u003e {\n      const certPart = c.certInfo ? `, що підтверджується ${normalizeCert(c.certInfo)}` : \u0027\u0027;\n      doc += `${i + 1}) ${c.name}, ${c.birthDate} року народження${certPart};\\n`;\n    });\n    doc += \u0027\\n\u0027;\n  }\n\n  const famCertDate = has(\u0027family_cert_date\u0027) ? formatDate(a.family_cert_date) : \u0027________\u0027;\n  const liveSubj = nChildren === 1 ? \u0027Дитина проживає\u0027 : \u0027Діти проживають\u0027;\n  doc += `${liveSubj} разом зі мною, що підтверджується довідкою про склад сім\u0027ї від ${famCertDate} року.\\n\\n`;\n\n  // 4. Defendant not supporting\n  const abandonDate   = has(\u0027abandonment_date\u0027) ? formatDate(a.abandonment_date) : \u0027________\u0027;\n  const childPhrase = children.length \u003e 0 ? childGenitivePhrase(children) : \u0027нашого спільного сина\u0027;\n  doc += `Відповідно до ст. 180 Сімейного кодексу України (надалі – СК України), батьки зобов\u0027язані утримувати дитину до досягнення нею повноліття, а відповідач з ${abandonDate} року не бере участі у вихованні та утриманні ${childPhrase}.\\n\\n`;\n\n  // ─── ПРАВОВА ЧАСТИНА ─────────────────────────────────────────────────────────\n\n  doc += \u0027Відповідно до ст. 150 СК України, батьки зобов\\\u0027язані виховувати дитину в дусі поваги до прав та свобод інших людей, любові до своєї сім\\\u0027ї та родини, свого народу, своєї Батьківщини. Батьки зобов\\\u0027язані піклуватися про здоров\\\u0027я дитини, її фізичний, духовний та моральний розвиток. Батьки зобов\\\u0027язані забезпечити здобуття дитиною повної загальної середньої освіти, готувати її до самостійного життя.\\n\\n\u0027;\n\n  const countSubj = nChildren === 1 ? \u0027дитині\u0027 : \u0027дітям\u0027;\n  doc += `Таким чином, ${countSubj} повинен бути забезпечений належний рівень життя, необхідний для фізичного, розумового, духовного, морального і соціального розвитку.\\n\\n`;\n\n  // 5. Income / amount reasoning\n  const parentWord  = isDefFemale ? \u0027мати\u0027 : \u0027батько\u0027;\n  const whichParent = isDefFemale ? \u0027яка є здоровою та працездатною\u0027 : \u0027який є здоровим та працездатним\u0027;\n  const aloneWord   = isFemale ? \u0027я одна\u0027 : \u0027я один\u0027;\n\n  if (alimonyType === \u0027percent\u0027) {\n    const fraction = alimonyFraction(nChildren);\n    let incomeClause = \u0027\u0027;\n    if (a.defendant_employed === \u0027yes\u0027 \u0026\u0026 has(\u0027defendant_employer\u0027)) {\n      const pos    = has(\u0027defendant_position\u0027) ? ` на посаді ${a.defendant_position}` : \u0027\u0027;\n      const salary = has(\u0027defendant_salary\u0027)   ? ` та має постійний дохід у розмірі ${a.defendant_salary} грн` : \u0027\u0027;\n      incomeClause = `, оскільки працює в ${a.defendant_employer}${pos}${salary}`;\n    } else if (a.defendant_employed === \u0027no\u0027) {\n      incomeClause = \u0027. Відповідач на даний час офіційно не працевлаштований, проте є працездатним і може отримувати доходи\u0027;\n    }\n    doc += `Такий рівень ${aloneWord} не зможу забезпечити, тому ${parentWord}, ${whichParent}, зможе сплачувати аліменти на рівні ${fraction} частини з усіх видів заробітку (доходу)${incomeClause}.\\n\\n`;\n  } else {\n    const fixedAmount = has(\u0027alimony_fixed_amount\u0027) ? `${a.alimony_fixed_amount} гривень` : \u0027________ гривень\u0027;\n    let incomeClause = \u0027\u0027;\n    if (a.defendant_employed === \u0027yes\u0027 \u0026\u0026 has(\u0027defendant_employer\u0027)) {\n      const pos    = has(\u0027defendant_position\u0027) ? ` на посаді ${a.defendant_position}` : \u0027\u0027;\n      const salary = has(\u0027defendant_salary\u0027)   ? `, отримує дохід у розмірі ${a.defendant_salary} грн` : \u0027\u0027;\n      incomeClause = `, оскільки працює в ${a.defendant_employer}${pos}${salary}`;\n    }\n    doc += `Такий рівень ${aloneWord} не зможу забезпечити самостійно, тому ${parentWord}, ${whichParent}, зможе сплачувати аліменти у твердій грошовій сумі в розмірі ${fixedAmount} щомісяця${incomeClause}.\\n\\n`;\n  }\n\n  if (has(\u0027defendant_other_income\u0027)) {\n    doc += `Крім того, відповідач має інші джерела доходу: ${a.defendant_other_income}.\\n\\n`;\n  }\n\n  doc += \u0027У відповідності до ст. 141 СК України мати, батько мають рівні права та обов\\\u0027язки щодо дитини, незалежно від того, чи перебували вони у шлюбі між собою. Розірвання шлюбу між батьками, проживання їх окремо від дитини не впливає на обсяг їхніх прав і не звільняє від обов\\\u0027язків щодо дитини.\\n\\n\u0027;\n\n  doc += \u0027Відповідно до ч. 2 ст. 182 СК України розмір аліментів має бути необхідним та достатнім для забезпечення гармонійного розвитку дитини.\\n\\n\u0027;\n\n  doc += \u0027Крім цього, відповідно до вимог Сімейного кодексу України (ст. 182-184), вирішуючи питання щодо розміру аліментів, суд повинен ураховувати: стан здоров\\\u0027я, матеріальне становище дитини і платника аліментів; наявність в останнього інших неповнолітніх дітей, непрацездатних чоловіка, дружини, батьків, повнолітніх дочки, сина; наявність рухомого та нерухомого майна, грошових коштів; інші обставини, що мають істотне значення.\\n\\n\u0027;\n\n  const defOtherPron = isDefFemale ? \u0027вона\u0027 : \u0027він\u0027;\n  doc += `Так, відповідач є працездатним, отримує дохід, а тому вважаю, що ${defOtherPron} може сплачувати аліменти у зазначеному розмірі.\\n\\n`;\n\n  // ─── ПРОЦЕСУАЛЬНА ЧАСТИНА (ст.175 ЦПК) ──────────────────────────────────────\n\n  doc += \u0027Відповідно до п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору не проводилися.\\n\\n\u0027;\n  doc += \u0027Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що вжиття заходів забезпечення доказів або позову до подання позовної заяви не здійснювалось.\\n\\n\u0027;\n  doc += \u0027Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що у позивача перебувають оригінали письмових або електронних доказів, копії яких додано до заяви.\\n\\n\u0027;\n  doc += \u0027Згідно із п.9 ч.3 ст.175 ЦПК України повідомляю, що витрати на правову допомогу відсутні.\\n\\n\u0027;\n  doc += \u0027У відповідності із п.10 ч.3 ст.175 ЦПК України підтверджую, що мною не подано іншого позову (позовів) до цього ж відповідача (відповідачів) з тим самим предметом та з тих самих підстав.\\n\\n\u0027;\n\n  // ─── СУДОВИЙ ЗБІР ────────────────────────────────────────────────────────────\n\n  const exemptWord = isFemale ? \u0027звільнена\u0027 : \u0027звільнений\u0027;\n  doc += `Від сплати судового збору за подання позову про стягнення аліментів я ${exemptWord} на підставі п.3 ч.1 ст.5 Закону України «Про судовий збір».\\n\\n`;\n\n  // ─── ПРОШУ ───────────────────────────────────────────────────────────────────\n\n  doc += \u0027На підставі викладеного та у відповідності до ст.ст. 150, 180–184 СК України, керуючись ст.ст. 174, 175 ЦПК України,—\\n\\n\u0027;\n  doc += \u0027П Р О Ш У  С У Д :\\n\\n\u0027;\n\n  const startDate  = has(\u0027alimony_start_date\u0027) ? formatDate(a.alimony_start_date) : \u0027________\u0027;\n  const tillWord   = nChildren \u003e 1 ? \u0027дітей\u0027 : \u0027дитини\u0027;\n\n  if (alimonyType === \u0027percent\u0027) {\n    const fraction = alimonyFraction(nChildren);\n    doc += `1. Стягнути з ${defendantGenitive}, ${defendantDOB} року народження, на користь ${plaintiffGenitive}, ${plaintiffDOB} року народження, аліменти на утримання ${childrenGenitive} в розмірі ${fraction} частини з усіх видів заробітку (доходу), але не менше 50 відсотків прожиткового мінімуму для дитини відповідного віку, щомісячно, починаючи стягнення з ${startDate} року і до повноліття ${tillWord}.\\n\\n`;\n  } else {\n    const fixedAmount = has(\u0027alimony_fixed_amount\u0027) ? `${a.alimony_fixed_amount} гривень` : \u0027________ гривень\u0027;\n    doc += `1. Стягнути з ${defendantGenitive}, ${defendantDOB} року народження, на користь ${plaintiffGenitive}, ${plaintiffDOB} року народження, аліменти на утримання ${childrenGenitive} у твердій грошовій сумі в розмірі ${fixedAmount} щомісячно, починаючи стягнення з ${startDate} року і до повноліття ${tillWord}.\\n\\n`;\n  }\n\n  // ─── ДОДАТКИ ─────────────────────────────────────────────────────────────────\n\n  doc += \u0027Додатки:\\n\u0027;\n  if (maritalStatus === \u0027married\u0027 || maritalStatus === \u0027divorced\u0027) {\n    doc += \u0027- копія свідоцтва про укладення шлюбу — 2 примірники;\\n\u0027;\n  }\n  if (maritalStatus === \u0027divorced\u0027) {\n    doc += \u0027- копія рішення суду про розірвання шлюбу — 2 примірники;\\n\u0027;\n  }\n  const certPlural = nChildren \u003e 1 ? \u0027свідоцтв про народження дітей\u0027 : \u0027свідоцтва про народження дитини\u0027;\n  doc += `- копія ${certPlural} — по 2 примірники;\\n`;\n  doc += \u0027- довідка про склад сім\\\u0027ї — 2 примірники;\\n\u0027;\n  doc += \u0027- копія паспорта позивача — 2 примірники;\\n\u0027;\n  if (!isTrue(a.has_no_ipn)) {\n    doc += \u0027- копія облікової картки платника податків позивача — 2 примірники;\\n\u0027;\n  }\n  doc += \u0027- 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.\\n\u0027;\n\n  // ─── ПІДПИС ──────────────────────────────────────────────────────────────────\n\n  doc += `\\n\\n«___» _______ 20__ року                                              (підпис)    ${plaintiffName}\\n`;\n\n  return doc;\n}\n\n\n// ─── QUICK TEST ──────────────────────────────────────────────────────────────\n\nif (typeof module !== \u0027undefined\u0027 \u0026\u0026 require.main === module) {\n  const testAnswers = {\n    last_name: \u0027Іванова\u0027, first_name: \u0027Інна\u0027, middle_name: \u0027Петрівна\u0027,\n    birth_date: \u00271990-03-15\u0027,\n    registered_address: \u0027м. Київ, вул. Хрещатик, 10, кв. 25\u0027,\n    same_actual_address: true,\n    tax_number: \u00272934567890\u0027, has_no_ipn: false,\n    plaintiff_phone: \u0027+380501234567\u0027,\n    plaintiff_email: \u0027inna.ivanova@gmail.com\u0027,\n    plaintiff_official_email: \u0027absent\u0027,\n\n    defendant_last_name: \u0027Іванов\u0027, defendant_first_name: \u0027Іван\u0027, defendant_middle_name: \u0027Іванович\u0027,\n    defendant_birth_date: \u00271988-07-22\u0027,\n    defendant_registered_address: \u0027м. Київ, вул. Грушевського, 5, кв. 3\u0027,\n    defendant_actual_address_known: \u0027same\u0027,\n    defendant_tax_number: \u00272845678901\u0027, defendant_has_no_ipn: false,\n    defendant_official_email: \u0027unknown\u0027,\n\n    marital_status: \u0027divorced\u0027,\n    marriage_date: \u00272015-06-20\u0027,\n    marriage_place: \u0027Шевченківський відділ РАЦС у м. Києві\u0027,\n    marriage_act_number: \u0027547\u0027,\n    divorce_date: \u00272022-03-10\u0027,\n    divorce_court: \u0027Шевченківського районного суду м. Києва\u0027,\n    divorce_case_number: \u0027761/1234/22\u0027,\n\n    children_details: \u0027Іванов Олег Іванович, 15.05.2018, свідоцтво № І-КВ 123456 від 16.05.2018\u0027,\n    family_cert_date: \u00272024-01-10\u0027,\n    abandonment_date: \u00272022-03-01\u0027,\n\n    alimony_type: \u0027percent\u0027,\n    defendant_employed: \u0027yes\u0027,\n    defendant_employer: \u0027ТОВ «Альфа Сервіс»\u0027,\n    defendant_position: \u0027менеджера\u0027,\n    defendant_salary: \u002725000\u0027,\n    alimony_start_date: \u00272024-02-01\u0027,\n  };\n\n  const testAi = {\n    plaintiff_instrumental:  \u0027Іванову Інну Петрівну\u0027,\n    plaintiff_genitive:      \u0027Іванової Інни Петрівни\u0027,\n    defendant_instrumental:  \u0027Іванова Івана Івановича\u0027,\n    defendant_genitive:      \u0027Іванова Івана Івановича\u0027,\n    marriage_place_locative: \u0027Шевченківському відділі РАЦС у м. Києві\u0027,\n    children_genitive:       \u0027Іванова Олега Івановича, 15.05.2018 р.н.\u0027,\n  };\n\n  const result = buildAlimonyDocument(testAnswers, testAi);\n  console.log(result);\n  console.log(\u0027\\n--- СИМВОЛІВ:\u0027, result.length, \u0027---\u0027);\n}\n\n\n// 5. Dispatch\nconst builders = { divorce: buildDivorceDocument, alimony: buildAlimonyDocument };\nconst builder = builders[serviceSlug];\nif (!builder) throw new Error(\u0027No builder for service: \u0027 + serviceSlug);\n\nconst document = builder(answers, ai);\nconsole.log(\u0027[Build] Generated\u0027, document.length, \u0027chars for\u0027, serviceSlug);\n\nreturn [{ json: { _content: document, _case_id: caseId } }];"
+                                     },
+                      "id":  "build-doc-001",
+                      "name":  "Build Document",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       1120,
+                                       1580
+                                   ],
+                      "notes":  "JS шаблон — 95% документа детерміновано, 0% галюцинацій для даних. AI використовується тільки для відмінків."
+                  },
+                  {
+                      "parameters":  {
+                                         "chatId":  "={{ $(\u0027Validate\u0027).item.json._user_id }}",
+                                         "text":  "=✅ *Дякуємо! Дані отримано.*\n\n📋 Послуга: {{ $(\u0027Get Service\u0027).item.json.title }}\n🔢 Кейс №: {{ $(\u0027Insert Case\u0027).item.json.id }}\n\nДокумент готується... ⏳",
+                                         "additionalFields":  {
+                                                                  "appendAttribution":  false,
+                                                                  "parse_mode":  "Markdown"
+                                                              }
+                                     },
+                      "id":  "notify-user-001",
+                      "name":  "Notify User",
+                      "type":  "n8n-nodes-base.telegram",
+                      "typeVersion":  1.2,
+                      "position":  [
+                                       1360,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "telegramApi":  {
+                                                              "id":  "6OfTH9OBUuEgKALQ",
+                                                              "name":  "Telegram account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ JSON.stringify({ success: true, case_id: $(\u0027Insert Case\u0027).item.json.id }) }}"
+                                     },
+                      "id":  "respond-ok-001",
+                      "name":  "Respond OK",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1,
+                      "position":  [
+                                       1600,
+                                       1580
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "=https://www.googleapis.com/drive/v3/files/1KHtchwlBKlTNDnK8uH0uxpKOXc6V-69zPRTDHxny1xI/copy",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleOAuth2Api",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ name: \u0027Позовна заява — \u0027 + $(\u0027Insert Case\u0027).item.json.id, parents: [\u00271mKnckHIFjhAH0MAzE073fqU4_6tZW5FI\u0027] }) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "copy-template-001",
+                      "name":  "Copy Template",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.2,
+                      "position":  [
+                                       1840,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "googleOAuth2Api":  {
+                                                                  "id":  "google-oauth2-001",
+                                                                  "name":  "Google OAuth2"
+                                                              }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "jsCode":  "const content = $(\u0027Build Document\u0027).item.json._content;\nconst newDocId = $json.id;\nreturn [{\n  json: {\n    _new_doc_id: newDocId,\n    _new_doc_url: \u0027https://docs.google.com/document/d/\u0027 + newDocId + \u0027/edit\u0027,\n    _batch_request: {\n      requests: [{\n        replaceAllText: {\n          containsText: { text: \u0027{{DOCUMENT_CONTENT}}\u0027, matchCase: true },\n          replaceText: content\n        }\n      }]\n    }\n  }\n}];"
+                                     },
+                      "id":  "build-replace-001",
+                      "name":  "Build Replace Request",
+                      "type":  "n8n-nodes-base.code",
+                      "typeVersion":  2,
+                      "position":  [
+                                       2080,
+                                       1580
+                                   ]
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "=https://docs.googleapis.com/v1/documents/{{ $json._new_doc_id }}:batchUpdate",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleOAuth2Api",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify($json._batch_request) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "replace-text-001",
+                      "name":  "Replace Placeholder",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.2,
+                      "position":  [
+                                       2320,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "googleOAuth2Api":  {
+                                                                  "id":  "google-oauth2-001",
+                                                                  "name":  "Google OAuth2"
+                                                              }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "method":  "POST",
+                                         "url":  "=https://www.googleapis.com/drive/v3/files/{{ $(\u0027Build Replace Request\u0027).item.json._new_doc_id }}/permissions",
+                                         "authentication":  "predefinedCredentialType",
+                                         "nodeCredentialType":  "googleOAuth2Api",
+                                         "sendBody":  true,
+                                         "specifyBody":  "json",
+                                         "jsonBody":  "={{ JSON.stringify({ type: \u0027anyone\u0027, role: \u0027reader\u0027 }) }}",
+                                         "options":  {
+
+                                                     }
+                                     },
+                      "id":  "share-doc-001",
+                      "name":  "Share Document",
+                      "type":  "n8n-nodes-base.httpRequest",
+                      "typeVersion":  4.2,
+                      "position":  [
+                                       2560,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "googleOAuth2Api":  {
+                                                                  "id":  "google-oauth2-001",
+                                                                  "name":  "Google OAuth2"
+                                                              }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "chatId":  "={{ $(\u0027Validate\u0027).item.json._user_id }}",
+                                         "text":  "=📄 \u003cb\u003eВаша позовна заява готова!\u003c/b\u003e\n\n👇 Відкрийте, перегляньте та завантажте як PDF:\n{{ $(\u0027Build Replace Request\u0027).item.json._new_doc_url }}\n\n💡 \u003ci\u003eФайл → Завантажити → PDF\u003c/i\u003e для друку та подачі до суду.",
+                                         "additionalFields":  {
+                                                                  "appendAttribution":  false,
+                                                                  "parse_mode":  "HTML"
+                                                              }
+                                     },
+                      "id":  "send-link-001",
+                      "name":  "Send Doc Link",
+                      "type":  "n8n-nodes-base.telegram",
+                      "typeVersion":  1.2,
+                      "position":  [
+                                       2800,
+                                       1580
+                                   ],
+                      "credentials":  {
+                                          "telegramApi":  {
+                                                              "id":  "6OfTH9OBUuEgKALQ",
+                                                              "name":  "Telegram account"
+                                                          }
+                                      }
+                  },
+                  {
+                      "parameters":  {
+                                         "respondWith":  "json",
+                                         "responseBody":  "={{ JSON.stringify({ success: false, error: $(\u0027Validate\u0027).item.json._error }) }}",
+                                         "options":  {
+                                                         "responseCode":  400
+                                                     }
+                                     },
+                      "id":  "respond-err-001",
+                      "name":  "Respond Error",
+                      "type":  "n8n-nodes-base.respondToWebhook",
+                      "typeVersion":  1,
+                      "position":  [
+                                       -80,
+                                       1880
+                                   ]
+                  }
+              ],
+    "connections":  {
+                        "Webhook":  {
+                                        "main":  [
+                                                     [
+                                                         {
+                                                             "node":  "Global Config",
+                                                             "type":  "main",
+                                                             "index":  0
+                                                         }
+                                                     ]
+                                                 ]
+                                    },
+                        "Global Config":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "Validate",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ]
+                                          },
+                        "Validate":  {
+                                         "main":  [
+                                                      [
+                                                          {
+                                                              "node":  "Is Valid?",
+                                                              "type":  "main",
+                                                              "index":  0
+                                                          }
+                                                      ]
+                                                  ]
+                                     },
+                        "Is Valid?":  {
+                                          "main":  [
+                                                       [
+                                                           {
+                                                               "node":  "Get Service",
+                                                               "type":  "main",
+                                                               "index":  0
+                                                           }
+                                                       ],
+                                                       [
+                                                           {
+                                                               "node":  "Respond Error",
+                                                               "type":  "main",
+                                                               "index":  0
+                                                           }
+                                                       ]
+                                                   ]
+                                      },
+                        "Get Service":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Get Profile",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Get Profile":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Encrypt Data",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Encrypt Data":  {
+                                             "main":  [
+                                                          [
+                                                              {
+                                                                  "node":  "Insert Case",
+                                                                  "type":  "main",
+                                                                  "index":  0
+                                                              }
+                                                          ]
+                                                      ]
+                                         },
+                        "Insert Case":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Prepare Declension",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Prepare Declension":  {
+                                                   "main":  [
+                                                                [
+                                                                    {
+                                                                        "node":  "AI Declension",
+                                                                        "type":  "main",
+                                                                        "index":  0
+                                                                    }
+                                                                ]
+                                                            ]
+                                               },
+                        "AI Declension":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "Build Document",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ]
+                                          },
+                        "Build Document":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Notify User",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                           },
+                        "Notify User":  {
+                                            "main":  [
+                                                         [
+                                                             {
+                                                                 "node":  "Respond OK",
+                                                                 "type":  "main",
+                                                                 "index":  0
+                                                             }
+                                                         ]
+                                                     ]
+                                        },
+                        "Respond OK":  {
+                                           "main":  [
+                                                        [
+                                                            {
+                                                                "node":  "Copy Template",
+                                                                "type":  "main",
+                                                                "index":  0
+                                                            }
+                                                        ]
+                                                    ]
+                                       },
+                        "Copy Template":  {
+                                              "main":  [
+                                                           [
+                                                               {
+                                                                   "node":  "Build Replace Request",
+                                                                   "type":  "main",
+                                                                   "index":  0
+                                                               }
+                                                           ]
+                                                       ]
+                                          },
+                        "Build Replace Request":  {
+                                                      "main":  [
+                                                                   [
+                                                                       {
+                                                                           "node":  "Replace Placeholder",
+                                                                           "type":  "main",
+                                                                           "index":  0
+                                                                       }
+                                                                   ]
+                                                               ]
+                                                  },
+                        "Replace Placeholder":  {
+                                                    "main":  [
+                                                                 [
+                                                                     {
+                                                                         "node":  "Share Document",
+                                                                         "type":  "main",
+                                                                         "index":  0
+                                                                     }
+                                                                 ]
+                                                             ]
+                                                },
+                        "Share Document":  {
+                                               "main":  [
+                                                            [
+                                                                {
+                                                                    "node":  "Send Doc Link",
+                                                                    "type":  "main",
+                                                                    "index":  0
+                                                                }
+                                                            ]
+                                                        ]
+                                           }
+                    },
+    "active":  false,
+    "settings":  {
+                     "executionOrder":  "v1"
+                 },
+    "tags":  [
+                 "hybrid",
+                 "v6"
+             ]
 }

@@ -1,6 +1,135 @@
 # Legal AI — Master Context Document
-> Updated: 2026-05-12 (session 9 end)
+> Updated: 2026-05-13 (session 10 end)
 > Прочитай эту секцию первой — она самая свежая.
+
+---
+
+## 🆕 Session 10 (2026-05-13) — Новий сервіс "Аліменти" + фікс якості документів
+
+### Що зроблено
+
+#### 1. Діагноз проблеми з `?????` в документах (сесія 9)
+- **Причина**: Playwright на Windows емулює клавіатуру — кирилиця (символи > ASCII 127) стає `?`
+- **Продакшн не зачіпає**: реальні користувачі вводять з телефону в Telegram → OK
+- **Рішення для тестування**: `node scripts/test-webhook.mjs` — відправляє дані напряму, без браузера
+- **Задокументовано** в `scripts/test-scenarios.md` розділ "⚠️ Відомі обмеження тестування"
+
+#### 2. Сервіс "Стягнення аліментів" — реалізований end-to-end ✅
+**Юридична база**: окремий позов (ст. 150, 180-184 СК України + ст. 175 ЦПК). **Не** в рамках розлучення.
+
+**Ключові відмінності від розлучення:**
+- 3 статуси шлюбу: `married` / `divorced` / `never_married` → різний вступ
+- Судовий збір: позивач **автоматично звільнений** (п.3 ч.1 ст.5 ЗУ "Про судовий збір")
+- Потрібні: свідоцтво про народження + довідка про склад сім'ї (не свідоцтво про шлюб)
+- Доходи відповідача: роботодавець, посада, зарплата — впливають на текст
+
+**Файли створені:**
+- `n8n/templates/alimony-document.js` — повний JS шаблон (3 гілки шлюбу, 1-N дітей, % / фікс)
+- `apps/client/src/data/alimonyFormConfig.ts` — 4 вкладки, 44 поля
+- `supabase/migrations/010_alimony_service.sql` — ✅ виконано в Supabase
+- `scripts/upload-alimony-config.mjs` — завантажено form_config в Supabase
+- `test-data/alimony/fixtures/scenario-{1,2,3}.mjs` — 3 тест-сценарії
+- Тести: 17/17 assertions × 3 сценарії ✅
+
+**Формат children_details для аліментів** (відрізняється від розлучення!):
+```
+Іванов Олег Іванович, 15.05.2018, свідоцтво № І-КВ 123456 від 16.05.2018
+Іванова Марія Іванівна, 20.08.2020, свідоцтво № І-КВ 234567 від 21.08.2020
+```
+(ПІБ, дата нар., свідоцтво — один рядок на дитину)
+
+#### 3. n8n workflow оновлено — тепер обидва сервіси ✅
+- **Prepare Declension**: уніфікований під divorce + alimony (поля `defendant_*` замість `spouse_*`)
+- **Build Document**: dispatch по `service_slug` → `buildDivorceDocument` або `buildAlimonyDocument`
+- Обидва шаблони вбудовані в одну Code ноду (~45K chars)
+- Оновлено через n8n REST API (ключ `N8N_API_KEY` збережено в `.env.local`)
+
+#### 4. Інструменти для роботи з n8n API
+- `N8N_API_KEY` в `.env.local` — ключ "Claude-legal-ai", ніколи не закінчується
+- Workflow ID: `D2ab06X3pVUWk1py`
+- **Важливо після API-оновлення**: Global Config ноді завжди потрібно відновлювати реальні ключі (в JSON — плейсхолдери)
+- **Ніколи не оновлювати workflow через PowerShell** `ConvertTo-Json` — псує кирилицю. Тільки Node.js.
+
+#### 5. Виправлення шляхів монорепо
+- `scripts/scaffold-service.mjs` — шляхи `n8n-templates/` → `n8n/templates/`, `prompts/` → `n8n/prompts/`
+- `scripts/test-document.mjs` — шлях `n8n-templates/` → `n8n/templates/`
+- `test-data/divorce/` — скопійовано з `apps/client/test-data/` в корінь монорепо
+- `docs/templates/alimony-reference.docx` — Word-файл збережено як референс
+
+#### 6. test-webhook.mjs розширено
+```bash
+node scripts/test-webhook.mjs 1    # divorce: просте розлучення
+node scripts/test-webhook.mjs 2    # divorce: з дітьми + аліменти
+node scripts/test-webhook.mjs 3    # divorce: складний
+node scripts/test-webhook.mjs 4    # divorce: мінімальний
+node scripts/test-webhook.mjs a1   # alimony: 1 дитина, розлучені, %
+node scripts/test-webhook.mjs a2   # alimony: 2 дитини, у шлюбі, фіксована сума
+```
+
+#### 7. E2E тест: обидва сервіси ✅
+- `divorce` (scenario 2): документ отримано в Telegram, кирилиця коректна ✅
+- `alimony` (a1, a2): документи отримано в Telegram ✅
+
+---
+
+### 🔴 НАСТУПНА СЕСІЯ — план
+
+#### Пріоритет 1: Dev/Prod розділення
+**Задача**: зробити нормальну dev-середу щоб розробляти без ngrok і без ризику зламати прод.
+
+**Поточна архітектура (все змішано):**
+- Vercel Production → ngrok → локальний n8n (погано!)
+- Немає окремого webhook URL для локальної розробки
+
+**Цільова архітектура:**
+```
+DEV (локально):
+  Vite localhost:5173 → n8n localhost:5678/webhook/form-submit
+  Telegram тест → ngrok → localhost:5678 (тільки для тесту бота)
+
+PROD (після VPS):
+  Vercel Production → n8n.domain.com/webhook/form-submit
+```
+
+**Що робити:**
+1. В `.env.local` → `VITE_N8N_WEBHOOK_URL=http://localhost:5678/webhook/form-submit`
+2. В Vercel Production → `VITE_N8N_WEBHOOK_URL=https://n8n.domain.com/webhook/form-submit`
+3. VPS: Hetzner CX22 + Docker + nginx + SSL → `n8n.domain.com`
+
+#### Пріоритет 2: Аналіз структури БД і сервісів
+**Задача**: зрозуміти поточний стан Supabase — які сервіси є, які form_config заповнені, які ні.
+
+**Що перевірити:**
+- `services` table: які slug є, у яких є form_config, у яких є title
+- Стара `alimonyConfig.ts` vs нова `alimonyFormConfig.ts` — де яка використовується
+- `update-form-configs.ts` — скрипт застарів (старі шляхи, стара структура `steps`)
+- Навести порядок: або видалити старі конфіги, або мігрувати
+
+#### Пріоритет 3: Як заповнювати form_config (документація)
+Є 3 способи завантажити form_config в Supabase:
+1. **Admin Panel** (Service Builder) → `/services/:id` → Edit → лайв-превью → Save
+2. **SQL** → `UPDATE services SET form_config = '...' WHERE slug = 'alimony'`
+3. **Скрипт** → `node scripts/upload-alimony-config.mjs` (одноразовий) або `npx tsx scripts/update-form-configs.ts` (для всіх)
+
+Поточний стан: `update-form-configs.ts` орієнтований на стару структуру `steps[]` (плоский список), а форма очікує `tabs[]` з вкладеними `fields[]`. Треба або оновити скрипт, або зафіксувати що Admin Panel = єдиний правильний спосіб.
+
+---
+
+### Локальний запуск (памятка)
+```bash
+# 1. n8n
+docker start n8n
+
+# 2. ngrok (тільки для тесту Telegram-бота)
+ngrok http 5678
+
+# 3. Dev сервер
+cd apps/client && npm run dev
+
+# 4. Тест без браузера (завжди через цей скрипт!)
+node scripts/test-webhook.mjs 2      # divorce
+node scripts/test-webhook.mjs a1     # alimony
+```
 
 ---
 

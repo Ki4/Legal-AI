@@ -5,7 +5,8 @@
 //   1 = simple, 2 = children+alimony, 3 = complex, 4 = minimal
 // =============================================================
 
-const WEBHOOK_URL = 'https://legal-ai-assistant.app.n8n.cloud/webhook-test/form-submit'
+// Local n8n (active workflow). Use webhook-test/... when testing via n8n UI Execute button.
+const WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/form-submit'
 
 const scenarios = {
   1: {
@@ -205,12 +206,98 @@ const scenarios = {
   },
 }
 
-const num = parseInt(process.argv[2] || '4', 10)
-const scenario = scenarios[num]
+// ─── Alimony scenarios ────────────────────────────────────────────────────────
+const alimonyScenarios = {
+  'a1': {
+    name: 'Alimony: 1 дитина, після розлучення, % від доходу',
+    data: {
+      service_slug: 'alimony',
+      user_id: '236581343',
+      answers: {
+        last_name: 'Іванова', first_name: 'Інна', middle_name: 'Петрівна',
+        birth_date: '1990-03-15',
+        registered_address: 'м. Київ, вул. Хрещатик, 10, кв. 25',
+        same_actual_address: true,
+        tax_number: '2934567890', has_no_ipn: false,
+        plaintiff_phone: '+380501234567',
+        plaintiff_email: 'inna.ivanova@gmail.com',
+        plaintiff_official_email: 'absent',
+
+        defendant_last_name: 'Іванов', defendant_first_name: 'Іван', defendant_middle_name: 'Іванович',
+        defendant_birth_date: '1988-07-22',
+        defendant_registered_address: 'м. Київ, вул. Грушевського, 5, кв. 3',
+        defendant_actual_address_known: 'same',
+        defendant_tax_number: '2845678901', defendant_has_no_ipn: false,
+        defendant_official_email: 'unknown',
+
+        marital_status: 'divorced',
+        marriage_date: '2015-06-20',
+        marriage_place: 'Шевченківський відділ РАЦС у м. Києві',
+        marriage_act_number: '547',
+        divorce_date: '2022-03-10',
+        divorce_court: 'Шевченківського районного суду м. Києва',
+        divorce_case_number: '761/1234/22',
+
+        children_details: 'Іванов Олег Іванович, 15.05.2018, свідоцтво № І-КВ 123456 від 16.05.2018',
+        family_cert_date: '2024-01-10',
+        abandonment_date: '2022-03-01',
+
+        alimony_type: 'percent',
+        defendant_employed: 'yes',
+        defendant_employer: 'ТОВ «Альфа Сервіс»',
+        defendant_position: 'менеджера',
+        defendant_salary: '25000',
+        alimony_start_date: '2024-02-01',
+      },
+    },
+  },
+  'a2': {
+    name: 'Alimony: 2 дитини, у шлюбі, фіксована сума',
+    data: {
+      service_slug: 'alimony',
+      user_id: '236581343',
+      answers: {
+        last_name: 'Коваленко', first_name: 'Дмитро', middle_name: 'Олегович',
+        birth_date: '1985-11-20',
+        registered_address: 'м. Одеса, вул. Дерибасівська, 5, кв. 12',
+        same_actual_address: false,
+        actual_address: 'м. Одеса, вул. Пушкінська, 1, кв. 3',
+        tax_number: '2756789012', has_no_ipn: false,
+        plaintiff_phone: '+380931234567',
+        plaintiff_official_email: 'absent',
+
+        defendant_last_name: 'Коваленко', defendant_first_name: 'Наталія', defendant_middle_name: 'Вікторівна',
+        defendant_birth_date: '1987-04-03',
+        defendant_registered_address: 'м. Одеса, вул. Рішельєвська, 20, кв. 8',
+        defendant_actual_address_known: 'same',
+        defendant_tax_number: '2667890123', defendant_has_no_ipn: false,
+        defendant_official_email: 'absent',
+
+        marital_status: 'married',
+        marriage_date: '2010-09-10',
+        marriage_place: 'Приморський відділ РАЦС Одеського міського управління юстиції',
+        marriage_act_number: '312',
+
+        children_details: 'Коваленко Олена Дмитрівна, 15.05.2012, свідоцтво № І-ОД 456789 від 16.05.2012\nКоваленко Максим Дмитрович, 22.08.2015, свідоцтво № І-ОД 567890 від 23.08.2015',
+        family_cert_date: '2024-03-01',
+        abandonment_date: '2023-10-01',
+
+        alimony_type: 'fixed',
+        alimony_fixed_amount: '8000',
+        defendant_employed: 'no',
+        alimony_start_date: '2024-03-15',
+      },
+    },
+  },
+}
+
+const arg = process.argv[2] || '4'
+const scenario = scenarios[parseInt(arg)] || alimonyScenarios[arg]
 if (!scenario) {
-  console.log('Usage: node scripts/test-webhook.mjs [1|2|3|4]')
+  console.log('Usage: node scripts/test-webhook.mjs [1|2|3|4|a1|a2]')
   process.exit(1)
 }
+const num = arg
 
 console.log(`📋 Scenario ${num}: ${scenario.name}`)
 console.log(`🚀 Sending to: ${WEBHOOK_URL}\n`)

@@ -15,6 +15,20 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
+### Group 7 — Service-demand research Блок 0 (Україна) + roadmap update
+**Status:** PENDING COMMIT
+**Why:** Свіжий проход по реальних джерелах (червень 2026) замість старого JTBD (Gemini, квітень 2026) — щоб зрозуміти попит і стратегічний сегмент. Перший артефакт SDD-дослідження. Включає петлю генератор→критик і конкурентний teardown.
+
+**Files:**
+- `docs/research/service-demand/00-ukraine.md` — **NEW** — ранг кандидатів (об'єм × WTP × ніша), конкурентний teardown (Дія, Legal Mind, FastDoc, DocEasyCraft), виправлення тези про рів
+- `docs/research/service-demand/01-candidate-military-disputes.md` — **NEW** — кандидат «військові спори»: попит, ризик довіри (high-stakes → адвокат), бізнес-модель lead-gen, ціна входу
+- `specs/roadmap.md` — аліменти відмічено готовими; додано секцію «Досліджені кандидати»
+
+**Related task:** service-demand research (Блок 0/3: Україна → ЄС загально → по країнах)
+**Next step:** Блок 1 — тимчасовий захист у ЄС (УВАГА: поза scope `mission.md` → це replanning, не фіча).
+
+---
+
 ### Group 6 — Alimony service + monorepo test infra fixes (session 10, 2026-05-13)
 **Status:** PENDING COMMIT — готово до коміту, всі тести зелені
 **Why:** New service "Стягнення аліментів" added end-to-end. Also fixed Playwright-encoding issue documentation and fixed monorepo paths in test runner and scaffold scripts.

@@ -73,10 +73,10 @@
 
 ## Технічний борг (виправити при нагоді)
 
-- [ ] Delivery pipeline: error recovery / retry в n8n 🟡
+- [ ] Delivery pipeline: n8n v7 hardening — error trigger + ensure-profile wiring + guard-ноди + try/catch. Items 3–7 у `docs/architecture/workflow-improvements.md` (НЕ внедрено) 🟡
 - [ ] Document generation: зробити сервіс-агностичним (зараз один JS файл на послугу) 🟡
 - [ ] RLS: посилити row-level security 🟡
-- [ ] Тести для n8n Code nodes: покрити критичні шляхи 🟡
+- [x] Тести для n8n Code nodes — 79 тестів (validate, shared utils, divorce document), commit b3c9013
 
 ---
 

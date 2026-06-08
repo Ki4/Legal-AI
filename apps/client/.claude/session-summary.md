@@ -31,7 +31,8 @@
 1. (Етап B) `/feature-spec service-lifecycle` — kill-switch + `law_deps` + `status` + `law_change_log`.
 2. Roadmap: `watched_laws` моніторинг 🟡 лягає в цю ж фічу.
 3. (опц.) Прибрати злиті гілки `fervent-pascal` / `spec-driven`.
-4. Хвости з session 10: dev/prod розділення, аудит Supabase/services, документація `form_config`.
+4. **n8n v7 hardening — committed-but-unfinished (НЕ внедрено):** ensure-profile wiring + Error Trigger (admin alert) + guard IF-ноди + try/catch у Build Document. План: `docs/architecture/workflow-improvements.md` items 3–7. Без цього workflow падає тихо при помилці після валідації.
+5. Хвости з session 10: dev/prod розділення, аудит Supabase/services, документація `form_config`.
 
 ---
 

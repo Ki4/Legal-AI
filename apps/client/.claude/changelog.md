@@ -15,8 +15,22 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
+### Group 8 — Session 11: consolidate branches into main + refresh master context
+**Status:** COMMITTED (session 11, 2026-06-08)
+**Why:** Робота була розмазана по 3 гілках (main, fervent-pascal, spec-driven) і session-summary застарів на 2 сесії → втрачався контекст. Зводимо все в main, оновлюємо master-context, щоб `/session-start` у новій сесії давав правдиву картину.
+
+**Files:**
+- merge `fervent-pascal-VUvi3` (Блок 0 research) + `spec-driven-development-iLSvy` (IMPROVEMENTS #32-40) → main
+- `apps/client/.claude/session-summary.md` — нова секція Session 11 (стан, стратегічні рішення, архітектурний курс, наступні кроки)
+- `apps/client/.claude/changelog.md` — Group 7 → committed; цей запис
+
+**Related task:** regain context control; main = single source of truth
+**Next step:** `/feature-spec service-lifecycle` (Етап B)
+
+---
+
 ### Group 7 — Service-demand research Блок 0 (Україна) + roadmap update
-**Status:** PENDING COMMIT
+**Status:** COMMITTED: d73be82 (merged to main, session 11)
 **Why:** Свіжий проход по реальних джерелах (червень 2026) замість старого JTBD (Gemini, квітень 2026) — щоб зрозуміти попит і стратегічний сегмент. Перший артефакт SDD-дослідження. Включає петлю генератор→критик і конкурентний teardown.
 
 **Files:**

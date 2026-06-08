@@ -15,21 +15,30 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-### service-lifecycle G1 — migration 011 (status kill-switch + law_change_log)
-**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`) — **чекає застосування в Supabase SQL Editor**
-**Why:** реалізація G1 спеки. `services.status` (active|needs_review|disabled) = авторитетний kill-switch; `law_change_log` = аудит змін законів. Backfill: divorce+alimony → active (решта disabled). divorce.needs_law_review скинуто (рішення 2026-06-08: прапорець був стале leftover, послуга жива).
+### service-lifecycle G2 — write-path kill-switch guard (form-submit)
+**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`) — код готовий, **деплой у live n8n чекає підняття Docker**
+**Why:** авторитетне enforcement kill-switch на write-path. Після «Get Service» нода-guard блокує генерацію, якщо `status != 'active'` (needs_review/disabled/not_found) — case не створюється, документ не генерується. Захищає навіть пересланий/кешований лінк форми.
 
 **Files:**
-- `supabase/migrations/011_service_lifecycle.sql` — **NEW** — status колонка + CHECK + backfill + law_change_log (RLS service_role) + узгодження needs_law_review
+- `n8n/templates/check-service-status.js` — **NEW** — тестована guard-логіка (дзеркало inline Code-ноди)
+- `n8n/templates/__tests__/check-service-status.test.js` — **NEW** — 6 тестів (active/needs_review/disabled/not_found/unknown)
+- `n8n/workflows/current/form-submit.json` — +3 ноди (Check Service Status → Is Service Active? → Respond Unavailable HTTP 503) + rewire; reserialized у 2-space, BOM прибрано (були PowerShell-артефакти)
 
-**Related task:** spec `specs/features/service-lifecycle/` (G1)
-**Next step:** застосувати в SQL Editor → верифікувати через REST → commit → G2 (write-path guard у form-submit)
+**Tests:** vitest 153/153 ✅ | divorce 4/4 ✅ | alimony 3/3 ✅
+**Related task:** spec `specs/features/service-lifecycle/` (G2)
+**Next step:** commit → коли Docker/n8n підніметься: push workflow через n8n API (Node.js) + відновити реальні ключі в Global Config → G3 (read-path guards: App.tsx + main-bot)
 
 ---
 
 ## 📜 Commit history (most recent first)
 
 > When a pending group above is committed, move it here with the commit hash and date.
+
+### 2026-06-08 (session 12) — service-lifecycle G1: status kill-switch + law_change_log
+**Commit:** `fffd813`
+**Why:** реалізація G1 спеки. `services.status` (active|needs_review|disabled) = авторитетний kill-switch; `law_change_log` = аудит змін законів. Backfill: divorce+alimony → active (решта disabled). divorce.needs_law_review скинуто (рішення: прапорець був стале leftover, послуга жива). Застосовано + верифіковано через REST.
+**Files:**
+- `supabase/migrations/011_service_lifecycle.sql` — **NEW** — status + CHECK + backfill + law_change_log (RLS service_role)
 
 ### 2026-06-08 (session 12) — service-lifecycle feature spec + deferred compromises
 **Commit:** `a2add92`

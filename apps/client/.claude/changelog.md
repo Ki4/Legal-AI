@@ -15,6 +15,14 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
+### Rule — GitHub Issue tracking
+**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`)
+**Why:** Сергій почав використовувати GitHub Issues. Щоб не плодити 5-те дубльоване джерело правди (drift), зафіксували розподіл ролей: issues = статус-борд, що ПОСИЛАЄТЬСЯ на specs/changelog/IMPROVEMENTS. 1 issue/фіча + чекліст G1-G5; Claude рухає статуси через `gh` (довга авторизація); коміти лінкують `Refs/Closes #N`.
+**Files:**
+- `CLAUDE.md` — нова секція «Issue tracking (GitHub)» + інтеграція в Session protocol
+**Related task:** process hygiene
+**Next step:** встановити `gh` (`winget install GitHub.cli` → `gh auth login`), потім завести issue для service-lifecycle
+
 ### service-lifecycle G2 — write-path kill-switch guard (form-submit)
 **Status:** PENDING COMMIT (гілка `feature/service-lifecycle`) — код готовий, **деплой у live n8n чекає підняття Docker**
 **Why:** авторитетне enforcement kill-switch на write-path. Після «Get Service» нода-guard блокує генерацію, якщо `status != 'active'` (needs_review/disabled/not_found) — case не створюється, документ не генерується. Захищає навіть пересланий/кешований лінк форми.

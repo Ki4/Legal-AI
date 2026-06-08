@@ -15,24 +15,28 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-### service-lifecycle — feature spec + зафіксовані компроміси
-**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`)
-**Why:** планування Етапу B (service-lifecycle, backend-фундамент) через SDD. Послуга = керований юніт зі `status`-kill-switch + аудит `law_change_log`. Свідомо прийняті тимчасові компроміси винесені в IMPROVEMENTS, щоб не загубити.
+### service-lifecycle G1 — migration 011 (status kill-switch + law_change_log)
+**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`) — **чекає застосування в Supabase SQL Editor**
+**Why:** реалізація G1 спеки. `services.status` (active|needs_review|disabled) = авторитетний kill-switch; `law_change_log` = аудит змін законів. Backfill: divorce+alimony → active (решта disabled). divorce.needs_law_review скинуто (рішення 2026-06-08: прапорець був стале leftover, послуга жива).
 
 **Files:**
-- `specs/features/service-lifecycle/plan.md` — **NEW** — підхід, enforcement points, task groups G1-G5
-- `specs/features/service-lifecycle/requirements.md` — **NEW** — migration 011 (status + law_change_log), n8n/frontend guards, constraints
-- `specs/features/service-lifecycle/validation.md` — **NEW** — scorecard + DoD
-- `docs/architecture/IMPROVEMENTS.md` — #41 (needs_law_review дублює status), #42 (law_deps у JSONB), #43 (read-path kill-switch у боті неповний)
+- `supabase/migrations/011_service_lifecycle.sql` — **NEW** — status колонка + CHECK + backfill + law_change_log (RLS service_role) + узгодження needs_law_review
 
-**Related task:** roadmap v1 «watched_laws моніторинг» 🟡 + master-context Етап B
-**Next step:** ревʼю спеки → commit `spec: service-lifecycle feature spec` → реалізація G1 (migration 011)
+**Related task:** spec `specs/features/service-lifecycle/` (G1)
+**Next step:** застосувати в SQL Editor → верифікувати через REST → commit → G2 (write-path guard у form-submit)
 
 ---
 
 ## 📜 Commit history (most recent first)
 
 > When a pending group above is committed, move it here with the commit hash and date.
+
+### 2026-06-08 (session 12) — service-lifecycle feature spec + deferred compromises
+**Commit:** `a2add92`
+**Why:** планування Етапу B (service-lifecycle, backend-фундамент) через SDD. Послуга = керований юніт зі `status`-kill-switch + аудит `law_change_log`. Свідомо прийняті тимчасові компроміси винесені в IMPROVEMENTS, щоб не загубити.
+**Files:**
+- `specs/features/service-lifecycle/{plan,requirements,validation}.md` — **NEW** — спека (scope, guards, scorecard)
+- `docs/architecture/IMPROVEMENTS.md` — #41 (needs_law_review дублює status), #42 (law_deps у JSONB), #43 (read-path kill-switch у боті неповний)
 
 ### 2026-06-08 (session 11) — Decisions doc (RAG/GraphRAG) + portfolio-value + untrack local settings
 **Commit:** (this session)

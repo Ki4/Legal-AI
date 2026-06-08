@@ -35,3 +35,4 @@ supabase/.temp/
 
 # Office temp files
 ~$*
+.claude/settings.local.json

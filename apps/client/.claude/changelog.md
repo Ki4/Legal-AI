@@ -23,6 +23,15 @@ _Зараз порожньо — усе закоммічено (звірено �
 
 > When a pending group above is committed, move it here with the commit hash and date.
 
+### 2026-06-08 (session 11) — Decisions doc (RAG/GraphRAG) + portfolio-value + untrack local settings
+**Commit:** (this session)
+**Why:** зафіксувати рішення RAG/GraphRAG/Hybrid у DECISIONS.md; зберегти portfolio-value як стратегічний «why»-док; прибрати `.claude/settings.local.json` з git (персональний файл — шум між машинами/сесіями).
+**Files:**
+- `docs/architecture/DECISIONS.md` — розділ «RAG vs GraphRAG vs Hybrid Template»
+- `docs/strategy/portfolio-value.md` — **NEW** — цінність проекту як портфоліо AI Engineer
+- `.gitignore` — додано `.claude/settings.local.json`
+- `.claude/settings.local.json` — `git rm --cached` (перестали трекати)
+
 ### 2026-06-08 (session 11) — Consolidate branches + refresh master context
 **Commit:** `e9a2f77` (merges `3c56925`, `d73be82`)
 **Why:** робота була розмазана по 3 гілках і session-summary застарів на 2 сесії → втрачався контекст. Звели все в main, оновили master-context. main = єдине джерело правди.

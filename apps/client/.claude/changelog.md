@@ -15,7 +15,18 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-_Зараз порожньо — усе закоммічено (звірено в session 11, 2026-06-08). Див. «Commit history» нижче._
+### service-lifecycle — feature spec + зафіксовані компроміси
+**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`)
+**Why:** планування Етапу B (service-lifecycle, backend-фундамент) через SDD. Послуга = керований юніт зі `status`-kill-switch + аудит `law_change_log`. Свідомо прийняті тимчасові компроміси винесені в IMPROVEMENTS, щоб не загубити.
+
+**Files:**
+- `specs/features/service-lifecycle/plan.md` — **NEW** — підхід, enforcement points, task groups G1-G5
+- `specs/features/service-lifecycle/requirements.md` — **NEW** — migration 011 (status + law_change_log), n8n/frontend guards, constraints
+- `specs/features/service-lifecycle/validation.md` — **NEW** — scorecard + DoD
+- `docs/architecture/IMPROVEMENTS.md` — #41 (needs_law_review дублює status), #42 (law_deps у JSONB), #43 (read-path kill-switch у боті неповний)
+
+**Related task:** roadmap v1 «watched_laws моніторинг» 🟡 + master-context Етап B
+**Next step:** ревʼю спеки → commit `spec: service-lifecycle feature spec` → реалізація G1 (migration 011)
 
 ---
 

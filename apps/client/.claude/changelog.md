@@ -15,24 +15,22 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-### service-lifecycle G3 — read-path guards (App.tsx + main-bot) — код готовий, live-деплой main-bot чекає дозволу
-**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`)
-**Why:** доповнити write-path kill-switch (G2) на read-path, щоб неактивну послугу не можна було навіть відкрити. Два шари: (1) TWA не рендерить форму неактивної послуги; (2) бот не віддає кнопку TWA. Write-path 503 (G2) лишається авторитетним backstop.
-
-**Files:**
-- `apps/client/src/App.tsx` — у select додано `status`; якщо `status != 'active'` → новий екран `UnavailableScreen`; у `handleSubmit` 503/`service_unavailable` показує `message` сервера (а не generic alert); BackButton ховається на новому екрані. Спільна константа `SERVICE_UNAVAILABLE_MSG`.
-- `n8n/workflows/current/main-bot.json` — +3 ноди: `Is Active? (high)` / `Is Active? (medium)` (IF `status==='active'`) після відповідних `Get Service`; false-гілка (вкл. «не знайдено») → нова `Service Unavailable (bot)` (Telegram). 20→23 ноди.
-- `scripts/deploy-workflow.mjs` — узагальнено: ціль `form-submit|main-bot` (id+файл); credential-fallback **за типом** (нові ноди отримують live-акаунт свого типу); Global Config-ін'єкція тепер опціональна; ім'я бекапу за ціллю.
-
-**Verification:** `tsc -b` ✅ (App.tsx) · main-bot dry-run: 20→23, 0 live-only втрачено ✅ · ⚠️ live-деплой main-bot **заблоковано** (продакшн-бот, чекає явного дозволу) — НЕ перевірено наживо.
-**Related task:** Issue #29 (G3) · IMPROVEMENTS #43 (read-path у боті)
-**Next step:** отримати дозвіл → `node scripts/deploy-workflow.mjs main-bot` → перевірити в Telegram (active → кнопка; disabled → повідомлення) → G4
+> ⏳ **Не файл, а дія:** live-деплой `main-bot` у n8n + перевірка в Telegram — **чекає явного дозволу** (продакшн-бот). Команда: `node scripts/deploy-workflow.mjs main-bot`. Код уже закомічено (нижче).
 
 ---
 
 ## 📜 Commit history (most recent first)
 
 > When a pending group above is committed, move it here with the commit hash and date.
+
+### 2026-06-09 (session 13) — service-lifecycle G3: read-path guards (App.tsx + main-bot)
+**Commit:** `c6b2d15` · Refs #29
+**Why:** доповнити write-path kill-switch (G2) на read-path — неактивну послугу не можна навіть відкрити. (1) TWA не рендерить форму неактивної; (2) бот не віддає кнопку TWA. Write-path 503 лишається авторитетним backstop.
+**Files:**
+- `apps/client/src/App.tsx` — select `status`; `UnavailableScreen` коли `!= 'active'`; 503/`service_unavailable` показує `message` сервера; BackButton ховається. Константа `SERVICE_UNAVAILABLE_MSG`.
+- `n8n/workflows/current/main-bot.json` — +3 ноди (`Is Active? (high|medium)` IF + `Service Unavailable (bot)`), 20→23; false-гілка покриває і «не знайдено».
+- `scripts/deploy-workflow.mjs` — ціль `form-submit|main-bot`; credential-fallback за типом (нові ноди); опціональна Global Config-ін'єкція; ім'я бекапу за ціллю.
+**Verification:** `tsc -b` ✅ · client vitest 68/68 ✅ · main-bot dry-run 20→23, 0 live-only ✅ · ⚠️ live-деплой main-bot НЕ зроблено (чекає дозволу — див. Pending).
 
 ### 2026-06-09 (session 13) — read-only permission allowlist
 **Commit:** `3afc439`

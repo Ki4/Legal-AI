@@ -15,20 +15,21 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-### deploy-workflow — retry на rate-limit + main-bot задеплоєно/перевірено
-**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`)
-**Why:** `activate` після PUT падав на n8n rate-limit («too many requests»). Додано retry з backoff у `api()`. Також зафіксовано результат live-деплою main-bot (G3) — деплой був заблокований класифікатором, виконано після явного дозволу користувача.
-**Files:**
-- `scripts/deploy-workflow.mjs` — `api()` ретраїть transient «too many requests» (до 4 спроб, backoff)
-**Live result (main-bot `Ns5VXWiG8Myg3O6S`):** задеплоєно 20→23 ноди, `active: true`, нова `Service Unavailable (bot)` отримала правильний live telegram-cred (`YPiMlLjRRAznPhvZ`) через type-fallback ✅
-**Verification (Playwright, dev TWA localhost:5173):** `?service=divorce` (active) → екран послуги; `?service=military` (disabled) → екран «Послуга тимчасово недоступна» ✅. Telegram-флоу бота автотестом не ганявся (потребує Telegram-сесії) — структурно задеплоєно й активно.
-**Next step:** commit → **G4** (ручні lifecycle-скрипти)
+> _(порожньо — все закомічено)_
 
 ---
 
 ## 📜 Commit history (most recent first)
 
 > When a pending group above is committed, move it here with the commit hash and date.
+
+### 2026-06-09 (session 13) — deploy-workflow rate-limit retry + main-bot G3 live deploy
+**Commit:** `f5ca036` · Refs #29
+**Why:** `activate` після PUT падав на n8n rate-limit. `api()` тепер ретраїть transient «too many requests» (backoff). Зафіксовано live-деплой main-bot (після явного дозволу — деплой блокувався класифікатором).
+**Files:**
+- `scripts/deploy-workflow.mjs` — retry на rate-limit у `api()`
+**Live (main-bot `Ns5VXWiG8Myg3O6S`):** 20→23 ноди, `active: true`; нова `Service Unavailable (bot)` ← правильний live telegram-cred через type-fallback ✅
+**Verification (Playwright, dev TWA):** `?service=divorce`→форма; `?service=military`→«тимчасово недоступна» ✅. Telegram-флоу не автотестився (потребує TG-сесії).
 
 ### 2026-06-09 (session 13) — service-lifecycle G3: read-path guards (App.tsx + main-bot)
 **Commit:** `c6b2d15` · Refs #29

@@ -22,8 +22,14 @@ import { dirname, resolve } from 'node:path';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 
-const WORKFLOW_ID = 'D2ab06X3pVUWk1py';
-const WORKFLOW_FILE = resolve(ROOT, 'n8n/workflows/current/form-submit.json');
+// Deploy target: `node scripts/deploy-workflow.mjs <form-submit|main-bot> [flags]`
+const TARGETS = {
+  'form-submit': { id: 'D2ab06X3pVUWk1py', file: 'n8n/workflows/current/form-submit.json' },
+  'main-bot': { id: 'Ns5VXWiG8Myg3O6S', file: 'n8n/workflows/current/main-bot.json' },
+};
+const TARGET = process.argv.find((a) => TARGETS[a]) || 'form-submit';
+const WORKFLOW_ID = TARGETS[TARGET].id;
+const WORKFLOW_FILE = resolve(ROOT, TARGETS[TARGET].file);
 const ENV_FILE = resolve(ROOT, 'apps/client/.env.local');
 const N8N_BASE = process.env.N8N_BASE_URL || 'http://localhost:5678';
 const BACKUP_DIR = resolve(ROOT, 'n8n/workflows/.backups');
@@ -78,13 +84,13 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-console.log(`→ n8n: ${N8N_BASE}  workflow: ${WORKFLOW_ID}`);
+console.log(`→ n8n: ${N8N_BASE}  target: ${TARGET} (${WORKFLOW_ID})`);
 
 // --- 1. backup live ----------------------------------------------------------
 const live = await api('GET', `/workflows/${WORKFLOW_ID}`);
 mkdirSync(BACKUP_DIR, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-const backupPath = resolve(BACKUP_DIR, `form-submit.live-${stamp}.json`);
+const backupPath = resolve(BACKUP_DIR, `${TARGET}.live-${stamp}.json`);
 writeFileSync(backupPath, JSON.stringify(live, null, 2), 'utf8');
 console.log(`✓ live backup -> ${backupPath} (gitignored)`);
 
@@ -108,31 +114,52 @@ if (CHECK_ONLY) {
 }
 
 // --- 3. preserve credential bindings (env-specific, never from repo JSON) ----
+// Match by node name first; fall back to credential *type* so brand-new repo
+// nodes (not yet in live) still get a valid binding (one account per type here).
 const credSource = CREDS_FROM
   ? JSON.parse(readFileSync(resolve(ROOT, CREDS_FROM), 'utf8'))
   : live;
-const liveCreds = new Map(
-  credSource.nodes.filter((n) => n.credentials).map((n) => [n.name, n.credentials]),
-);
+const byName = new Map();
+const byType = new Map();
+for (const n of credSource.nodes) {
+  if (!n.credentials) continue;
+  byName.set(n.name, n.credentials);
+  for (const [type, binding] of Object.entries(n.credentials)) byType.set(type, binding);
+}
+let mapped = 0;
 for (const n of repo.nodes) {
-  if (liveCreds.has(n.name)) n.credentials = liveCreds.get(n.name);
+  if (!n.credentials) continue;
+  if (byName.has(n.name)) {
+    n.credentials = byName.get(n.name);
+    mapped++;
+  } else {
+    // new node: rebind each credential type to the live account of that type
+    for (const type of Object.keys(n.credentials)) {
+      if (byType.has(type)) n.credentials[type] = byType.get(type);
+    }
+    mapped++;
+  }
 }
-console.log(`✓ preserved credentials from ${CREDS_FROM || 'live'} for ${liveCreds.size} nodes`);
+console.log(`✓ preserved credentials from ${CREDS_FROM || 'live'} for ${mapped} nodes (by name, type-fallback for new)`);
 
-// --- 4. inject real keys into Global Config (in memory only) -----------------
+// --- 4. inject real keys into Global Config (in memory only; if present) -----
 const gc = repo.nodes.find((n) => n.name === 'Global Config');
-if (!gc) throw new Error('Global Config node not found in repo JSON');
-let code = gc.parameters.jsCode;
-for (const [placeholder, envKey] of Object.entries(KEY_MAP)) {
-  if (!code.includes(placeholder)) continue;
-  const val = env[envKey];
-  if (!val) throw new Error(`Env ${envKey} missing for placeholder ${placeholder}`);
-  code = code.split(placeholder).join(val);
+if (gc) {
+  let code = gc.parameters.jsCode;
+  for (const [placeholder, envKey] of Object.entries(KEY_MAP)) {
+    if (!code.includes(placeholder)) continue;
+    const val = env[envKey];
+    if (!val) throw new Error(`Env ${envKey} missing for placeholder ${placeholder}`);
+    code = code.split(placeholder).join(val);
+  }
+  if (code.includes('YOUR_')) throw new Error('A YOUR_ placeholder remains unresolved in Global Config');
+  gc.parameters.jsCode = code;
+  console.log('✓ injected real keys into Global Config');
+} else {
+  console.log('· no Global Config node (key injection skipped)');
 }
-if (code.includes('YOUR_')) throw new Error('A YOUR_ placeholder remains unresolved in Global Config');
-gc.parameters.jsCode = code;
 
-// --- 4. PUT (public API accepts name/nodes/connections/settings only) --------
+// --- 5. PUT (public API accepts name/nodes/connections/settings only) --------
 const payload = {
   name: repo.name,
   nodes: repo.nodes,
@@ -140,9 +167,9 @@ const payload = {
   settings: repo.settings ?? {},
 };
 await api('PUT', `/workflows/${WORKFLOW_ID}`, payload);
-console.log('✓ workflow updated (G2 guard nodes deployed)');
+console.log(`✓ workflow updated (${TARGET})`);
 
-// --- 5. ensure active --------------------------------------------------------
+// --- 6. ensure active --------------------------------------------------------
 await api('POST', `/workflows/${WORKFLOW_ID}/activate`);
 console.log('✓ workflow active');
 console.log('\nDone. Verify: node scripts/test-webhook.mjs 2');

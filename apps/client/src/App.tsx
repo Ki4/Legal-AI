@@ -8,6 +8,10 @@ import { enableClosingConfirmation, disableClosingConfirmation, hideBackButton }
 import type { Answers, FormConfig } from './types/form'
 import { Scale, Shield, Clock, FileText } from 'lucide-react'
 
+// Default copy for an unavailable service (read + write path share the wording).
+const SERVICE_UNAVAILABLE_MSG =
+  'На жаль, ця послуга зараз тимчасово недоступна. Ми оновлюємо її відповідно до змін у законодавстві. Спробуйте, будь ласка, пізніше.'
+
 // ── localStorage cache (TTL: 1 hour) ──────────────────────────────────────
 const CACHE_TTL = 60 * 60 * 1000
 function getCached(slug: string): FormConfig | null {
@@ -193,6 +197,20 @@ function ErrorScreen() {
   )
 }
 
+// Shown when a service is not `active` (read-path guard, mirrors the n8n
+// write-path 503). The write-path remains the authoritative backstop.
+function UnavailableScreen({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-dvh px-6 text-center bg-surface">
+      <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+        <span className="text-3xl">🛠️</span>
+      </div>
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Послуга тимчасово недоступна</h2>
+      <p className="text-sm text-gray-500 leading-relaxed">{message}</p>
+    </div>
+  )
+}
+
 export default function App() {
   const [submitted, setSubmitted] = useState(false)
   const [submitPending, setSubmitPending] = useState(false)
@@ -201,6 +219,7 @@ export default function App() {
   const [userName, setUserName] = useState('')
   const [config, setConfig] = useState<FormConfig | null>(null)
   const [loadError, setLoadError] = useState(false)
+  const [unavailableMsg, setUnavailableMsg] = useState<string | null>(null)
 
   // Read service slug from URL param (set by Telegram bot inline button)
   const serviceSlug = new URLSearchParams(window.location.search).get('service') ?? 'divorce'
@@ -226,12 +245,19 @@ export default function App() {
     }
     supabase
       .from('services')
-      .select('form_config, title')
+      .select('form_config, title, status')
       .eq('slug', serviceSlug)
       .single()
       .then(({ data, error }) => {
         if (error || !data?.form_config) {
           if (!cached) setLoadError(true)
+          return
+        }
+        // Read-path guard: only `active` services are openable. A cached form
+        // for a now-disabled service is overridden here once the fetch lands;
+        // the n8n write-path 503 (G2) is the authoritative backstop.
+        if (data.status !== 'active') {
+          setUnavailableMsg(SERVICE_UNAVAILABLE_MSG)
           return
         }
         const fresh = data.form_config as FormConfig
@@ -274,6 +300,13 @@ export default function App() {
         const data = await res.json()
         if (!res.ok) {
           console.error('[Legal AI] Server error:', data)
+          // Write-path kill-switch (G2): service became unavailable between
+          // load and submit (e.g. forwarded/cached link). Show the dedicated
+          // screen with the server's message instead of a generic retry alert.
+          if (res.status === 503 || data?.code === 'service_unavailable') {
+            setUnavailableMsg(data?.message || SERVICE_UNAVAILABLE_MSG)
+            return
+          }
           tg?.showAlert('Помилка відправки. Спробуйте ще раз.')
           return
         }
@@ -312,12 +345,12 @@ export default function App() {
     }
   }, [consented, submitted])
 
-  // ── BackButton: hide on success/error/loading screens ──
+  // ── BackButton: hide on success/error/unavailable/loading screens ──
   useEffect(() => {
-    if (!consented || submitted || loadError || !config) {
+    if (!consented || submitted || loadError || unavailableMsg || !config) {
       hideBackButton()
     }
-  }, [consented, submitted, loadError, config])
+  }, [consented, submitted, loadError, unavailableMsg, config])
 
   // ── Clear draft on successful submit ──
   useEffect(() => {
@@ -326,9 +359,10 @@ export default function App() {
     }
   }, [submitted, submitPending, serviceSlug])
 
-  if (submitted)  return <SuccessScreen name={userName || 'Клієнт'} pending={submitPending} />
-  if (loadError)  return <ErrorScreen />
-  if (!config)    return <SkeletonLoader />
+  if (submitted)     return <SuccessScreen name={userName || 'Клієнт'} pending={submitPending} />
+  if (unavailableMsg) return <UnavailableScreen message={unavailableMsg} />
+  if (loadError)     return <ErrorScreen />
+  if (!config)       return <SkeletonLoader />
 
   if (!consented) {
     return (

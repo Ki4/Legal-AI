@@ -15,7 +15,14 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-> ⏳ **Не файл, а дія:** live-деплой `main-bot` у n8n + перевірка в Telegram — **чекає явного дозволу** (продакшн-бот). Команда: `node scripts/deploy-workflow.mjs main-bot`. Код уже закомічено (нижче).
+### deploy-workflow — retry на rate-limit + main-bot задеплоєно/перевірено
+**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`)
+**Why:** `activate` після PUT падав на n8n rate-limit («too many requests»). Додано retry з backoff у `api()`. Також зафіксовано результат live-деплою main-bot (G3) — деплой був заблокований класифікатором, виконано після явного дозволу користувача.
+**Files:**
+- `scripts/deploy-workflow.mjs` — `api()` ретраїть transient «too many requests» (до 4 спроб, backoff)
+**Live result (main-bot `Ns5VXWiG8Myg3O6S`):** задеплоєно 20→23 ноди, `active: true`, нова `Service Unavailable (bot)` отримала правильний live telegram-cred (`YPiMlLjRRAznPhvZ`) через type-fallback ✅
+**Verification (Playwright, dev TWA localhost:5173):** `?service=divorce` (active) → екран послуги; `?service=military` (disabled) → екран «Послуга тимчасово недоступна» ✅. Telegram-флоу бота автотестом не ганявся (потребує Telegram-сесії) — структурно задеплоєно й активно.
+**Next step:** commit → **G4** (ручні lifecycle-скрипти)
 
 ---
 
@@ -30,7 +37,7 @@
 - `apps/client/src/App.tsx` — select `status`; `UnavailableScreen` коли `!= 'active'`; 503/`service_unavailable` показує `message` сервера; BackButton ховається. Константа `SERVICE_UNAVAILABLE_MSG`.
 - `n8n/workflows/current/main-bot.json` — +3 ноди (`Is Active? (high|medium)` IF + `Service Unavailable (bot)`), 20→23; false-гілка покриває і «не знайдено».
 - `scripts/deploy-workflow.mjs` — ціль `form-submit|main-bot`; credential-fallback за типом (нові ноди); опціональна Global Config-ін'єкція; ім'я бекапу за ціллю.
-**Verification:** `tsc -b` ✅ · client vitest 68/68 ✅ · main-bot dry-run 20→23, 0 live-only ✅ · ⚠️ live-деплой main-bot НЕ зроблено (чекає дозволу — див. Pending).
+**Verification:** `tsc -b` ✅ · client vitest 68/68 ✅ · main-bot dry-run 20→23, 0 live-only ✅. (Live-деплой main-bot + Playwright-перевірка зроблені окремо після дозволу — див. наступний запис.)
 
 ### 2026-06-09 (session 13) — read-only permission allowlist
 **Commit:** `3afc439`

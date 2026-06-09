@@ -60,20 +60,26 @@ const KEY_MAP = {
   YOUR_ENCRYPTION_KEY_64_HEX: 'ENCRYPTION_KEY',
 };
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function api(method, path, body) {
-  const res = await fetch(`${N8N_BASE}/api/v1${path}`, {
-    method,
-    headers: {
-      'X-N8N-API-KEY': API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const text = await res.text();
-  if (!res.ok) {
+  // n8n's API rate-limits bursts (PUT immediately followed by activate). Retry
+  // transient "too many requests" responses with a short backoff.
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${N8N_BASE}/api/v1${path}`, {
+      method,
+      headers: { 'X-N8N-API-KEY': API_KEY, 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const text = await res.text();
+    if (res.ok) return text ? JSON.parse(text) : null;
+    const transient = /too many requests/i.test(text) || res.status === 429;
+    if (transient && attempt < 4) {
+      await sleep(1500 * (attempt + 1));
+      continue;
+    }
     throw new Error(`${method} ${path} -> ${res.status}\n${text}`);
   }
-  return text ? JSON.parse(text) : null;
 }
 
 // --- load secrets ------------------------------------------------------------

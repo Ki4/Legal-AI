@@ -15,32 +15,51 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-### Rule — GitHub Issue tracking
-**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`)
-**Why:** Сергій почав використовувати GitHub Issues. Щоб не плодити 5-те дубльоване джерело правди (drift), зафіксували розподіл ролей: issues = статус-борд, що ПОСИЛАЄТЬСЯ на specs/changelog/IMPROVEMENTS. 1 issue/фіча + чекліст G1-G5; Claude рухає статуси через `gh` (довга авторизація); коміти лінкують `Refs/Closes #N`.
-**Files:**
-- `CLAUDE.md` — нова секція «Issue tracking (GitHub)» + інтеграція в Session protocol
-**Related task:** process hygiene
-**Next step:** встановити `gh` (`winget install GitHub.cli` → `gh auth login`), потім завести issue для service-lifecycle
-
-### service-lifecycle G2 — write-path kill-switch guard (form-submit)
-**Status:** PENDING COMMIT (гілка `feature/service-lifecycle`) — код готовий, **деплой у live n8n чекає підняття Docker**
-**Why:** авторитетне enforcement kill-switch на write-path. Після «Get Service» нода-guard блокує генерацію, якщо `status != 'active'` (needs_review/disabled/not_found) — case не створюється, документ не генерується. Захищає навіть пересланий/кешований лінк форми.
-
-**Files:**
-- `n8n/templates/check-service-status.js` — **NEW** — тестована guard-логіка (дзеркало inline Code-ноди)
-- `n8n/templates/__tests__/check-service-status.test.js` — **NEW** — 6 тестів (active/needs_review/disabled/not_found/unknown)
-- `n8n/workflows/current/form-submit.json` — +3 ноди (Check Service Status → Is Service Active? → Respond Unavailable HTTP 503) + rewire; reserialized у 2-space, BOM прибрано (були PowerShell-артефакти)
-
-**Tests:** vitest 153/153 ✅ | divorce 4/4 ✅ | alimony 3/3 ✅
-**Related task:** spec `specs/features/service-lifecycle/` (G2)
-**Next step:** commit → коли Docker/n8n підніметься: push workflow через n8n API (Node.js) + відновити реальні ключі в Global Config → G3 (read-path guards: App.tsx + main-bot)
+> _(порожньо — все закомічено)_
 
 ---
 
 ## 📜 Commit history (most recent first)
 
 > When a pending group above is committed, move it here with the commit hash and date.
+
+### 2026-06-09 (session 13) — read-only permission allowlist
+**Commit:** `3afc439`
+**Why:** зменшити кількість permission-промптів для частих read-only інструментів (через /fewer-permission-prompts: скан транскриптів). Додано лише немутуючі, не-arbitrary-execution патерни; project-scoped.
+**Files:**
+- `.claude/settings.json` — **NEW** — `permissions.allow`: context7 (docs), playwright/preview screenshots+snapshot, `npm ls *`, `findstr *`
+
+### 2026-06-09 (session 13) — Docs navigation: index in IMPROVEMENTS + TOC in DECISIONS
+**Commit:** `939360a`
+**Why:** IMPROVEMENTS згруповано по темах, але `#N` — стабільні ID у порядку появи → в тілі не послідовні, незручно читати. Додано відсортований індекс зверху (ID не чіпано — на них посилаються issues/changelog). Виявлено **ID-колізії #12 і #20** + відсутній #1 — позначено в індексі як «чекає рішення».
+**Files:**
+- `docs/architecture/IMPROVEMENTS.md` — 📇 Індекс (за номером) з anchor-лінками + ⚠️ на колізіях
+- `docs/architecture/DECISIONS.md` — 📇 Зміст (логічний TOC)
+**Next step:** (опц., чекає дозволу) розвести #12/#20 → #44/#45 з оновленням зовнішніх посилань
+
+### 2026-06-09 (session 13) — service-lifecycle: deploy script + G2 live deploy (deploy-gap closed)
+**Commit:** `3c282da` · Refs #29
+**Why:** деплой workflow у live n8n був ручною рутиною з пасткою (плейсхолдери ключів у репо-JSON). Скрипт робить це безпечно: бекап live → diff нод → ін'єкція ключів у пам'яті → **збереження env-specific credential-ID** (не з репо) → PUT → activate. G2-guard задеплоєно й перевірено.
+**Files:**
+- `scripts/deploy-workflow.mjs` — **NEW** — деплой через n8n REST API (`--check` dry-run, `--creds-from=<file>` відновлення прив'язок); бекапи в gitignored `.backups/`
+- `.gitignore` — `n8n/workflows/.backups/`
+**Verification (live `D2ab06X3pVUWk1py`):** deploy 19→22 ноди, 0 live-only втрачено, 9 cred-прив'язок збережено ✅ · kill-switch disabled `military` → HTTP **503**, `Insert Case` НЕ виконано ✅
+**Урок:** перший PUT зламав Supabase-ноди (репо ніс старі cred-ID) → виправлено `--creds-from`. Правило: credential-ID специфічні для середовища, репо ними не керує.
+
+### 2026-06-08 (session 12) — Rule: GitHub Issue tracking
+**Commit:** `79f5a6d`
+**Why:** Сергій почав використовувати GitHub Issues. Щоб не плодити 5-те дубльоване джерело правди (drift), зафіксували розподіл ролей: issues = статус-борд, що ПОСИЛАЄТЬСЯ на specs/changelog/IMPROVEMENTS. 1 issue/фіча + чекліст G1-G5; Claude рухає статуси через `gh` (довга авторизація); коміти лінкують `Refs/Closes #N`.
+**Files:**
+- `CLAUDE.md` — нова секція «Issue tracking (GitHub)» + інтеграція в Session protocol
+
+### 2026-06-08 (session 12) — service-lifecycle G2: write-path kill-switch guard
+**Commit:** `5826cea`
+**Why:** авторитетне enforcement kill-switch на write-path. Після «Get Service» нода-guard блокує генерацію, якщо `status != 'active'` (needs_review/disabled/not_found) — case не створюється, документ не генерується. Захищає навіть пересланий/кешований лінк форми. (Деплой у live n8n зроблено окремо — див. pending «deploy script».)
+**Files:**
+- `n8n/templates/check-service-status.js` — **NEW** — тестована guard-логіка (дзеркало inline Code-ноди)
+- `n8n/templates/__tests__/check-service-status.test.js` — **NEW** — 6 тестів
+- `n8n/workflows/current/form-submit.json` — +3 ноди (Check Service Status → Is Service Active? → Respond Unavailable HTTP 503) + rewire
+**Tests:** vitest 153/153 ✅ | divorce 4/4 ✅ | alimony 3/3 ✅
 
 ### 2026-06-08 (session 12) — service-lifecycle G1: status kill-switch + law_change_log
 **Commit:** `fffd813`

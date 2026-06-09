@@ -5,6 +5,24 @@
 
 ---
 
+## 📇 Зміст
+
+> Рішення йдуть у логічному порядку (стек → дані → AI → борг). Без номерів — це не беклог, а журнал «чому так».
+
+- [n8n vs Custom Backend (Node.js/Python)](#n8n-vs-custom-backend-nodejspython)
+- [Supabase vs Firebase vs PlanetScale](#supabase-vs-firebase-vs-planetscale)
+- [Groq vs OpenAI vs Google Gemini (генерація документів)](#groq-vs-openai-vs-google-gemini-генерація-документів)
+- [Google Docs vs PDF генерація vs DOCX](#google-docs-vs-pdf-генерація-vs-docx)
+- [Gemini Embedding 2 vs OpenAI text-embedding-3 vs Titan V2 (для RAG)](#gemini-embedding-2-vs-openai-text-embedding-3-vs-titan-v2-для-rag)
+- [Supabase pgvector vs AWS Bedrock Knowledgebase (зберігання векторів)](#supabase-pgvector-vs-aws-bedrock-knowledgebase-зберігання-векторів)
+- [Один Vercel app (TWA + Admin) vs Окремі деплої](#один-vercel-app-twa-admin-vs-окремі-деплої)
+- [Telegram TWA vs Web App vs Mobile App](#telegram-twa-vs-web-app-vs-mobile-app)
+- [React vs Next.js vs SvelteKit](#react-vs-nextjs-vs-sveltekit)
+- [AI Technical Debt — стратегія профілактики](#ai-technical-debt-стратегія-профілактики)
+- [RAG vs GraphRAG vs Hybrid Template (генерація документів)](#rag-vs-graphrag-vs-hybrid-template-генерація-документів)
+
+---
+
 ## n8n vs Custom Backend (Node.js/Python)
 
 **Обрали: n8n cloud**

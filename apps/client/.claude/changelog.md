@@ -15,7 +15,18 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-> _(порожньо — все закомічено)_
+### 2026-06-10 (session 15) — workflow hardening v7: error visibility + guards
+**Status:** PENDING COMMIT · Refs #30
+**Why:** divorce+alimony — живі послуги, а workflow падав ТИХО при будь-якій помилці після валідації (БД, Groq-таймаут, Google Docs) — юзер без відповіді, оператор без сигналу. Робимо так, щоб провал було ВИДНО.
+**Files:**
+- `n8n/workflows/current/form-submit.json` — 22→28 нод: **Error Trigger → Format Error → Send Admin Alert** (Telegram-алерт адміну на будь-який unhandled-збій); **Get Profile guard** (`Check Profile` → `Has Profile?` → `Respond No Profile` 422; `alwaysOutputData` на Get Profile/Get Service); try/catch навколо диспатчу Build Document (re-throw з `service+case`); структурний Respond Error (`code/message`).
+- `n8n/templates/format-error.js` + `__tests__/format-error.test.js` — **NEW** — формат алерта (5 тестів).
+- `n8n/templates/check-profile.js` + `__tests__/check-profile.test.js` — **NEW** — guard-логіка профілю (4 тести).
+- `apps/client/src/App.tsx` — на non-503 помилці показує серверний `message` (напр. no_profile) замість загального алерта.
+- `docs/architecture/workflow-improvements.md` — секція «v7 applied» + оновлено implementation order.
+- `scripts/build-n8n-workflow.mjs` — **DELETED** — застарілий генератор (старі шляхи, divorce-only, захардкожені ротовані секрети, порушення правила #11).
+**Tests:** root vitest 162/162 ✅ · client vitest 68/68 ✅ · tsc clean ✅
+**Next step:** деплой у live n8n (`deploy-workflow.mjs form-submit`, потрібен Docker up) + верифікація (форсувати помилку → алерт; no-profile → 422; Error Trigger fires). Потім commit + `gh issue close #30`.
 
 ---
 

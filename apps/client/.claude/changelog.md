@@ -15,6 +15,15 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
+### 2026-06-10 (session 15) — local dev runbook + dev-up + Google OAuth recovery
+**Status:** PENDING COMMIT
+**Why:** Error Trigger (щойно задеплоєний) одразу виявив РЕАЛЬНИЙ тихий збій: нода `Copy Template` падала з Google-OAuth `invalid/expired/revoked` → документи не генерувались, юзер бачив лише «готується». Корінь: OAuth consent screen у Testing → Google анулює refresh-токен за 7 днів простою; плюс ngrok гасився, плюс забутий пароль n8n без SMTP. Зафіксували весь шлях відновлення, щоб не «відкривати в моменті».
+**Files:**
+- `docs/runbooks/local-dev-startup.md` — **NEW** — чеклист старту (n8n+ngrok), `dev-up.ps1`, gotchas: ngrok offline, OAuth протух → durability-fix (Publish consent → Production), cross-origin login через ngrok-URL, ngrok-interstitial, скидання пароля `user-management:reset`.
+- `scripts/dev-up.ps1` — **NEW** — одна команда: підіймає n8n (Docker) + ngrok (статичний домен), idempotent.
+**Ops done (live, no repo change):** бекап БД n8n → `user-management:reset` (забутий пароль) → новий власник → Google OAuth переавторизовано (через ngrok-origin) → `docker update --restart unless-stopped n8n`. **Verified:** сабмит exec 34 `success`, lastNode `Send Doc Link` — документ генерується end-to-end ✅.
+**Next step (за тобою):** OAuth consent screen → Publish → Production (прибрати 7-денне протухання). Не блокує — токен зараз валідний.
+
 ### 2026-06-10 (session 15) — workflow hardening v7: error visibility + guards
 **Status:** PENDING COMMIT · Refs #30
 **Why:** divorce+alimony — живі послуги, а workflow падав ТИХО при будь-якій помилці після валідації (БД, Groq-таймаут, Google Docs) — юзер без відповіді, оператор без сигналу. Робимо так, щоб провал було ВИДНО.
@@ -26,7 +35,9 @@
 - `docs/architecture/workflow-improvements.md` — секція «v7 applied» + оновлено implementation order.
 - `scripts/build-n8n-workflow.mjs` — **DELETED** — застарілий генератор (старі шляхи, divorce-only, захардкожені ротовані секрети, порушення правила #11).
 **Tests:** root vitest 162/162 ✅ · client vitest 68/68 ✅ · tsc clean ✅
-**Next step:** деплой у live n8n (`deploy-workflow.mjs form-submit`, потрібен Docker up) + верифікація (форсувати помилку → алерт; no-profile → 422; Error Trigger fires). Потім commit + `gh issue close #30`.
+**Commit:** `a487a01` (branch `feature/workflow-hardening`, pushed) · Refs #30
+**Deployed + verified (live):** 22→28 нод, active. Error Trigger спрацював на 3/3 збоях (включно з РЕАЛЬНИМ Google-OAuth падінням `Copy Template` — раніше тихим); no-profile → 422; happy-path → документ end-to-end (`Send Doc Link`).
+**Next step:** merge `feature/workflow-hardening` → main з `Closes #30`.
 
 ---
 

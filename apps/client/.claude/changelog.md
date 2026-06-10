@@ -23,6 +23,13 @@
 
 > When a pending group above is committed, move it here with the commit hash and date.
 
+### 2026-06-10 (session 14) — IMPROVEMENTS: розведено ID-колізії #12/#20
+**Commit:** (this commit)
+**Why:** `#N` в IMPROVEMENTS — стабільні ID, але два номери дублювались (#12 = Admin Dashboard + RLS policies; #20 = Service Builder + changelog-skill) → биті anchor-лінки. Розведено за раніше зафіксованою пропозицією.
+**Files:**
+- `docs/architecture/IMPROVEMENTS.md` — другі входження: «RLS policies» → **#44**, «Skill для changelog» → **#45** (тіла + індекс + anchor'и); ⚠️-маркери прибрано; warning-note → resolved. #1 лишається відсутнім історично (свідомо).
+**Note:** перші входження #12/#20 і зовнішнє посилання `(#18/#20)` (= Service Builder, лишається #20) не змінені. Згадки в історії changelog/session-summary не переписувались.
+
 ### 2026-06-10 (session 14) — service-lifecycle G5: docs (DECISIONS + roadmap + IMPROVEMENTS)
 **Commit:** (this commit) · Refs #29
 **Why:** зафіксувати рішення фічі для майбутніх учасників: чому `status`-kill-switch (флип колонки, не деплій), чому `needs_review` блокує як `disabled`, і чому ідентичність закону = URL (не slug). Закрити scorecard.

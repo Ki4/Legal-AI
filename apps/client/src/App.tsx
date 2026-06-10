@@ -307,7 +307,9 @@ export default function App() {
             setUnavailableMsg(data?.message || SERVICE_UNAVAILABLE_MSG)
             return
           }
-          tg?.showAlert('Помилка відправки. Спробуйте ще раз.')
+          // Surface the server's own message when present (e.g. 422 no_profile
+          // → "open the bot and press Start"); fall back to a generic retry.
+          tg?.showAlert(data?.message || 'Помилка відправки. Спробуйте ще раз.')
           return
         }
         console.log('[Legal AI] Submitted, case_id:', data.case_id)

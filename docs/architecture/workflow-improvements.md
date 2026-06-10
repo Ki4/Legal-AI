@@ -1,5 +1,17 @@
 # n8n Workflow v7 — Improvement Plan
 
+## ✅ v7 reliability pass applied — session 15 (2026-06-10), Refs #30
+
+Applied to `n8n/workflows/current/form-submit.json` (22 → 28 nodes). **In repo + tests green; live deploy is a separate verified step.**
+
+- **Error Trigger → Format Error → Send Admin Alert** — any unhandled failure after validation now pings the admin in Telegram (was silent). Mirror: `n8n/templates/format-error.js`.
+- **Get Profile guard** — `Check Profile` → `Has Profile?` → `Respond No Profile` (422). Forwarded/cached-link users with no profile get a friendly "open the bot, press Start" instead of a crash on Insert Case. `alwaysOutputData: true` on Get Profile/Get Service so guards run on empty lookups. Mirror: `n8n/templates/check-profile.js`. ("Service not found" was already handled by `Check Service Status`.)
+- **try/catch around Build Document dispatch** — template runtime error re-throws with `service + case` context → actionable alert.
+- **Structured Respond Error** — `{ success:false, code:'invalid_request', error, message }`; `App.tsx` now surfaces the server `message` for non-503 errors.
+- **Removed** obsolete `scripts/build-n8n-workflow.mjs` (wrong paths, divorce-only, hardcoded rotated secrets).
+
+Deferred (own scope): item 1 "Ensure Profile" auto-create (Task #1); reorder Respond OK before generation to kill timeout window.
+
 ## Current State (v6-hybrid)
 
 ```
@@ -132,9 +144,9 @@ Current error response is bare. Improve to return structured JSON:
 ## Implementation Order
 
 1. ✅ Extract Code Nodes into testable files
-2. ✅ Write tests (79 tests passing)
-3. 🔲 Wire Ensure Profile in n8n UI (replace Get Profile)
-4. 🔲 Add Error Trigger → admin Telegram alert
-5. 🔲 Add guard IF nodes after Get Service and Ensure Profile
-6. 🔲 Add try/catch wrap in Build Document
-7. 🔲 Export updated workflow as v7 JSON
+2. ✅ Write tests (now 162 root + 68 client)
+3. ⏸️ Wire Ensure Profile (auto-create) — deferred to Task #1 (separate scope)
+4. ✅ Add Error Trigger → admin Telegram alert (session 15)
+5. ✅ Add guard after Get Profile (Get Service already guarded by Check Service Status)
+6. ✅ Add try/catch wrap in Build Document
+7. ✅ Update form-submit.json in repo (28 nodes) — 🔲 live deploy + verify pending

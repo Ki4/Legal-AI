@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '../components/AdminLayout'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import {
+  type ServiceStatus,
+  toServiceStatus,
+  statusActions,
+  isPublishedFor,
+  STATUS_META,
+} from '../../lib/serviceStatus'
 
 interface Service {
   id: string
@@ -11,7 +18,7 @@ interface Service {
   description: string
   icon: string
   price: number
-  is_published: boolean
+  status: ServiceStatus
   form_config: { steps?: unknown[]; tabs?: unknown[] } | null
 }
 
@@ -25,20 +32,24 @@ export function DashboardPage() {
     if (!supabase || !user) return
     supabase
       .from('services')
-      .select('id, slug, title, description, icon, price, is_published, form_config')
+      .select('id, slug, title, description, icon, price, status, form_config')
       .eq('lawyer_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        setServices((data as Service[]) ?? [])
+        const rows = (data ?? []).map((r) => ({ ...r, status: toServiceStatus(r.status) })) as Service[]
+        setServices(rows)
         setLoading(false)
       })
   }, [user])
 
-  async function togglePublish(svc: Service) {
+  async function changeStatus(svc: Service, next: ServiceStatus) {
     if (!supabase) return
-    const next = !svc.is_published
-    await supabase.from('services').update({ is_published: next }).eq('id', svc.id)
-    setServices((prev) => prev.map((s) => s.id === svc.id ? { ...s, is_published: next } : s))
+    // status is authoritative; keep deprecated is_published coherent (migration 012)
+    await supabase
+      .from('services')
+      .update({ status: next, is_published: isPublishedFor(next) })
+      .eq('id', svc.id)
+    setServices((prev) => prev.map((s) => s.id === svc.id ? { ...s, status: next } : s))
   }
 
   async function deleteService(id: string) {
@@ -127,17 +138,27 @@ export function DashboardPage() {
                   </div>
 
                   <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
-                    {/* Status */}
-                    <button
-                      onClick={() => togglePublish(svc)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
-                        ${svc.is_published
-                          ? 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                    {/* Status badge (read-only) */}
+                    <span
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${STATUS_META[svc.status].badge}`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${svc.is_published ? 'bg-green-400' : 'bg-slate-500'}`} />
-                      {svc.is_published ? 'Опубліковано' : 'Чернетка'}
-                    </button>
+                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_META[svc.status].dot}`} />
+                      {STATUS_META[svc.status].label}
+                    </span>
+
+                    {/* Lifecycle actions */}
+                    {statusActions(svc.status).map((action) => (
+                      <button
+                        key={action.to}
+                        onClick={() => changeStatus(svc, action.to)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
+                          ${action.variant === 'primary'
+                            ? 'bg-blue-600/15 text-blue-400 hover:bg-blue-600/25'
+                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                      >
+                        {action.label}
+                      </button>
+                    ))}
 
                     <div className="flex-1" />
 

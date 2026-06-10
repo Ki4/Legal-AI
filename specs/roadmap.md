@@ -22,7 +22,8 @@
   - [x] `status` kill-switch (`active|needs_review|disabled`) + аудит `law_change_log` (migration 011)
   - [x] Ручні lifecycle-інструменти: `scripts/service-lifecycle.mjs` (флип статусу + фіксація зміни закону → флип залежних послуг у `needs_review`); реєстр законів `scripts/law-registry.mjs` (ідентичність по URL)
   - [ ] Автоматичний CRON zakon.rada.gov.ua (`scripts/check-law-updates.mjs` — референс) — окрема фіча 🔵
-  - [ ] Admin-UI: кнопка флипу + панель ревʼю `law_change_log` — окрема фіча 🔵
+  - [x] Admin-UI: бейдж статусу + флип (`is_published` → `status` як єдине джерело, session 17, #31)
+  - [ ] Admin-UI: панель ревʼю `law_change_log` (+ RLS для authenticated) — окрема фіча 🔵
 
 ### Досліджені кандидати (service-demand research, червень 2026)
 

@@ -95,7 +95,8 @@ services            ← послуги (наші + від юристів)
     system_prompt   ← legacy (не використовується)
     ai_prompt       ← промпт юриста для генерації документу
     lawyer_id       ← FK → auth.users (NULL = наша послуга)
-    is_published    ← видима в боті чи ні
+    status          ← kill-switch (active|needs_review|disabled). АВТОРИТЕТНИЙ: лише active обслуговується (migration 011)
+    is_published    ← DEPRECATED (migration 012) — дзеркало (status='active'), serving-шлях не читає
     icon            ← emoji
     price           ← ціна в гривнях
     description

@@ -6,6 +6,13 @@ import { DynamicLegalFormBuilder } from '../../components/DynamicLegalFormBuilde
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FormConfig } from '../../types/form'
+import {
+  type ServiceStatus,
+  SERVICE_STATUSES,
+  toServiceStatus,
+  isPublishedFor,
+  STATUS_META,
+} from '../../lib/serviceStatus'
 
 type Tab = 'form' | 'ai' | 'settings'
 
@@ -43,7 +50,8 @@ export function ServiceEditPage() {
   const [icon, setIcon]           = useState('⚖️')
   const [description, setDesc]    = useState('')
   const [price, setPrice]         = useState(0)
-  const [isPublished, setPublish] = useState(false)
+  // New services start disabled — lawyer activates after review (DB default too).
+  const [status, setStatus]       = useState<ServiceStatus>('disabled')
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [isDirty, setIsDirty]       = useState(false)
@@ -76,7 +84,7 @@ export function ServiceEditPage() {
         setIcon(data.icon ?? '⚖️')
         setDesc(data.description ?? '')
         setPrice(data.price ?? 0)
-        setPublish(data.is_published ?? false)
+        setStatus(toServiceStatus(data.status))
         setIsDirty(false)
       })
   }, [id, isNew])
@@ -97,7 +105,9 @@ export function ServiceEditPage() {
       icon,
       description,
       price,
-      is_published: isPublished,
+      status,
+      // deprecated mirror of status (migration 012) — kept coherent during deprecation
+      is_published: isPublishedFor(status),
       lawyer_id:    user.id,
     }
 
@@ -159,17 +169,21 @@ export function ServiceEditPage() {
                 👁
               </button>
             )}
-            <div
-              onClick={() => { setPublish((p) => !p); markDirty() }}
-              className={`w-9 h-5 rounded-full transition-colors relative cursor-pointer flex-shrink-0
-                ${isPublished ? 'bg-green-500' : 'bg-slate-600'}`}
-            >
-              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform
-                ${isPublished ? 'left-4' : 'left-0.5'}`} />
+            {/* Status control — authoritative kill-switch (migration 011/012) */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className={`w-2 h-2 rounded-full ${STATUS_META[status].dot}`} title={STATUS_META[status].label} />
+              <select
+                value={status}
+                onChange={(e) => { setStatus(e.target.value as ServiceStatus); markDirty() }}
+                className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-2 py-1.5
+                           focus:outline-none focus:border-blue-500 cursor-pointer"
+                title="Статус послуги. Лише «Активна» показується клієнтам."
+              >
+                {SERVICE_STATUSES.map((s) => (
+                  <option key={s} value={s}>{STATUS_META[s].label}</option>
+                ))}
+              </select>
             </div>
-            <span className="text-sm text-slate-400 hidden sm:inline">
-              {isPublished ? 'Опубліковано' : 'Чернетка'}
-            </span>
             <button
               onClick={handleSave}
               disabled={saving}

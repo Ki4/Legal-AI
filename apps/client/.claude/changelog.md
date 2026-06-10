@@ -45,6 +45,19 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-10 (session 17) — admin lifecycle: is_published → status (single source)
+**Status:** PENDING COMMIT · branch `feature/status-single-source` · Refs #31
+**Why:** розірвана петля self-service — адмінка писала декоративний `is_published`, а весь serving-шлях (n8n form-submit/main-bot + TWA `App.tsx`) читає `status` (active|needs_review|disabled, migration 011). «Опублікувати» в адмінці нічого не публікувало. Зводимо на `status` як єдине авторитетне джерело; `is_published` лишаємо deprecated-дзеркалом (зворотно, дроп — окрема міграція пізніше).
+**Files:**
+- `supabase/migrations/012_status_single_source.sql` — **NEW** — реконсиляція `is_published := (status='active')` + COMMENT deprecated. **Потребує застосування через Supabase SQL Editor** (як попередні; не критично для поведінки — `status` вже коректний з 011).
+- `apps/client/src/lib/serviceStatus.ts` — **NEW** — SSoT для статусу: тип `ServiceStatus`, `STATUS_META` (лейбли/кольори UA), `statusActions` (дозволені переходи), `toServiceStatus`/`isPublishedFor`.
+- `apps/client/src/lib/__tests__/serviceStatus.test.ts` — **NEW** — 10 тестів (guard, переходи, дзеркало).
+- `apps/client/src/admin/pages/DashboardPage.tsx` — бейдж 3 станів + дії (Активувати / Вимкнути / Підтвердити для needs_review). Читає+пише `status` (+ дзеркало `is_published`).
+- `apps/client/src/admin/pages/ServiceEditPage.tsx` — toggle Опубліковано/Чернетка → status-дропдаун (3 стани). Нова послуга → `disabled`.
+- `docs/architecture/ARCHITECTURE.md` — схема `services`: додано `status` (авторитетний), `is_published` позначено deprecated.
+**Tests:** client vitest 78/78 ✅ (було 68 +10) · tsc -b clean ✅
+**Next step:** застосувати migration 012 у Supabase; (опц.) жива перевірка в адмінці; merge `Closes #31`. Окрема фіча: панель ревʼю `law_change_log` (+ RLS для authenticated).
+
 ### 2026-06-10 (session 16) — trim SDD ceremony to tiers (effort ∝ risk)
 **Commit:** branch `chore/sdd-trim`
 **Why:** для соло-команди повний spec-триплет на КОЖНУ фічу + pending-staging ритуал = overhead, що конкурує зі стройкою (ця сесія — приклад: синхронізував 4 доки руками). Узгоджено: спека потрібна рівно настільки, щоб відпустити агента в автономку і перевірити результат — тобто церемонія ∝ ризик, не звичка.

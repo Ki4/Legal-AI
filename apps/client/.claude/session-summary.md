@@ -1,10 +1,75 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-08 (session 11 — SDD-фундамент змержено + стратегія/research + консолідація гілок)
+> Updated: 2026-06-09 (session 13 — service-lifecycle G3 + deploy наживо + інфра)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 11 (2026-06-08) — SDD-фундамент змержено + стратегія/research + консолідація гілок
+## 🆕 Session 13 (2026-06-09) — service-lifecycle G3 + live deploy + інфраструктура
+
+### Головне — стан ЗАРАЗ
+- **Гілка `feature/service-lifecycle` ЗАПУШЕНА в origin** (`d221475`), **НЕ змержена** в main. 7 нових комітів сесії 13.
+- **service-lifecycle: G1+G2+G3 готові й ЗАДЕПЛОЄНІ наживо.** Лишилось **G4** (ручні lifecycle-скрипти) + **G5** (доки) → потім merge.
+- **Deploy-gap ЗАКРИТО:** обидва воркфлоу (form-submit + main-bot) оновлені в live n8n з guard-нодами.
+
+### Що зроблено
+- **G3 — read-path guards** (`c6b2d15`, деплой `f5ca036`):
+  - `apps/client/src/App.tsx` — `UnavailableScreen` коли `status != 'active'`; на сабміті 503/`service_unavailable` показує message сервера. Константа `SERVICE_UNAVAILABLE_MSG`.
+  - `main-bot.json` — після `Get Service` додано `Is Active?` IF (×2) → active віддає кнопку TWA/підтвердження, інакше нова нода `Service Unavailable (bot)`. 20→23 ноди, active.
+  - **Перевірено Playwright** (dev TWA): `?service=divorce`→форма, `?service=military`→«недоступна» ✅. Telegram-флоу бота автотестом НЕ ганявся (потребує TG-сесії).
+- **`scripts/deploy-workflow.mjs`** (NEW, `3c282da`+`f5ca036`) — деплой workflow через n8n REST API. **Використання:** `node scripts/deploy-workflow.mjs <form-submit|main-bot> [--check] [--creds-from=<file>]`. Робить: бекап live (gitignored `.backups/`) → diff нод → ін'єкція ключів з `.env.local` у Global Config (в пам'яті) → **збереження env-specific credential-ID** (by name, type-fallback для нових нод) → PUT → activate (retry на rate-limit). **Прибирає стару пастку** «відновити ключі руками».
+- **GitHub Issues:** `gh` CLI встановлено+авторизовано (акаунт **Ki4**, SSH). **Issue #29** = статус-борд service-lifecycle (G1-G3 ✅, G4-G5 відкриті).
+- **Docs nav** (`939360a`): 📇 індекс за номером у `IMPROVEMENTS.md` (ID не чіпані; виявлено колізії **#12, #20** + відсутній #1 — чекає рішення) + 📇 TOC у `DECISIONS.md`.
+- **Permissions** (`3afc439`): `.claude/settings.json` — read-only allowlist (context7, playwright screenshots, npm ls, findstr).
+
+### 🔴 Наступні кроки (продовження фічі)
+1. **G4 — ручні lifecycle-скрипти:** флип `status` за slug + запис у `law_change_log` + флип залежних послуг у `needs_review` (зворотний індекс по `watched_laws`). Новий focus із Supabase-скриптами.
+2. **G5 — доки:** DECISIONS.md (status kill-switch + needs_review=blocking + law_deps у watched_laws) + roadmap.md (watched_laws моніторинг → частково закрито).
+3. Після G4+G5 — **merge `feature/service-lifecycle` → main** + закрити Issue #29 (`Closes #29`).
+4. (опц.) розвести ID-колізії #12/#20 → #44/#45.
+
+### Як деплоїти n8n тепер (важливо)
+- Docker/n8n має бути піднятий (`docker start n8n`). Деплой: `node scripts/deploy-workflow.mjs <ціль>`. Ключі й credential-прив'язки скрипт відновлює сам — **руками в Global Config більше лазити не треба**.
+
+---
+
+## Session 12 (2026-06-08) — service-lifecycle: spec + G1 + G2 (бекенд kill-switch)
+
+### Головне — стан ЗАРАЗ
+- **Активна гілка: `feature/service-lifecycle`** (НЕ змержена в main). 3 коміти: `a2add92` (spec), `fffd813` (G1), `5826cea` (G2).
+- **Фіча `service-lifecycle`** (Етап B) — backend-фундамент. Послуга = керований юніт зі `status`-kill-switch. Обсяг узгоджено: БЕЗ admin-UI, БЕЗ CRON. Спека: `specs/features/service-lifecycle/{plan,requirements,validation}.md`.
+
+### Що зроблено
+- **Spec (`a2add92`)** — 3 файли спеки + компроміси в IMPROVEMENTS #41-43 (needs_law_review дублює status; law_deps у watched_laws JSONB; read-path у боті неповний).
+- **G1 (`fffd813`)** — migration 011 **застосовано + верифіковано через REST**:
+  - `services.status` (`active|needs_review|disabled`, CHECK, DEFAULT `disabled`).
+  - Backfill: `divorce`,`alimony` → `active`; `military`/`business`/`court_search` → `disabled` (placeholder'и); `divorce.needs_law_review` скинуто в false (стале leftover).
+  - `law_change_log` — аудит-таблиця змін законів (RLS service_role only; anon заблоковано — перевірено).
+- **G2 (`5826cea`)** — write-path kill-switch у `form-submit.json`:
+  - Нові ноди: `Check Service Status` (Code) → `Is Service Active?` (IF) → `Respond Unavailable` (HTTP 503). Тільки `status='active'` йде далі; needs_review/disabled/not_found блокуються ДО створення case і генерації.
+  - Тестована логіка: `n8n/templates/check-service-status.js` + 6 тестів.
+  - Workflow JSON ресеріалізовано в 2-space, BOM прибрано (були PowerShell-артефакти).
+  - **Тести зелені:** vitest 153/153, divorce 4/4, alimony 3/3.
+
+### ⚠️ Незакритий deploy-gap (G2 НЕ в live n8n)
+Локальний n8n лежить (Docker Desktop не запущений). Guard у репо-JSON, але не задеплоєний. Щоб запрацював наживо:
+1. `docker start n8n`
+2. Запушити `n8n/workflows/current/form-submit.json` через n8n API (**Node.js, не PowerShell** — кирилиця). Workflow ID `D2ab06X3pVUWk1py`, `N8N_API_KEY` в `.env.local`.
+3. **Відновити реальні ключі в Global Config** (у JSON — плейсхолдери `YOUR_...`).
+
+### 🔴 Наступні кроки (продовження фічі)
+1. **G3 — read-path guards:** `apps/client/src/App.tsx` (додати `status` у select form_config; неактивна → екран «недоступно», читати `message` з 503-відповіді) + `main-bot.json` (Get Service → якщо не active, не віддавати кнопку TWA).
+2. **G4 — ручні lifecycle-скрипти:** флип `status` за slug + фіксація зміни закону в `law_change_log` + флип залежних послуг у `needs_review` (зворотний індекс по `watched_laws`).
+3. **G5 — доки:** DECISIONS.md (status kill-switch + needs_review=blocking + law_deps у watched_laws), roadmap.md (`watched_laws` моніторинг → частково закрито).
+4. Деплой G2 в n8n (див. deploy-gap вище) — бажано ПЕРЕД G3, щоб перевірити kill-switch наживо.
+5. Після всіх G — merge `feature/service-lifecycle` → main.
+
+### Інше
+- **Supabase був на паузі** (free-tier авто-фриз через тиждень простою) — відновлено цією сесією.
+- Перевірка стану БД робиться anon-ключем для `services` (публічний read-policy, migration 005).
+
+---
+
+## Session 11 (2026-06-08) — SDD-фундамент змержено + стратегія/research + консолідація гілок
 
 ### Головне — стан проекту ЗАРАЗ
 - **main = єдине джерело правди.** Усі гілки зведені в main (злито `fervent-pascal-VUvi3` + `spec-driven-development-iLSvy`). Правило: **одна feature-гілка за раз** — саме через паралельні гілки втрачався контекст.

@@ -11,6 +11,9 @@ dist-ssr/
 .env.local
 .env.*.local
 
+# n8n live workflow backups — may contain real keys in Global Config
+n8n/workflows/.backups/
+
 # Logs
 *.log
 logs/

@@ -18,7 +18,11 @@
 - [x] Адмін-панель: базовий конструктор форм
 - [x] Послуга розлучення (розлучення без дітей)
 - [x] Послуга аліментів (session 10, 2026-05-13)
-- [ ] Моніторинг змін законів (watched_laws) 🟡
+- [~] Моніторинг змін законів (watched_laws) — **фундамент готовий** (фіча `service-lifecycle`): 🟡
+  - [x] `status` kill-switch (`active|needs_review|disabled`) + аудит `law_change_log` (migration 011)
+  - [x] Ручні lifecycle-інструменти: `scripts/service-lifecycle.mjs` (флип статусу + фіксація зміни закону → флип залежних послуг у `needs_review`); реєстр законів `scripts/law-registry.mjs` (ідентичність по URL)
+  - [ ] Автоматичний CRON zakon.rada.gov.ua (`scripts/check-law-updates.mjs` — референс) — окрема фіча 🔵
+  - [ ] Admin-UI: кнопка флипу + панель ревʼю `law_change_log` — окрема фіча 🔵
 
 ### Досліджені кандидати (service-demand research, червень 2026)
 

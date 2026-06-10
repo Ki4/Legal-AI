@@ -5,6 +5,25 @@
 
 ---
 
+## 📇 Зміст
+
+> Рішення йдуть у логічному порядку (стек → дані → AI → борг). Без номерів — це не беклог, а журнал «чому так».
+
+- [n8n vs Custom Backend (Node.js/Python)](#n8n-vs-custom-backend-nodejspython)
+- [Supabase vs Firebase vs PlanetScale](#supabase-vs-firebase-vs-planetscale)
+- [Groq vs OpenAI vs Google Gemini (генерація документів)](#groq-vs-openai-vs-google-gemini-генерація-документів)
+- [Google Docs vs PDF генерація vs DOCX](#google-docs-vs-pdf-генерація-vs-docx)
+- [Gemini Embedding 2 vs OpenAI text-embedding-3 vs Titan V2 (для RAG)](#gemini-embedding-2-vs-openai-text-embedding-3-vs-titan-v2-для-rag)
+- [Supabase pgvector vs AWS Bedrock Knowledgebase (зберігання векторів)](#supabase-pgvector-vs-aws-bedrock-knowledgebase-зберігання-векторів)
+- [Один Vercel app (TWA + Admin) vs Окремі деплої](#один-vercel-app-twa-admin-vs-окремі-деплої)
+- [Telegram TWA vs Web App vs Mobile App](#telegram-twa-vs-web-app-vs-mobile-app)
+- [React vs Next.js vs SvelteKit](#react-vs-nextjs-vs-sveltekit)
+- [AI Technical Debt — стратегія профілактики](#ai-technical-debt-стратегія-профілактики)
+- [RAG vs GraphRAG vs Hybrid Template (генерація документів)](#rag-vs-graphrag-vs-hybrid-template-генерація-документів)
+- [Service lifecycle: status kill-switch + ідентичність закону по URL](#service-lifecycle-status-kill-switch--ідентичність-закону-по-url)
+
+---
+
 ## n8n vs Custom Backend (Node.js/Python)
 
 **Обрали: n8n cloud**
@@ -259,3 +278,57 @@ RAG потрібен коли AI має "придумати" контент із
 | MVP (зараз) | Hybrid template | 2 послуги, якість = #1 |
 | Tier 2 | RAG для пояснень | 5+ послуг, є юрист-ревʼюер |
 | Tier 3 | GraphRAG | 50+ послуг, складні перехресні закони |
+
+---
+
+## Service lifecycle: status kill-switch + ідентичність закону по URL
+
+**Обрали:** колонка-`status` як авторитетний kill-switch; `needs_review` блокує як `disabled`;
+зв'язки «закон↔послуга» лишаються в `services.watched_laws` (JSONB), ідентичність закону = **URL**.
+(Фіча `service-lifecycle`, міграція 011 + G4-інструменти.)
+
+### `status` як kill-switch (флип колонки, не деплой)
+
+Послуга = керований юніт зі станом `active | needs_review | disabled`. **Тільки `active`
+обслуговується.** Зняти послугу з продажу — це `UPDATE` одної колонки, без редеплою n8n/Vercel.
+
+**Чому колонка, а не видалення/коментування:** юридичний запобіжник має спрацьовувати миттєво
+і оборотно. Коли закон змінився, а шаблон ще не пере-валідований юристом — краще ввічливо
+відмовити, ніж видати потенційно застарілий документ (quality bar = court-ready).
+
+**Авторитетний enforcement — write-path у n8n** (`form-submit`, guard після «Get Service»):
+навіть пересланий/кешований лінк форми не згенерує документ для не-`active`. Read-шляхи
+(форма в TWA, меню бота) — захист у глибину + UX, не єдина лінія оборони.
+
+### `needs_review` блокує так само, як `disabled`
+
+Третій стан окремо від `disabled`, бо несе інший *сенс* («жива послуга, але закон під підозрою»
+проти «вимкнено вручну») — це потрібно для майбутньої панелі ревʼю юриста. Але **поводиться як
+блок**: ми ніколи не торгуємо документом із непідтвердженим правовим підґрунтям.
+`status` — авторитетне джерело; стара `needs_law_review` (міграція 007) лишається довідковим
+прапорцем (див. IMPROVEMENTS #41).
+
+### Ідентичність закону = URL, а не slug (рішення G4)
+
+Зв'язки «закон → послуги» зберігаються в `services.watched_laws` JSONB, зворотний індекс
+будується запитом (нормалізована таблиця `law_relations` — це v2/GraphRAG, IMPROVEMENTS #42/#46).
+
+**Знайдений баг:** один і той самий закон мав РІЗНІ slug'и в різних послугах
+(`simejnyj-kodeks` в alimony vs `simeinyi-kodeks` в divorce, `cpk` vs
+`tsyvilnyi-protsesualnyi-kodeks`). Зворотний індекс по slug пропустив би частину послуг —
+закон змінився, одну послугу заблокували, інша торгує по застарілій нормі. **Юридична діра.**
+
+**Рішення:** справжня ідентичність закону = його канонічний zakon.rada **URL**
+(`.../laws/show/2947-14`), не вільний slug. Канон зафіксовано в реєстрі
+`scripts/law-registry.mjs` (один `{slug,title,url}` на закон). Інструменти (`service-lifecycle.mjs`)
+матчать по URL; `validate` ловить дрейф slug/title, `normalize` приводить до канону.
+slug лишається людиночитним ярликом, але вже не є ключем зіставлення.
+
+**Чому файл-реєстр, а не таблиця:** n8n у рантаймі `watched_laws` не читає (посилання на статті
+вшиті в JS-шаблон), тож файл достатній як single source of truth для ідентичності + валідації.
+Нормалізована таблиця `laws` приходить у v2 разом із вузлами законів GraphRAG.
+
+### Свідомо поза scope (backend-фундамент)
+
+Admin-UI (кнопка флипу, бейдж статусу, панель ревʼю `law_change_log`), CRON-моніторинг
+zakon.rada.gov.ua (`scripts/check-law-updates.mjs` — референс), нормалізована `law_relations`.

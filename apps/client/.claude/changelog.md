@@ -15,13 +15,100 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-_Зараз порожньо — усе закоммічено (звірено в session 11, 2026-06-08). Див. «Commit history» нижче._
+> _(порожньо — все закомічено)_
 
 ---
 
 ## 📜 Commit history (most recent first)
 
 > When a pending group above is committed, move it here with the commit hash and date.
+
+### 2026-06-10 (session 14) — service-lifecycle G5: docs (DECISIONS + roadmap + IMPROVEMENTS)
+**Commit:** (this commit) · Refs #29
+**Why:** зафіксувати рішення фічі для майбутніх учасників: чому `status`-kill-switch (флип колонки, не деплій), чому `needs_review` блокує як `disabled`, і чому ідентичність закону = URL (не slug). Закрити scorecard.
+**Files:**
+- `docs/architecture/DECISIONS.md` — новий розділ «Service lifecycle: status kill-switch + ідентичність закону по URL» (+ пункт у зміст)
+- `docs/architecture/IMPROVEMENTS.md` — #46 (реєстр-файл → v2 таблиця `laws`) + оновлено «Як краще» в #42 + індекс
+- `specs/roadmap.md` — `watched_laws` моніторинг → частково закрито (підпункти: фундамент ✅, CRON/admin-UI — окремо)
+- `specs/features/service-lifecycle/validation.md` — scorecard повністю зелений + DoD
+**Tests (regression):** divorce 4/4 ✅ · alimony 3/3 ✅ · root vitest 153/153 ✅ · client vitest 68/68 ✅
+
+### 2026-06-10 (session 14) — service-lifecycle G4: manual lifecycle tooling + canonical law registry
+**Commit:** `4b708ba` · Refs #29
+**Why:** дати людині (Ольга/Сергій) керувати життєвим циклом послуги без деплою: флип `status` за slug + фіксація зміни закону в `law_change_log` з автоматичним флипом залежних послуг у `needs_review`. Виявлено й усунуто баг даних: один і той же закон мав РІЗНІ slug'и у `watched_laws` divorce vs alimony (`simejnyj-kodeks` vs `simeinyi-kodeks`, `cpk` vs `tsyvilnyi-protsesualnyi-kodeks`) → зворотний індекс по slug пропускав би послуги (юридична діра). Рішення: канонічний реєстр законів + матч по URL.
+**Files:**
+- `scripts/law-registry.mjs` — **NEW** — канонічний реєстр законів (SSoT: slug↔title↔url) + `resolveLaw`/`lawByUrl`/`normalizeUrl`. Інтерим-«справочник»; нормалізована таблиця `laws` відкладена в v2/GraphRAG.
+- `scripts/service-lifecycle.mjs` — **NEW** — CLI: `status`, `validate`, `normalize`, `set-status <slug> <status>`, `log-law-change <law> <date>` (зворотний індекс по URL). `--dry-run` скрізь.
+**Data fix (live, через `normalize`):** alimony watched_laws slug'и приведені до канону; divorce title «Про судовий збір» уніфіковано. `normalize` ідемпотентний.
+**Verification (live Supabase):** reverse index знаходить divorce+alimony (по slug і rada-id 2947-14); live `log-law-change` → log-рядок + обидві→`needs_review` + дата оновлена; `set-status` повертає. Тестовий стан повністю відкочено.
+
+### 2026-06-09 (session 13) — deploy-workflow rate-limit retry + main-bot G3 live deploy
+**Commit:** `f5ca036` · Refs #29
+**Why:** `activate` після PUT падав на n8n rate-limit. `api()` тепер ретраїть transient «too many requests» (backoff). Зафіксовано live-деплой main-bot (після явного дозволу — деплой блокувався класифікатором).
+**Files:**
+- `scripts/deploy-workflow.mjs` — retry на rate-limit у `api()`
+**Live (main-bot `Ns5VXWiG8Myg3O6S`):** 20→23 ноди, `active: true`; нова `Service Unavailable (bot)` ← правильний live telegram-cred через type-fallback ✅
+**Verification (Playwright, dev TWA):** `?service=divorce`→форма; `?service=military`→«тимчасово недоступна» ✅. Telegram-флоу не автотестився (потребує TG-сесії).
+
+### 2026-06-09 (session 13) — service-lifecycle G3: read-path guards (App.tsx + main-bot)
+**Commit:** `c6b2d15` · Refs #29
+**Why:** доповнити write-path kill-switch (G2) на read-path — неактивну послугу не можна навіть відкрити. (1) TWA не рендерить форму неактивної; (2) бот не віддає кнопку TWA. Write-path 503 лишається авторитетним backstop.
+**Files:**
+- `apps/client/src/App.tsx` — select `status`; `UnavailableScreen` коли `!= 'active'`; 503/`service_unavailable` показує `message` сервера; BackButton ховається. Константа `SERVICE_UNAVAILABLE_MSG`.
+- `n8n/workflows/current/main-bot.json` — +3 ноди (`Is Active? (high|medium)` IF + `Service Unavailable (bot)`), 20→23; false-гілка покриває і «не знайдено».
+- `scripts/deploy-workflow.mjs` — ціль `form-submit|main-bot`; credential-fallback за типом (нові ноди); опціональна Global Config-ін'єкція; ім'я бекапу за ціллю.
+**Verification:** `tsc -b` ✅ · client vitest 68/68 ✅ · main-bot dry-run 20→23, 0 live-only ✅. (Live-деплой main-bot + Playwright-перевірка зроблені окремо після дозволу — див. наступний запис.)
+
+### 2026-06-09 (session 13) — read-only permission allowlist
+**Commit:** `3afc439`
+**Why:** зменшити кількість permission-промптів для частих read-only інструментів (через /fewer-permission-prompts: скан транскриптів). Додано лише немутуючі, не-arbitrary-execution патерни; project-scoped.
+**Files:**
+- `.claude/settings.json` — **NEW** — `permissions.allow`: context7 (docs), playwright/preview screenshots+snapshot, `npm ls *`, `findstr *`
+
+### 2026-06-09 (session 13) — Docs navigation: index in IMPROVEMENTS + TOC in DECISIONS
+**Commit:** `939360a`
+**Why:** IMPROVEMENTS згруповано по темах, але `#N` — стабільні ID у порядку появи → в тілі не послідовні, незручно читати. Додано відсортований індекс зверху (ID не чіпано — на них посилаються issues/changelog). Виявлено **ID-колізії #12 і #20** + відсутній #1 — позначено в індексі як «чекає рішення».
+**Files:**
+- `docs/architecture/IMPROVEMENTS.md` — 📇 Індекс (за номером) з anchor-лінками + ⚠️ на колізіях
+- `docs/architecture/DECISIONS.md` — 📇 Зміст (логічний TOC)
+**Next step:** (опц., чекає дозволу) розвести #12/#20 → #44/#45 з оновленням зовнішніх посилань
+
+### 2026-06-09 (session 13) — service-lifecycle: deploy script + G2 live deploy (deploy-gap closed)
+**Commit:** `3c282da` · Refs #29
+**Why:** деплой workflow у live n8n був ручною рутиною з пасткою (плейсхолдери ключів у репо-JSON). Скрипт робить це безпечно: бекап live → diff нод → ін'єкція ключів у пам'яті → **збереження env-specific credential-ID** (не з репо) → PUT → activate. G2-guard задеплоєно й перевірено.
+**Files:**
+- `scripts/deploy-workflow.mjs` — **NEW** — деплой через n8n REST API (`--check` dry-run, `--creds-from=<file>` відновлення прив'язок); бекапи в gitignored `.backups/`
+- `.gitignore` — `n8n/workflows/.backups/`
+**Verification (live `D2ab06X3pVUWk1py`):** deploy 19→22 ноди, 0 live-only втрачено, 9 cred-прив'язок збережено ✅ · kill-switch disabled `military` → HTTP **503**, `Insert Case` НЕ виконано ✅
+**Урок:** перший PUT зламав Supabase-ноди (репо ніс старі cred-ID) → виправлено `--creds-from`. Правило: credential-ID специфічні для середовища, репо ними не керує.
+
+### 2026-06-08 (session 12) — Rule: GitHub Issue tracking
+**Commit:** `79f5a6d`
+**Why:** Сергій почав використовувати GitHub Issues. Щоб не плодити 5-те дубльоване джерело правди (drift), зафіксували розподіл ролей: issues = статус-борд, що ПОСИЛАЄТЬСЯ на specs/changelog/IMPROVEMENTS. 1 issue/фіча + чекліст G1-G5; Claude рухає статуси через `gh` (довга авторизація); коміти лінкують `Refs/Closes #N`.
+**Files:**
+- `CLAUDE.md` — нова секція «Issue tracking (GitHub)» + інтеграція в Session protocol
+
+### 2026-06-08 (session 12) — service-lifecycle G2: write-path kill-switch guard
+**Commit:** `5826cea`
+**Why:** авторитетне enforcement kill-switch на write-path. Після «Get Service» нода-guard блокує генерацію, якщо `status != 'active'` (needs_review/disabled/not_found) — case не створюється, документ не генерується. Захищає навіть пересланий/кешований лінк форми. (Деплой у live n8n зроблено окремо — див. pending «deploy script».)
+**Files:**
+- `n8n/templates/check-service-status.js` — **NEW** — тестована guard-логіка (дзеркало inline Code-ноди)
+- `n8n/templates/__tests__/check-service-status.test.js` — **NEW** — 6 тестів
+- `n8n/workflows/current/form-submit.json` — +3 ноди (Check Service Status → Is Service Active? → Respond Unavailable HTTP 503) + rewire
+**Tests:** vitest 153/153 ✅ | divorce 4/4 ✅ | alimony 3/3 ✅
+
+### 2026-06-08 (session 12) — service-lifecycle G1: status kill-switch + law_change_log
+**Commit:** `fffd813`
+**Why:** реалізація G1 спеки. `services.status` (active|needs_review|disabled) = авторитетний kill-switch; `law_change_log` = аудит змін законів. Backfill: divorce+alimony → active (решта disabled). divorce.needs_law_review скинуто (рішення: прапорець був стале leftover, послуга жива). Застосовано + верифіковано через REST.
+**Files:**
+- `supabase/migrations/011_service_lifecycle.sql` — **NEW** — status + CHECK + backfill + law_change_log (RLS service_role)
+
+### 2026-06-08 (session 12) — service-lifecycle feature spec + deferred compromises
+**Commit:** `a2add92`
+**Why:** планування Етапу B (service-lifecycle, backend-фундамент) через SDD. Послуга = керований юніт зі `status`-kill-switch + аудит `law_change_log`. Свідомо прийняті тимчасові компроміси винесені в IMPROVEMENTS, щоб не загубити.
+**Files:**
+- `specs/features/service-lifecycle/{plan,requirements,validation}.md` — **NEW** — спека (scope, guards, scorecard)
+- `docs/architecture/IMPROVEMENTS.md` — #41 (needs_law_review дублює status), #42 (law_deps у JSONB), #43 (read-path kill-switch у боті неповний)
 
 ### 2026-06-08 (session 11) — Decisions doc (RAG/GraphRAG) + portfolio-value + untrack local settings
 **Commit:** (this session)

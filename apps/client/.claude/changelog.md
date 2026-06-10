@@ -45,6 +45,21 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-10 (session 18) — admin: law_change_log review panel + RLS for authenticated
+**Status:** PENDING COMMIT · branch `feature/law-change-log-review` · Refs #32
+**Why:** `law_change_log` (migration 011) фіксує зміни відстежуваних законів і флипає залежні послуги в `needs_review`, але юрист (Ольга) не мав, де це побачити — таблиця була RLS-закрита (service_role only). Робимо аудит видимим: панель ревʼю в адмінці, де юрист підтверджує/відхиляє зміну. Прямий наступник #31 — завершує lifecycle-петлю видимою для людини дією.
+**Files:**
+- `supabase/migrations/013_law_change_log_review.sql` — **NEW** — RLS на `law_change_log`: `SELECT`+`UPDATE` для `authenticated` (юрист читає+позначає ревʼю); `INSERT`/`DELETE` лишаються service_role-only (append-only з UI). **Потребує застосування через Supabase SQL Editor.**
+- `apps/client/src/lib/lawChangeLog.ts` — **NEW** — SSoT: типи (`LawChangeAction`/`Row`), `ACTION_META` (UA), `reviewActions` (переходи), `isPending`/`pendingCount`/`formatRevision`, `toLawChangeAction`.
+- `apps/client/src/lib/__tests__/lawChangeLog.test.ts` — **NEW** — 14 тестів (guard, переходи, pending-count, формат).
+- `apps/client/src/admin/pages/LawChangeLogPage.tsx` — **NEW** — список (нові зверху) + фільтр «лише очікують» (+лічильник) + дії Переглянуто/Відхилити/Повернути + нотатки + чипи зачеплених послуг + хто/коли ревʼю.
+- `apps/client/src/admin/AdminApp.tsx` — роут `law-changes` (під AdminGuard).
+- `apps/client/src/admin/components/AdminLayout.tsx` — nav-лінк «📋 Зміни законів».
+- `docs/architecture/IMPROVEMENTS.md` — #47 (blanket-authenticated RLS без per-tenant scoping — свідомий компроміс соло-фази; як краще: tenant-фільтр / security-definer review RPC).
+- `specs/roadmap.md` — пункт «Admin-UI: панель ревʼю law_change_log» закрито.
+**Tests:** client vitest 92/92 ✅ (було 78 +14) · tsc -b clean ✅
+**Next step:** застосувати migration 013 у Supabase; жива перевірка в адмінці; merge `Closes #32`. Виробник логу (CRON моніторинг zakon.rada) — окрема наступна фіча.
+
 ### 2026-06-10 (session 17) — admin lifecycle: is_published → status (single source)
 **Status:** PENDING COMMIT · branch `feature/status-single-source` · Refs #31
 **Why:** розірвана петля self-service — адмінка писала декоративний `is_published`, а весь serving-шлях (n8n form-submit/main-bot + TWA `App.tsx`) читає `status` (active|needs_review|disabled, migration 011). «Опублікувати» в адмінці нічого не публікувало. Зводимо на `status` як єдине авторитетне джерело; `is_published` лишаємо deprecated-дзеркалом (зворотно, дроп — окрема міграція пізніше).

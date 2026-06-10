@@ -3,7 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 const NAV = [
-  { to: '/services', icon: '⚖️', label: 'Мої послуги' },
+  { to: '/services',    icon: '⚖️', label: 'Мої послуги' },
+  { to: '/law-changes', icon: '📋', label: 'Зміни законів' },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {

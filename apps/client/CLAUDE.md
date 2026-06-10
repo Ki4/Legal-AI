@@ -31,22 +31,13 @@ These defaults are optimized for AI coding agents (and humans) working on apps t
 
 ### Change Documentation Rule (MANDATORY)
 
-Every time Claude modifies or creates files in this repository, Claude MUST:
+Every time Claude makes a **non-trivial** change (skip typos / formatting / pure renames whose "why" is obvious from the diff):
 
-1. **Before making changes** — state in one sentence **what** will change and **why** (which task/problem it solves). Do this in the chat so Sergey can confirm before Claude edits anything.
+1. **Before** — state in one line **what** will change and **why** in chat, so Sergey can confirm.
 
-2. **After making changes** — append or update an entry in `.claude/changelog.md` under the **"Pending commits"** section with:
-   - Group title (short descriptive)
-   - Why the change was made (1-3 sentences)
-   - List of files touched with one-line description of each
-   - Related task/issue reference
-   - Next step (commit now? waiting for something?)
+2. **After a logical unit of work** — append ONE dated entry to `.claude/changelog.md` under **"Commit history"** (newest on top) with: **Why** (1-3 sentences) + **Files touched** (one line each) + commit hash once known.
 
-3. **Before starting a new task** — read `.claude/changelog.md` "Pending commits" section. If anything is stuck there, remind Sergey at the start of the session.
-
-4. **When a group is committed** — move the entry from "Pending commits" to "Commit history" with the commit hash and date.
-
-5. **At session end** — if any group is still uncommitted, mention it in `.claude/session-summary.md` under "Pending commits".
+This is a *why-log* — `git log` already answers "what". **No "Pending commits" staging ritual** (simplified session 16): git tracks uncommitted state; the dropped bookkeeping was net overhead for a solo dev.
 
 **Rationale:** Sergey is learning development and delegates execution to Claude. Without a "why" log per change, he loses context between sessions. `git log` answers "what changed", but only the changelog answers "why" — which is the question that matters when revisiting code months later.
 

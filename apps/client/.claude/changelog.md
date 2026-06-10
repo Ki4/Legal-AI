@@ -12,8 +12,8 @@
 
 ## 📋 Pending commits (uncommitted work)
 
-> Everything below is in the working tree but not yet in `git log`.
-> Review this section at the start of every session — remind the user if something is stuck here.
+> Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
+> The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
 ### 2026-06-10 (session 15) — local dev runbook + dev-up + Google OAuth recovery
 **Status:** COMMITTED `5ce0093` · merged to main via #30
@@ -43,7 +43,16 @@
 
 ## 📜 Commit history (most recent first)
 
-> When a pending group above is committed, move it here with the commit hash and date.
+> Append new entries at the top (newest first).
+
+### 2026-06-10 (session 16) — trim SDD ceremony to tiers (effort ∝ risk)
+**Commit:** branch `chore/sdd-trim`
+**Why:** для соло-команди повний spec-триплет на КОЖНУ фічу + pending-staging ритуал = overhead, що конкурує зі стройкою (ця сесія — приклад: синхронізував 4 доки руками). Узгоджено: спека потрібна рівно настільки, щоб відпустити агента в автономку і перевірити результат — тобто церемонія ∝ ризик, не звичка.
+**Files:**
+- `docs/architecture/SDD-GUIDE.md` — рівні **Tier 0/1/2** + тригери Tier 2; Feature Loop позначено як Tier-2-only.
+- `CLAUDE.md` (root) — правило tiers у «Issue tracking» (default Tier 1 = issue only; `specs/features/` лише Tier 2).
+- `apps/client/CLAUDE.md` — Change Documentation Rule полегшено (прибрано pending-staging; why-log, лише non-trivial).
+- `apps/client/.claude/changelog.md` — правила спрощено; «Pending commits» → опціональний scratch; «n8n Error Handler» → ✅ resolved (#30).
 
 ### 2026-06-10 (session 14) — IMPROVEMENTS: розведено ID-колізії #12/#20
 **Commit:** (this commit)
@@ -266,7 +275,7 @@ Things we know about but haven't fixed yet. Review at the start of each session.
 
 ### UX
 - **Error UX** — on AbortError (timeout), App.tsx incorrectly shows SuccessScreen even if data didn't reach n8n. Fix before Phase 1.
-- **n8n Error Handler** — no global error trigger + user notification. Low priority.
+- **n8n Error Handler** — ✅ RESOLVED (session 15, #30): Error Trigger → admin Telegram alert in `form-submit`. Caught a real silent Google-OAuth failure on first deploy.
 
 ### Future (post-PoC)
 - Rate limiting + Telegram initData signature verification (before first external demo)
@@ -279,13 +288,11 @@ Things we know about but haven't fixed yet. Review at the start of each session.
 
 ## 📝 Changelog rules (how to add entries)
 
-**Every Claude session that modifies files MUST:**
+This is a **why-log**, not a staging area (simplified session 16). `git log` answers "what"; entries here answer "why".
 
-1. **Before starting work** — read the "Pending commits" section at the top. If anything is stuck there, remind the user.
-2. **During work** — when creating or editing files, prepare a changelog entry in memory.
-3. **After finishing a logical unit of work** — append/update an entry in "Pending commits" with **Why** / **Files** / **Related task** / **Next step**.
-4. **When a group is committed** — move the entry from "Pending commits" to "Commit history" with the commit hash.
-5. **At session end** — if any group is still in "Pending commits", mention it in `.claude/session-summary.md`.
+1. Log only **non-trivial** changes — skip typos / formatting / pure renames whose "why" is obvious from the diff.
+2. After a logical unit of work, append ONE dated entry to **"Commit history"** (newest on top) with **Why** + **Files** (+ commit hash once known).
+3. **No "Pending commits" staging ritual** — git already tracks uncommitted state. The section at the top is kept only as an optional scratch note; leave it empty if unused.
 
 **Format for a new entry:**
 

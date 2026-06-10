@@ -15,23 +15,32 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-### 2026-06-10 (session 14) — service-lifecycle G4: manual lifecycle tooling + law registry
-**Status:** PENDING COMMIT · Refs #29
-**Why:** дати людині (Ольга/Сергій) керувати життєвим циклом послуги без деплою: флип `status` за slug + фіксація зміни закону в `law_change_log` з автоматичним флипом залежних послуг у `needs_review`. Виявлено й усунуто баг даних: один і той же закон мав РІЗНІ slug'и у `watched_laws` divorce vs alimony (`simejnyj-kodeks` vs `simeinyi-kodeks` тощо) → зворотний індекс по slug пропускав би послуги (юридична діра). Рішення: канонічний реєстр законів + матч по URL (справжня ідентичність закону).
-**Files:**
-- `scripts/law-registry.mjs` — **NEW** — канонічний реєстр законів (single source of truth: slug↔title↔url) + хелпери `resolveLaw`/`lawByUrl`/`normalizeUrl`. Інтерим-«справочник»; нормалізована таблиця `laws` відкладена в v2/GraphRAG.
-- `scripts/service-lifecycle.mjs` — **NEW** — CLI: `status`, `validate` (сверка watched_laws з реєстром), `normalize` (унификація slug/title у БД), `set-status <slug> <status>`, `log-law-change <law> <date>` (зворотний індекс по URL → флип залежних). `--dry-run` скрізь.
-**Data fix (live, через `normalize`):** alimony watched_laws slug'и приведені до канону; divorce title «Про судовий збір» уніфіковано (лапки). `normalize` ідемпотентний — відтворюється з реєстру.
-**Verification (live Supabase):** `validate` чистий після `normalize`; live `log-law-change simeinyi-kodeks` → log-рядок + divorce+alimony→`needs_review` + дата оновлена; `set-status divorce active` повертає. Тестовий стан повністю відкочено (статуси active, дати 2026-03-04, log порожній). Зворотний індекс знаходить ОБИДВІ послуги по slug і по rada-id (2947-14).
-**Next step:** G5 — доки (DECISIONS + roadmap + IMPROVEMENTS для v2 laws-таблиці) → коміт → merge.
-
-> _(решта — все закомічено)_
+> _(порожньо — все закомічено)_
 
 ---
 
 ## 📜 Commit history (most recent first)
 
 > When a pending group above is committed, move it here with the commit hash and date.
+
+### 2026-06-10 (session 14) — service-lifecycle G5: docs (DECISIONS + roadmap + IMPROVEMENTS)
+**Commit:** (this commit) · Refs #29
+**Why:** зафіксувати рішення фічі для майбутніх учасників: чому `status`-kill-switch (флип колонки, не деплій), чому `needs_review` блокує як `disabled`, і чому ідентичність закону = URL (не slug). Закрити scorecard.
+**Files:**
+- `docs/architecture/DECISIONS.md` — новий розділ «Service lifecycle: status kill-switch + ідентичність закону по URL» (+ пункт у зміст)
+- `docs/architecture/IMPROVEMENTS.md` — #46 (реєстр-файл → v2 таблиця `laws`) + оновлено «Як краще» в #42 + індекс
+- `specs/roadmap.md` — `watched_laws` моніторинг → частково закрито (підпункти: фундамент ✅, CRON/admin-UI — окремо)
+- `specs/features/service-lifecycle/validation.md` — scorecard повністю зелений + DoD
+**Tests (regression):** divorce 4/4 ✅ · alimony 3/3 ✅ · root vitest 153/153 ✅ · client vitest 68/68 ✅
+
+### 2026-06-10 (session 14) — service-lifecycle G4: manual lifecycle tooling + canonical law registry
+**Commit:** `4b708ba` · Refs #29
+**Why:** дати людині (Ольга/Сергій) керувати життєвим циклом послуги без деплою: флип `status` за slug + фіксація зміни закону в `law_change_log` з автоматичним флипом залежних послуг у `needs_review`. Виявлено й усунуто баг даних: один і той же закон мав РІЗНІ slug'и у `watched_laws` divorce vs alimony (`simejnyj-kodeks` vs `simeinyi-kodeks`, `cpk` vs `tsyvilnyi-protsesualnyi-kodeks`) → зворотний індекс по slug пропускав би послуги (юридична діра). Рішення: канонічний реєстр законів + матч по URL.
+**Files:**
+- `scripts/law-registry.mjs` — **NEW** — канонічний реєстр законів (SSoT: slug↔title↔url) + `resolveLaw`/`lawByUrl`/`normalizeUrl`. Інтерим-«справочник»; нормалізована таблиця `laws` відкладена в v2/GraphRAG.
+- `scripts/service-lifecycle.mjs` — **NEW** — CLI: `status`, `validate`, `normalize`, `set-status <slug> <status>`, `log-law-change <law> <date>` (зворотний індекс по URL). `--dry-run` скрізь.
+**Data fix (live, через `normalize`):** alimony watched_laws slug'и приведені до канону; divorce title «Про судовий збір» уніфіковано. `normalize` ідемпотентний.
+**Verification (live Supabase):** reverse index знаходить divorce+alimony (по slug і rada-id 2947-14); live `log-law-change` → log-рядок + обидві→`needs_review` + дата оновлена; `set-status` повертає. Тестовий стан повністю відкочено.
 
 ### 2026-06-09 (session 13) — deploy-workflow rate-limit retry + main-bot G3 live deploy
 **Commit:** `f5ca036` · Refs #29

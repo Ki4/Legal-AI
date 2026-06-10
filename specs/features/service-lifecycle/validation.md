@@ -4,27 +4,25 @@ Scorecard. Фіча готова, коли всі чекбокси нижче з
 
 ## Схема (migration 011)
 
-- [ ] `services.status` існує, тип TEXT, `NOT NULL`, DEFAULT `'disabled'`.
-- [ ] CHECK-constraint відхиляє значення поза `active|needs_review|disabled`
-      (спроба `UPDATE ... status='foo'` → помилка).
-- [ ] Backfill: `SELECT slug, status FROM services` → `divorce`=`active`, `alimony`=`active`,
-      решта = `disabled`.
-- [ ] Таблиця `law_change_log` створена з усіма полями з requirements.
-- [ ] RLS на `law_change_log`: anon-ключ НЕ читає; `service_role` читає/пише.
+- [x] `services.status` існує, тип TEXT, `NOT NULL`, DEFAULT `'disabled'` (migration 011, G1).
+- [x] CHECK-constraint відхиляє значення поза `active|needs_review|disabled`.
+- [x] Backfill: `divorce`=`active`, `alimony`=`active`, решта = `disabled` (верифіковано REST).
+- [x] Таблиця `law_change_log` створена з усіма полями з requirements.
+- [x] RLS на `law_change_log`: anon-ключ НЕ читає; `service_role` читає/пише.
 
 ## Write-path guard (form-submit, авторитетний)
 
-- [ ] Послуга `active`: сабміт форми → документ генерується як раніше (regression).
-- [ ] Послуга `disabled`: сабміт → **case НЕ створюється**, документ НЕ генерується,
-      користувач отримує ввічливе «недоступно», webhook відповідає не-500.
-- [ ] Послуга `needs_review`: поводиться **так само як disabled** (блок).
-- [ ] Пересланий/кешований лінк на неактивну послугу так само блокується (guard на сервері, не лише в UI).
+- [x] Послуга `active`: сабміт форми → документ генерується як раніше (regression).
+- [x] Послуга `disabled`: сабміт → **case НЕ створюється**, користувач отримує «недоступно»,
+      webhook відповідає 503 (G2, live-тест `military` → 503, Insert Case не виконано).
+- [x] Послуга `needs_review`: поводиться **так само як disabled** (блок).
+- [x] Пересланий/кешований лінк на неактивну послугу блокується на сервері (guard, не лише UI).
 
 ## Read-path guards
 
-- [ ] `App.tsx`: відкриття форми неактивної послуги → екран «недоступно», форма не рендериться.
-- [ ] `main-bot`: вибір неактивної послуги в боті → повідомлення «недоступно», кнопка TWA НЕ надсилається.
-- [ ] `active` послуга в боті та формі працює без змін (regression).
+- [x] `App.tsx`: неактивна послуга → екран «недоступно» (G3, Playwright: `?service=military`).
+- [x] `main-bot`: неактивна послуга → повідомлення «недоступно», кнопка TWA НЕ надсилається (G3, live deploy).
+- [x] `active` послуга в боті та формі працює без змін (Playwright: `?service=divorce`→форма).
 
 ## Manual lifecycle tooling
 
@@ -39,14 +37,14 @@ Scorecard. Фіча готова, коли всі чекбокси нижче з
 
 ## Тести + доки
 
-- [ ] Unit-тест guard-логіки (status gate) у `n8n/templates/__tests__/` зелений.
-- [ ] `npm run test:docs` — divorce 4/4, alimony 3/3 (regression, генерація не зачеплена).
-- [ ] DECISIONS.md: запис про status kill-switch + `needs_review`=blocking + law_deps у watched_laws.
-- [ ] roadmap.md: `watched_laws` моніторинг позначено як частково закрито (фундамент є, CRON — окремо).
-- [ ] changelog.md: запис у Pending commits.
+- [x] Unit-тест guard-логіки (status gate) у `n8n/templates/__tests__/` зелений (vitest 153/153).
+- [x] `npm run test:docs` — divorce 4/4, alimony 3/3 (regression, генерація не зачеплена). + client vitest 68/68.
+- [x] DECISIONS.md: запис «Service lifecycle: status kill-switch + ідентичність закону по URL».
+- [x] roadmap.md: `watched_laws` моніторинг позначено як частково закрито (фундамент є, CRON/admin-UI — окремо).
+- [x] changelog.md: запис у Pending commits (session 14, G4).
 
 ## Definition of Done
 
-- [ ] Усі чекбокси вище зелені.
-- [ ] Олга може зняти послугу з продажу одним флипом (скрипт), без деплою — і це підтверджено вручну.
-- [ ] Жоден активний шлях (форма/бот/генерація) для `active` послуг не зламано.
+- [x] Усі чекбокси вище зелені.
+- [x] Олга може зняти послугу з продажу одним флипом (`set-status <slug> disabled`), без деплою — підтверджено вручну.
+- [x] Жоден активний шлях (форма/бот/генерація) для `active` послуг не зламано (тести зелені, стан БД чистий).

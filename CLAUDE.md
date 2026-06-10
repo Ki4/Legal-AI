@@ -61,7 +61,8 @@ scripts/        ← Repo-level utility scripts (not part of any app)
 
 GitHub Issues = status board for units of work. The repo docs stay the source of truth — issues **point** to them, never duplicate them.
 
-- **Granularity:** one issue per feature; task-groups (G1, G2, …) are a checklist inside that issue. Issue body = 2-3 lines + link to `specs/features/<slug>/`.
+- **Spec tiers (effort ∝ risk):** default is **Tier 1** — a GitHub issue (+ roadmap line), no `specs/features/` triplet; I implement from the issue, you review the diff. Write a full **Tier 2** spec only for legally/financially-sensitive, irreversible-migration, multi-subsystem, or high-uncertainty work. Trivial changes (**Tier 0**) need no issue. Triggers + details: `docs/architecture/SDD-GUIDE.md`. Unsure Tier 1 vs 2 → ask in one line, don't write a triplet "just in case".
+- **Granularity:** one issue per feature; task-groups (G1, G2, …) are a checklist inside that issue. Issue body = 2-3 lines + link to `specs/features/<slug>/` (Tier 2 only).
 - **Claude manages issue status via `gh` CLI** (durable authorization — no need to ask each time): open the issue on feature start, tick the checklist + comment progress per session, close it on merge to `main`.
 - **Linking:** every commit/PR for a feature references its issue — `Refs #N` for progress, `Closes #N` on the merge commit/PR so GitHub auto-closes it.
 - **No content duplication:** WHAT/HOW lives in `specs/`, WHY in `changelog.md`, backlog in `IMPROVEMENTS.md`. Issues track only state + links.

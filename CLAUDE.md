@@ -53,6 +53,7 @@ scripts/        ← Repo-level utility scripts (not part of any app)
 
 ## Session protocol
 
+- **Branch always:** every task — any tier, including trivial — on its own branch off `main`. Never commit straight to `main`. `main` stays deployable; merge when verified; rollback = delete the branch (cheap, so prefer acting over over-confirming).
 - Start: read `apps/client/.claude/session-summary.md` + `apps/client/.claude/changelog.md`; if a feature is in progress, mark its GitHub issue in-progress.
 - End (phrases: "закінчуємо", "на сьогодні все", "на добраніч", "good night"): update both files; tick the issue checklist + comment progress on the active issue.
 - Language: UI = Ukrainian, chat = Russian OK, code comments = English

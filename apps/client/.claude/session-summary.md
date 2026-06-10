@@ -1,10 +1,38 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-10 (session 14 — service-lifecycle G4+G5 + merge в main + #29 closed)
+> Updated: 2026-06-10 (session 15 — workflow hardening v7 + local-dev infra recovery)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 14 (2026-06-10) — service-lifecycle G4+G5 ЗАВЕРШЕНО → merge в main
+## 🆕 Session 15 (2026-06-10) — Надійність n8n v7 + локальна інфра (фокус: reliability)
+
+### Головне — стан ЗАРАЗ
+- **Стратегічний розворот:** нові сервіси НА ПАУЗІ. Будуємо фундамент НАВКОЛО сервісів, щоб юрист додавав їх легко. Деталі + бэклог: пам'ять `project_phase_foundation.md`. **3 розірвані петлі self-service:** (1) документ НЕ генерується з налаштувань адмінки (захардкоджений dispatch divorce/alimony, `ai_prompt` декоративний); (2) `is_published` (адмінка) ≠ `status` (kill-switch) — рознесені; (3) `watched_laws` без UI.
+- **Фіча `workflow-hardening` ЗАВЕРШЕНА, задеплоєна, перевірена живцем.** Гілка `feature/workflow-hardening` (комміти `a487a01`, `5ce0093`), Issue #30 → змержено в main наприкінці сесії.
+
+### Reliability v7 (form-submit: 22→28 нод)
+- **Error Trigger → Format Error → Send Admin Alert** (Telegram адміну `236581343`): будь-який unhandled-збій після валідації шле алерт. Раніше — тихо.
+- **Get Profile guard** (`Check Profile`→`Has Profile?`→`Respond No Profile` 422 + `alwaysOutputData`): юзер без профілю → дружнє повідомлення, не краш на Insert Case. (Get Service «not found» вже покривав Check Service Status.)
+- **try/catch** навколо диспатчу Build Document (re-throw з service+case); **структурний Respond Error** (`code/message`); `App.tsx` показує серверний `message`.
+- **Видалено** застарілий `scripts/build-n8n-workflow.mjs` (старі шляхи, divorce-only, захардкожені ротовані секрети).
+- Нові зеркала+тести: `format-error.js` (5), `check-profile.js` (4). **Тести: root 162/162 ✅, client 68/68 ✅, tsc ✅.**
+
+### 🔥 Error Trigger одразу окупився
+Перший деплой виявив РЕАЛЬНИЙ тихий збій: **Copy Template** падала з Google-OAuth `invalid/expired/revoked` → документи не генерувались (юзер бачив лише «готується»). Раніше невидимо.
+
+### Локальна інфра — полагоджено НАЗАВЖДИ
+- Корінь токена: OAuth consent був Testing → Google вбиває refresh-токен за 7 днів. **Опубліковано в Production** → не протухає.
+- Google OAuth **переавторизовано** (через ngrok-origin — cross-origin куки). Пароль n8n забутий → `user-management:reset` (+бекап БД) → новий власник.
+- `docker update --restart unless-stopped n8n`.
+- **NEW:** `scripts/dev-up.ps1` (одна команда: n8n+ngrok) + `docs/runbooks/local-dev-startup.md` (чеклист + усі gotchas).
+- **Перевірено end-to-end:** сабмит exec 34 `success`, lastNode `Send Doc Link` ✅. ngrok-домен статичний `rosy-caution-progeny.ngrok-free.dev`; для звичайної роботи ngrok НЕ потрібен (лише Telegram-бот + OAuth).
+
+### 🔴 Наступний фокус (НОВА сесія — `/session-start`)
+**`is_published` → `status` + admin-UI lifecycle:** звести два статуси в один kill-switch + UI (бейдж + кнопка флипу + панель ревʼю `law_change_log`). Бекенд (`status`, `law_change_log`, migration 011) вже є. Файли: `apps/client/src/admin/pages/{DashboardPage,ServiceEditPage}.tsx`, `supabase/`. Чинить реальний рассинхрон + завершує lifecycle видимою кнопкою для Ольги. Інші кандидати: сервіс-агностична генерація (модель-розвилка), watched_laws UI + превʼю документа, VPS/безпека, CRON законів — `project_phase_foundation.md`.
+
+---
+
+## Session 14 (2026-06-10) — service-lifecycle G4+G5 ЗАВЕРШЕНО → merge в main
 
 ### Головне — стан ЗАРАЗ
 - **Фіча `service-lifecycle` ПОВНІСТЮ завершена і ЗМЕРЖЕНА в `main`** (merge `a357bfb`, запушено). **Issue #29 закрито.**

@@ -16,7 +16,7 @@
 > Review this section at the start of every session — remind the user if something is stuck here.
 
 ### 2026-06-10 (session 15) — local dev runbook + dev-up + Google OAuth recovery
-**Status:** PENDING COMMIT
+**Status:** COMMITTED `5ce0093` · merged to main via #30
 **Why:** Error Trigger (щойно задеплоєний) одразу виявив РЕАЛЬНИЙ тихий збій: нода `Copy Template` падала з Google-OAuth `invalid/expired/revoked` → документи не генерувались, юзер бачив лише «готується». Корінь: OAuth consent screen у Testing → Google анулює refresh-токен за 7 днів простою; плюс ngrok гасився, плюс забутий пароль n8n без SMTP. Зафіксували весь шлях відновлення, щоб не «відкривати в моменті».
 **Files:**
 - `docs/runbooks/local-dev-startup.md` — **NEW** — чеклист старту (n8n+ngrok), `dev-up.ps1`, gotchas: ngrok offline, OAuth протух → durability-fix (Publish consent → Production), cross-origin login через ngrok-URL, ngrok-interstitial, скидання пароля `user-management:reset`.

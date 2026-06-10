@@ -28,10 +28,14 @@ Scorecard. Фіча готова, коли всі чекбокси нижче з
 
 ## Manual lifecycle tooling
 
-- [ ] Скрипт флипу статусу: `active → disabled` для послуги відображається в БД і одразу блокує генерацію.
-- [ ] Скрипт фіксації зміни закону: створює рядок у `law_change_log` (`detected_by='manual'`)
-      і виставляє `needs_review` УСІМ послугам, що залежать від цього `law_slug` (через `watched_laws`).
-- [ ] `affected_services` у логу збігається з реальним переліком залежних послуг.
+- [x] Скрипт флипу статусу: `set-status <slug> <status>` (`scripts/service-lifecycle.mjs`) —
+      перевірено `needs_review → active` для divorce (узгоджено чистить `needs_law_review`).
+- [x] Скрипт фіксації зміни закону: `log-law-change` створює рядок у `law_change_log`
+      (`detected_by='manual'`) і виставляє `needs_review` УСІМ залежним послугам.
+- [x] `affected_services` у логу збігається з реальним переліком (live-тест: divorce+alimony).
+- [x] **Bonus:** ідентичність закону = канонічний URL (реєстр `scripts/law-registry.mjs`),
+      НЕ вільний slug — зворотний індекс стійкий до slug-дрейфу. `validate`/`normalize` тримають
+      `watched_laws` у канонічному вигляді (виправлено реальний дрейф slug'ів divorce vs alimony).
 
 ## Тести + доки
 

@@ -15,7 +15,17 @@
 > Everything below is in the working tree but not yet in `git log`.
 > Review this section at the start of every session — remind the user if something is stuck here.
 
-> _(порожньо — все закомічено)_
+### 2026-06-10 (session 14) — service-lifecycle G4: manual lifecycle tooling + law registry
+**Status:** PENDING COMMIT · Refs #29
+**Why:** дати людині (Ольга/Сергій) керувати життєвим циклом послуги без деплою: флип `status` за slug + фіксація зміни закону в `law_change_log` з автоматичним флипом залежних послуг у `needs_review`. Виявлено й усунуто баг даних: один і той же закон мав РІЗНІ slug'и у `watched_laws` divorce vs alimony (`simejnyj-kodeks` vs `simeinyi-kodeks` тощо) → зворотний індекс по slug пропускав би послуги (юридична діра). Рішення: канонічний реєстр законів + матч по URL (справжня ідентичність закону).
+**Files:**
+- `scripts/law-registry.mjs` — **NEW** — канонічний реєстр законів (single source of truth: slug↔title↔url) + хелпери `resolveLaw`/`lawByUrl`/`normalizeUrl`. Інтерим-«справочник»; нормалізована таблиця `laws` відкладена в v2/GraphRAG.
+- `scripts/service-lifecycle.mjs` — **NEW** — CLI: `status`, `validate` (сверка watched_laws з реєстром), `normalize` (унификація slug/title у БД), `set-status <slug> <status>`, `log-law-change <law> <date>` (зворотний індекс по URL → флип залежних). `--dry-run` скрізь.
+**Data fix (live, через `normalize`):** alimony watched_laws slug'и приведені до канону; divorce title «Про судовий збір» уніфіковано (лапки). `normalize` ідемпотентний — відтворюється з реєстру.
+**Verification (live Supabase):** `validate` чистий після `normalize`; live `log-law-change simeinyi-kodeks` → log-рядок + divorce+alimony→`needs_review` + дата оновлена; `set-status divorce active` повертає. Тестовий стан повністю відкочено (статуси active, дати 2026-03-04, log порожній). Зворотний індекс знаходить ОБИДВІ послуги по slug і по rada-id (2947-14).
+**Next step:** G5 — доки (DECISIONS + roadmap + IMPROVEMENTS для v2 laws-таблиці) → коміт → merge.
+
+> _(решта — все закомічено)_
 
 ---
 

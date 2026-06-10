@@ -1,6 +1,47 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-09 (session 13 — service-lifecycle G3 + deploy наживо + інфра)
+> Updated: 2026-06-10 (session 14 — service-lifecycle G4+G5 + merge в main + #29 closed)
 > Прочитай эту секцию первой — она самая свежая.
+
+---
+
+## 🆕 Session 14 (2026-06-10) — service-lifecycle G4+G5 ЗАВЕРШЕНО → merge в main
+
+### Головне — стан ЗАРАЗ
+- **Фіча `service-lifecycle` ПОВНІСТЮ завершена і ЗМЕРЖЕНА в `main`** (merge `a357bfb`, запушено). **Issue #29 закрито.**
+- **main = trunk, чистий.** Гілку `feature/service-lifecycle` прибрано (local + remote). Активних feature-гілок немає.
+- Лишились 2 старі remote-гілки з сесії 11 (`claude/fervent-pascal-VUvi3`, `claude/spec-driven-development-iLSvy`) — давно змержені, опційно видалити.
+
+### Що зроблено
+- **G4 — ручні lifecycle-інструменти** (`4b708ba`):
+  - `scripts/service-lifecycle.mjs` — CLI: `status` / `validate` / `normalize` / `set-status <slug> <status>` / `log-law-change <law> <date>` (усі з `--dry-run`). Env з `apps/client/.env.local`, Supabase REST через service_role.
+  - `scripts/law-registry.mjs` — **канонічний реєстр законів** (single source of truth: slug↔title↔url). **Ідентичність закону = URL, НЕ slug.**
+  - **Знайдено й виправлено баг даних:** один закон мав РІЗНІ slug'и в divorce vs alimony (`simejnyj-kodeks`↔`simeinyi-kodeks`, `cpk`↔`tsyvilnyi-protsesualnyi-kodeks`, `pro-sudovyj-zbir`↔`pro-sudovyi-zbir`) → зворотний індекс по slug пропускав би послуги (юридична діра). `normalize` уніфікував дані наживо; зіставлення тепер по URL.
+  - **Live-перевірка повна:** reverse index знаходить divorce+alimony (по slug і rada-id); `log-law-change` → лог-рядок + обидві→`needs_review` + оновлення дати; `set-status` повертає в active. Тестовий стан повністю відкочено (БД чиста).
+- **G5 — доки** (`977f28d`): DECISIONS.md (новий розділ «status kill-switch + ідентичність закону по URL»), IMPROVEMENTS #46, roadmap (watched_laws → частково закрито), validation scorecard повністю зелений + DoD.
+- **Housekeeping** (`bdaa54a`): розведено ID-колізії IMPROVEMENTS — «RLS policies» → #44, «changelog skill» → #45.
+- **Permission fix:** правило `node -e` у `.claude/settings.local.json` узагальнено з `node -e ' *` (тільки одинарні лапки) до `node -e *`. Рішення: лишити на проєктному рівні (не глобально — `node -e` = довільний код).
+
+### Тести (регресія, усі зелені)
+divorce 4/4 · alimony 3/3 · root vitest 153/153 · client vitest 68/68.
+
+### Як користуватись lifecycle-інструментами (пам'ятка)
+```bash
+node scripts/service-lifecycle.mjs status                          # стан усіх послуг
+node scripts/service-lifecycle.mjs validate                        # сверка watched_laws з реєстром
+node scripts/service-lifecycle.mjs set-status <slug> disabled      # зняти послугу з продажу (kill-switch)
+node scripts/service-lifecycle.mjs log-law-change <slug|rada-id> <YYYY-MM-DD>   # зафіксувати зміну закону → флип залежних
+```
+Новий закон додаєш у `watched_laws` → спершу додай у `scripts/law-registry.mjs`, потім `validate`.
+
+### 🔴 Наступні кроки (вибір фокусу для нової сесії)
+Фіча service-lifecycle закрита. Кандидати на наступний фокус (1 сесія = 1 фокус):
+1. **Admin-UI для lifecycle** (прямий наступник): кнопка флипу `status` у списку послуг + бейдж статусу + панель ревʼю `law_change_log`. Бекенд уже є. (IMPROVEMENTS #43 read-path + Service Builder #18/#20.)
+2. **n8n v7 hardening** (надійність, ВАЖЛИВО — послуги «живі»): Error Trigger (admin alert) + ensure-profile wiring + guard IF-ноди + try/catch у Build Document. План: `docs/architecture/workflow-improvements.md` items 3–7. Зараз workflow падає ТИХО при помилці після валідації.
+3. **CRON моніторинг законів** — автоматизувати те, що G4 зробив ручним (`scripts/check-law-updates.mjs` — референс; писати n8n CRON або окремий скрипт за розкладом).
+4. **Військові спори** (новий сервіс) — найвищий попит, АЛЕ потрібен юрист-партнёр + модель «триаж+ескалація» (не продаж документа). Блоковано до партнерства.
+5. **Хвости інфри:** VPS-деплой (прибрати ngrok), dev/prod розділення, GDPR pre-launch (consent, retention).
+
+**Рекомендація:** #2 (n8n hardening) — найвищий ризик зараз (тихе падіння на живих послугах), або #1 (admin-UI) якщо хочеться завершити lifecycle-історію видимою кнопкою для Ольги.
 
 ---
 

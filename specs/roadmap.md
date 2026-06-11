@@ -79,7 +79,10 @@
 ## Технічний борг (виправити при нагоді)
 
 - [ ] Delivery pipeline: n8n v7 hardening — error trigger + ensure-profile wiring + guard-ноди + try/catch. Items 3–7 у `docs/architecture/workflow-improvements.md` (НЕ внедрено) 🟡
-- [ ] Document generation: зробити сервіс-агностичним (зараз один JS файл на послугу) 🟡
+- [x] Document generation: зробити сервіс-агностичним — **doc-engine** (фіча #34, session 20): декларативний шаблон-DSL у `services.document_template` + спільний движок `render-document.js` + dispatch по `generation_mode`. Пілот alimony live на шаблоні (117 parity-тестів байт-у-байт). Хвости:
+  - [ ] Портувати divorce на шаблон (DSL обкатано, той самий процес parity) 🟡
+  - [ ] Фаза 2: типографіка Google Docs з `{{!style:}}` директив (IMPROVEMENTS #50 — «красиві відступи») 🟡
+  - [ ] Admin-UI редактор шаблону для юриста (IMPROVEMENTS #51) 🔵
 - [ ] RLS: посилити row-level security 🟡
 - [x] Тести для n8n Code nodes — 79 тестів (validate, shared utils, divorce document), commit b3c9013
 

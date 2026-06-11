@@ -45,6 +45,27 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-11 (session 20) — doc-engine: сервіс-агностична генерація документа (Tier 2, #34)
+**Status:** COMMITTED on `feature/doc-engine` (spec `6089cb2`, G1 `c8de138`, G2 `91ec5ca`, G3 `285c5c5`, G4 `3c68ba8`, G5 — цей коміт) · merge → main `Closes #34`
+**Why:** остання розірвана петля фундаменту — контент документа жив у захардкоджених JS-білдерах усередині ноди Build Document (45K chars, dispatch по slug), `ai_prompt` декоративний → нова послуга/правка формулювання = сесія розробки. Розділено КОД (один движок, тестується раз) і КОНТЕНТ (декларативний шаблон на послугу в БД) — дзеркало доведеної пари DynamicLegalFormBuilder+form_config. Режим = властивість послуги (`generation_mode`), майбутні hybrid/ai_generate — розширення того ж dispatch. Доказ: alimony портовано **байт-у-байт** (117 parity-тестів: матриця 72 комбінації + гілки + 3 голдени) + live-звірка n8n exec'ів. Розриви сторінок/типографіка — зарезервовані `{{!style:}}` директиви (правила-не-позиції), фаза 2 = IMPROVEMENTS #50.
+**Files:**
+- `specs/features/doc-engine/{plan,requirements,validation}.md` — **NEW** — Tier 2 спека; контракт DSL (§3) = довгоживучий формат, ревʼю Сергієм до коду
+- `n8n/templates/render-document.js` — **NEW** — движок: парсер DSL (без eval) + рендерер + хелпери + `buildContext` (computed-шар: імена, гендери, діти)
+- `n8n/templates/__tests__/render-document.test.js` — **NEW** — 56 юніт-тестів (кожна конструкція DSL + помилки з номером рядка + скан сирців на eval)
+- `n8n/templates/services/alimony.document.txt` — **NEW** — шаблон alimony (SSoT у git; у БД — runtime-копія)
+- `n8n/templates/__tests__/alimony-template-parity.test.js` — **NEW** — 117 parity-тестів проти legacy builder + голдени
+- `supabase/migrations/014_doc_engine.sql` — **NEW** — `generation_mode` (js|template, CHECK, default js) + `document_template`; **застосовано + верифіковано REST**
+- `scripts/upload-document-template.mjs` — **NEW** — generic заливка шаблону (`--dry-run`, ідемпотентний, round-trip звірка)
+- `scripts/sync-build-document-node.mjs` — **NEW** — анти-дрейф: нода Build Document ГЕНЕРУЄТЬСЯ з дзеркал (движок + 2 legacy builders + dispatch); інлайн-правка заборонена
+- `n8n/workflows/current/form-submit.json` — Build Document 45K→64K chars: + движок + dispatch по `generation_mode` (fallback на legacy js)
+- `docs/architecture/DECISIONS.md` — розділ «Doc-engine» (чому шаблон-дані, чому не AI, байт-паритет, правила-не-позиції, анти-дрейф)
+- `docs/architecture/IMPROVEMENTS.md` — #49 declension-конвенція, #50 фаза 2 типографіки, #51 admin-редактор; #17 → вирішено інакше
+- `docs/runbooks/document-template-editing.md` — **NEW** — як юрист/оператор міняє текст документа (без передеплою)
+- `specs/roadmap.md` — техборг «сервіс-агностична генерація» закрито + 3 хвости (divorce-порт, фаза 2, admin-редактор)
+- `.gitattributes` — LF-фіксація для шаблонів і test-data (байт-у-байт на будь-якому checkout)
+**Tests:** root vitest **385/385** ✅ (було 213, +172). **Live:** деплой 28 нод ✓; e2e до флипу exec 35 ✓; флип alimony→template: exec 36/37 `success`, live-вихід === движок === legacy builder байт-у-байт ✓; rollback-флип ✓ (exec 38); divorce регресія exec 39 ✓. **Стан проду:** alimony на `template`, divorce на `js`.
+**Next step:** merge → main (`Closes #34`). Наступні сесії: divorce-порт; фаза 2 типографіки (#50 — запит Сергія «красиві відступи»); admin-редактор (#51).
+
 ### 2026-06-11 (session 19) — cron-law-monitor: автоматичний моніторинг змін законів
 **Status:** PENDING COMMIT · branch `feature/cron-law-monitor`
 **Why:** замикаємо lifecycle-петлю «виробником» записів. Панель ревʼю (s18) вже вміла показувати зміни законів, але їх ніхто не створював автоматично — лише ручний `service-lifecycle.mjs log-law-change`. Тепер CRON сам відстежує zakon.rada → детектує зміну редакції → канонічний flow (`law_change_log` + флип залежних послуг у `needs_review`) → панель Ольги. Хост — GitHub Actions: працює незалежно від ноута/n8n/VPS (надійність важливіша за «все в стеку»), + ручна кнопка, + локальний запуск. Будували одразу під ріст каталогу послуг (дедуп спільних законів, retry/backoff).

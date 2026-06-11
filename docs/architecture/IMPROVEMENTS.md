@@ -540,9 +540,10 @@ CREATE TABLE invites (
 ### 47. `law_change_log` RLS — blanket authenticated, без per-tenant scoping
 - **Зараз (migration 013):** панель ревʼю читає/оновлює `law_change_log` через політики `SELECT`+`UPDATE` для ролі `authenticated` (`USING (true)`). Будь-який залогінений юрист бачить усі рядки й може писати в будь-яку колонку рядка. `INSERT`/`DELETE` лишаються service_role-only (append-only з UI).
 - **Чому компроміс:** зміни законів = глобальні законодавчі факти (СК/ЦПК зачіпають усіх), не per-tenant дані; юрист зараз фактично один (Ольга). Scoping/обмеження колонок = більший scope без реальної потреби.
-- **Як краще:** (а) коли стане кілька юристів і журнал треба ділити — додати tenant-фільтр (напр. через `affected_services` → `services.lawyer_id`); (б) щоб юрист не міг переписати будь-яку колонку — замінити пряму `UPDATE`-політику на security-definer RPC `review_law_change(log_id, action, notes)`, що пише лише review-поля.
-- **Пріоритет:** 🟢 nice-to-have (поки один юрист — не болить)
-- **Актуальність:** до онбордингу другого юриста / мультитенантності.
+- **Як краще:** (а) коли стане кілька юристів і журнал треба ділити — додати tenant-фільтр (напр. через `affected_services` → `services.lawyer_id`) або gate на `admin_users`/JWT-claim замість голого `authenticated`; (б) щоб юрист не міг переписати будь-яку колонку чи підмінити `reviewed_by` — замінити пряму `UPDATE`-політику на security-definer RPC `review_law_change(log_id, action, notes)`, що сам штампує `reviewed_by = auth.email()` + `reviewed_at = now()` і ігнорує решту колонок (або BEFORE UPDATE-тригер, що перезаписує ці поля з JWT).
+- **Security-review (2026-06-11) — підтверджено, не блокує:** автоматичний скан позначив 3 знахідки на migration 013 (broad `USING(true)` UPDATE; bare-`authenticated` gate; client-stamped `reviewed_by` у `LawChangeLogPage.tsx`). **Головна мітигація:** публічна реєстрація вимкнена (`auth.settings.disable_signup=true`, invite-only) → роль `authenticated` = лише запрошена команда (зараз **1** акаунт). Тож «будь-який authenticated» = довірена особа, а не інтернет. Спуфінг `reviewed_by` у цій моделі — low-risk audit-nit. Усе вище («Як краще») — план хардингу до пункту-тригера нижче.
+- **Пріоритет:** 🟢 nice-to-have, поки signup вимкнено + один юрист.
+- **Актуальність (тригер хардингу):** ПЕРЕД увімкненням self-signup АБО онбордингом 2-го юриста — тоді обовʼязково RPC/тригер для штампу + role-gate (не голий `authenticated`).
 
 ---
 

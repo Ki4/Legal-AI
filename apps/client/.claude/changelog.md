@@ -45,6 +45,15 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-11 (session 18) — services ownership: assign core services to lawyer + security-ack
+**Status:** PENDING COMMIT · branch `chore/security-ack-and-ownership-note`
+**Why:** після merge #32 виявлено: «Мої послуги» в адмінці порожні, хоча divorce/alimony живі. Корінь — модель власності: `DashboardPage` фільтрує `lawyer_id = user.id`, а сіяні міграціями послуги мали `lawyer_id = null` (бесхозні). Рішення (узгоджено з Сергієм, варіант B): призначити живі core-послуги акаунту юриста — менший blast radius, ближче до майбутньої моделі ролей (`project_admin_lawyer_roles.md`), плейсхолдери лишаються прихованими.
+**Ops done (live Supabase, no schema change):** `UPDATE services SET lawyer_id = '2909df04-…' WHERE slug IN ('divorce','alimony')` (service_role). Env-specific (uid з `auth.users`), тому НЕ міграція. **Verified (Playwright, dev admin):** обидві послуги тепер у списку — Активна, з діями статусу + edit/view/delete.
+**Files:**
+- `docs/architecture/IMPROVEMENTS.md` — #47 розширено: acknowledgement security-review migration 013 (3 знахідки) + головна мітигація `disable_signup=true` (invite-only → `authenticated` = команда, 1 акаунт) + чіткий тригер хардингу (RPC/тригер для штампу `reviewed_by` + role-gate ПЕРЕД self-signup / 2-м юристом).
+**Security-review (push sweep) — acknowledged, not blocking:** broad `USING(true)` UPDATE, bare-`authenticated` gate, client-stamped `reviewed_by` — усі = свідомо відкладений компроміс #47; мітиговано вимкненою реєстрацією. Деталі + тригер хардингу в #47.
+**Note (cosmetic, out of scope):** dashboard показує «0 полів» для tabs-based послуг (лічильник читає `form_config.steps`, alimony на `tabs`).
+
 ### 2026-06-10 (session 18) — admin: law_change_log review panel + RLS for authenticated
 **Status:** PENDING COMMIT · branch `feature/law-change-log-review` · Refs #32
 **Why:** `law_change_log` (migration 011) фіксує зміни відстежуваних законів і флипає залежні послуги в `needs_review`, але юрист (Ольга) не мав, де це побачити — таблиця була RLS-закрита (service_role only). Робимо аудит видимим: панель ревʼю в адмінці, де юрист підтверджує/відхиляє зміну. Прямий наступник #31 — завершує lifecycle-петлю видимою для людини дією.

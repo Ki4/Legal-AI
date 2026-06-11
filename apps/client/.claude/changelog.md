@@ -45,6 +45,25 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-11 (session 19) — cron-law-monitor: автоматичний моніторинг змін законів
+**Status:** PENDING COMMIT · branch `feature/cron-law-monitor`
+**Why:** замикаємо lifecycle-петлю «виробником» записів. Панель ревʼю (s18) вже вміла показувати зміни законів, але їх ніхто не створював автоматично — лише ручний `service-lifecycle.mjs log-law-change`. Тепер CRON сам відстежує zakon.rada → детектує зміну редакції → канонічний flow (`law_change_log` + флип залежних послуг у `needs_review`) → панель Ольги. Хост — GitHub Actions: працює незалежно від ноута/n8n/VPS (надійність важливіша за «все в стеку»), + ручна кнопка, + локальний запуск. Будували одразу під ріст каталогу послуг (дедуп спільних законів, retry/backoff).
+**Architecture (anti-drift):** детектор НЕ дублює логіку — переніс канонічний `applyLawChange` у спільний модуль, який тепер кличуть і ручний CLI, і CRON (single producer of `law_change_log`). Ідентичність закону = URL (реєстр), тому спільний закон (СК у divorce+alimony) фетчиться **раз**, не per-service.
+**Files:**
+- `scripts/lib/supabase-rest.mjs` — **NEW** — спільний REST-клієнт + `loadEnv` (прибрав дубль між 2 скриптами).
+- `scripts/lib/rada.mjs` — **NEW** — `extractRevisionDate` (чистий парсер) + `fetchWithRetry` (backoff+jitter+`Retry-After` на 429/5xx/мережеві) + `fetchRevisionDate`. Виправлено баг референса (`printUrl` ReferenceError).
+- `scripts/lib/law-change.mjs` — **NEW** — канонічний `applyLawChange` (reverse-index по URL → `law_change_log` `action=flagged` → флип услуг у `needs_review` + bump `last_known_date`). Чисті дані, без console.
+- `scripts/check-law-updates.mjs` — **REWRITE** — детектор: ітерує реєстр → детект → `applyLawChange(detected_by='cron')` → Telegram-алерт. Дедуп спільних законів, ідемпотентний (bump дати → наступний прогон бачить «без змін»).
+- `scripts/service-lifecycle.mjs` — рефактор: `log-law-change` тепер кличе спільний `applyLawChange` (без інлайн-дублю); спільний supabase-клієнт.
+- `.github/workflows/law-monitor.yml` — **NEW** — `workflow_dispatch` (кнопка, з опц. dry-run) + `schedule` (пн 06:00 UTC) **тимчасово закоментований** поки Ольга недоступна (авто-флип нікому ревʼюити; розкоментувати = 2 рядки). Без `npm install` (лише Node built-ins + fetch).
+- `scripts/lib/__tests__/rada.test.mjs` + `law-change.test.mjs` — **NEW** — 27 тестів (парс дат + ловушка adoption-date; retry/Retry-After/exhaustion/404-no-retry; reverse-index по URL крізь slug-drift; dry/live applyLawChange).
+- `docs/runbooks/law-monitor-cron.md` — **NEW** — налаштування 4 GH-секретів (за Сергієм), ручний запуск, lawyer-review loop, надійність, масштаб.
+- `docs/architecture/IMPROVEMENTS.md` — #48 (умовні запити If-Modified-Since/ETag при рості реєстру — відкладено).
+- `specs/roadmap.md` — моніторинг змін законів → петля замкнена ✅.
+**Tests:** root vitest **213/213** ✅ (було 162 +51 — рада/law-change + інше). Live dry-run проти zakon.rada: парсер коректний (судовий збір збігся з відомою датою).
+**🔴 Live finding (рішення за Сергієм):** dry-run виявив 2 РЕАЛЬНІ зміни — СК `2026-03-04→2026-05-25`, ЦПК `2025-07-17→2026-04-24`. Живий флип НЕ робився (зняв би divorce+alimony з продажу). Ольга недоступна ~2 тижні → ревʼю немає кому робити.
+**Next step:** Сергій додає 4 секрети в GitHub (runbook); рішення по живому флипу 2 змін (з урахуванням відсутності Ольги); merge гілки.
+
 ### 2026-06-11 (session 18) — services ownership: assign core services to lawyer + security-ack
 **Status:** PENDING COMMIT · branch `chore/security-ack-and-ownership-note`
 **Why:** після merge #32 виявлено: «Мої послуги» в адмінці порожні, хоча divorce/alimony живі. Корінь — модель власності: `DashboardPage` фільтрує `lawyer_id = user.id`, а сіяні міграціями послуги мали `lawyer_id = null` (бесхозні). Рішення (узгоджено з Сергієм, варіант B): призначити живі core-послуги акаунту юриста — менший blast radius, ближче до майбутньої моделі ролей (`project_admin_lawyer_roles.md`), плейсхолдери лишаються прихованими.

@@ -80,7 +80,7 @@
 
 - [ ] Delivery pipeline: n8n v7 hardening — error trigger + ensure-profile wiring + guard-ноди + try/catch. Items 3–7 у `docs/architecture/workflow-improvements.md` (НЕ внедрено) 🟡
 - [x] Document generation: зробити сервіс-агностичним — **doc-engine** (фіча #34, session 20): декларативний шаблон-DSL у `services.document_template` + спільний движок `render-document.js` + dispatch по `generation_mode`. Пілот alimony live на шаблоні (117 parity-тестів байт-у-байт). Хвости:
-  - [ ] Портувати divorce на шаблон (DSL обкатано, той самий процес parity) 🟡
+  - [x] Портувати divorce на шаблон — **зроблено** (фіча #35, session 21): 263 parity-тести байт-у-байт, live e2e + rollback-флип перевірені; обидві послуги на `generation_mode='template'`. Сервіс-специфічні словники (REASONS_MAP, EXEMPT_REASONS) і динамічна нумерація «ПРОШУ» живуть у самому шаблоні. Винос legacy-білдерів з ноди → IMPROVEMENTS #52
   - [ ] Фаза 2: типографіка Google Docs з `{{!style:}}` директив (IMPROVEMENTS #50 — «красиві відступи») 🟡
   - [ ] Admin-UI редактор шаблону для юриста (IMPROVEMENTS #51) 🔵
 - [ ] RLS: посилити row-level security 🟡

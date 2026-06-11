@@ -21,6 +21,7 @@
 **Files:**
 - `docs/research/graphrag-stack.md` — **NEW** — исследование с источниками (разбор 5 кандидатов + доказательная база + ярусы + бюджет)
 - `docs/architecture/DECISIONS.md` — новый раздел «GraphRAG-стек: патерни замість фреймворків + три яруси довіри звʼязків» + строка в TOC
+- **Addendum (конец сессии):** в оба файла добавлена модель затрат — построение графа = dev-сессии по подписке (без API-ключа; extraction-промпт фиксируется в репо, результат = данные через ревью), платный API только в runtime hybrid-секции, старт возможен на бесплатном Groq. + session-summary: новая секция Session 21.
 
 ### 2026-06-11 (session 21) — divorce портовано на шаблон doc-engine (#35)
 **Status:** COMMITTED `5760cc1` + docs commit · branch `feature/divorce-template-port`

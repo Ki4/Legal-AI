@@ -1,10 +1,47 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-11 (session 19 — CRON-моніторинг законів: lifecycle-петля замкнена)
+> Updated: 2026-06-11 (session 20 — doc-engine: сервіс-агностична генерація документа)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 19 (2026-06-11) — CRON-моніторинг змін законів (фокус: автоматизація lifecycle)
+## 🆕 Session 20 (2026-06-11) — doc-engine: сервіс-агностична генерація документа (Tier 2, #34)
+
+### Головне — стан ЗАРАЗ
+- **Фіча `doc-engine` ЗАВЕРШЕНА, змержена в `main` (`662e846`), Issue #34 CLOSED.** main чистий, активних feature-гілок немає.
+- **Остання розірвана петля фундаменту закрита:** контент документа = декларативний шаблон у БД (`services.document_template`), рендерить ОДИН спільний движок. Нова проста послуга = form_config + текст шаблону, 0 рядків коду; правка формулювання = правка тексту + upload, БЕЗ передеплою n8n.
+- **Стан проду:** alimony на `generation_mode='template'` (live-перевірено), divorce на legacy `'js'` (порт — наступна сесія). Rollback = флип колонки назад на `'js'` (миттєво, патерн status kill-switch).
+
+### Архітектура (Tier 2 спека: `specs/features/doc-engine/`)
+- **DSL-контракт (§3 requirements):** `{{поле}}` (порожнє→`________`), `{{поле|raw}}`, `{{#if}}/{{else if}}/{{else}}` (==/!=/>/</>=/<=, and/or/not), `{{#each}}` (`@index1`/`@first`/`@last`), standalone-теги поглинають свій рядок (byte-exact), `{{! коментар }}`, **зарезервовано `{{!style: right|center|bold|indent|keep-with-next|keep-together|page-break-before}}`** — фаза 1 ігнорує, фаза 2 → Google Docs стилі. Розриви сторінок = ПРАВИЛА, не позиції.
+- **Контекст 3 шари:** answers + `ai.*` (склонения з fallback) + computed (plaintiff/defendant_name, гендери за по батькові, children[] розпарсені, n_children, has_children).
+- **Хелпери (юридично-критичне, тестується раз):** formatDate, formatDateQuoted, gender, plural (2/3 укр. форми), alimonyFraction (ст. 183 СК), concat.
+- **Dispatch у Build Document:** `generation_mode='template'` + template → движок; інакше legacy JS builders. Нода ГЕНЕРОВАНА `scripts/sync-build-document-node.mjs` з дзеркал — інлайн НЕ правити.
+
+### Файли (ключове)
+- `n8n/templates/render-document.js` — движок (парсер без eval) + 56 тестів
+- `n8n/templates/services/alimony.document.txt` — шаблон (SSoT git; БД = runtime-копія)
+- `n8n/templates/__tests__/alimony-template-parity.test.js` — 117 parity-тестів
+- `supabase/migrations/014_doc_engine.sql` — **застосовано+верифіковано** (generation_mode js|template CHECK, document_template)
+- `scripts/upload-document-template.mjs <slug>` — заливка шаблону (--dry-run, ідемпотентний)
+- `docs/runbooks/document-template-editing.md` — як міняти текст документа (для оператора/юриста)
+
+### Тести + live-перевірка
+- **Root vitest 385/385 ✅** (було 213, +172). Паритет: матриця 72 комбінації + 40+ гілок + 3/3 голдени **байт-у-байт** зі старим `buildAlimonyDocument`.
+- **Live:** деплой 28 нод (creds збережені) → e2e до флипу exec 35 ✓ → флип template: exec 36 (a1 percent) + 37 (a2 fixed) `success` до Send Doc Link, live `_content` === движок === legacy builder байт-у-байт (входи витягнуті з exec через n8n API) → rollback-флип exec 38 ✓ → divorce регресія exec 39 ✓.
+
+### Рішення сесії (DECISIONS «Doc-engine»)
+- Шаблон-дані замість JS-коду (дзеркало form_config); НЕ AI-генерація як основа (court-ready без ревʼюера = ні; hybrid/ai_generate — майбутнє розширення dispatch); байт-паритет як доказ міграції (типографіка = окремий крок зі свідомою перегенерацією голденів).
+- **Запит Сергія «красиві відступи»** → IMPROVEMENTS **#50** (фаза 2): директиви вже стоять у шаблоні, рендер у styled batchUpdate — окрема фіча. + #49 (declension-конвенція полів), #51 (admin-редактор шаблону для Ольги).
+
+### 🔴 Наступний фокус (НОВА сесія — кандидати)
+1. **Порт divorce на шаблон** 🟡 — DSL обкатано, той самий parity-процес; після нього legacy builders можна виносити з ноди.
+2. **Фаза 2 типографіки (#50)** 🟡 — прямий запит користувача, конкурентна якість документа.
+3. VPS-деплой (Hetzner) 🟡 / n8n v7 hardening хвости 🟡.
+4. ⏰ **~2026-06-25 (Ольга повертається):** розкоментувати `schedule:` у law-monitor.yml + рішення по 2 змінах законів (СК/ЦПК) — `project_cron_schedule_pending.md`.
+
+---
+
+## Session 19 (2026-06-11) — CRON-моніторинг змін законів (фокус: автоматизація lifecycle)
 
 ### Головне — стан ЗАРАЗ
 - **Фіча `cron-law-monitor` ЗАВЕРШЕНА, змержена в `main`, запушена, перевірена живцем у хмарі.** Issue **#33** (лишається відкритою як трекер 2 відкладених пунктів). main чистий, активних feature-гілок немає.

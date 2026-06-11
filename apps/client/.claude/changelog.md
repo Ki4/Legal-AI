@@ -15,6 +15,13 @@
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
+### 2026-06-12 (session 21, продолжение) — research GraphRAG-стека + решение в DECISIONS
+**Status:** COMMITTED · branch `docs/graphrag-research` → main
+**Why:** Сергей принёс кандидатов (PageIndex, LightRAG, NornicDB, Weaviate-стек из видео) и спросил: как в мире строят GraphRAG, можно ли извлекать связи без юриста, есть ли решения «малый корпус без галлюцинаций». Проведено внешнее веб-исследование (Stanford о галлюцинациях Lexis/Westlaw 17–33%, Citation Grounding на украинских судебных данных — regex-извлечение ссылок с precision 1.00, GraphJudger, LightRAG/EraRAG об инкрементальности). Вывод: фреймворки не внедряем (решают проблемы масштаба, которых у нас нет), паттерны заимствуем; связи — по трём ярусам доверия (regex авто / LLM+критик для retrieval / юрист для логико-управляющих); ноль галлюцинаций достигается конструкцией (enum-констрейнт, abstention-фолбэк), не проверкой.
+**Files:**
+- `docs/research/graphrag-stack.md` — **NEW** — исследование с источниками (разбор 5 кандидатов + доказательная база + ярусы + бюджет)
+- `docs/architecture/DECISIONS.md` — новый раздел «GraphRAG-стек: патерни замість фреймворків + три яруси довіри звʼязків» + строка в TOC
+
 ### 2026-06-11 (session 21) — divorce портовано на шаблон doc-engine (#35)
 **Status:** COMMITTED `5760cc1` + docs commit · branch `feature/divorce-template-port`
 **Why:** Друга (остання) послуга злазить з hardcoded JS-білдера: контент divorce тепер дані в БД, юрист може правити формулювання без розробника. Спірне зі спеки #34 вирішено: сервіс-специфічні словники (REASONS_MAP, EXEMPT_REASONS) і динамічна нумерація «ПРОШУ» — у самому шаблоні (if-ланцюжки), движок лишився сервіс-агностичним. Движок розширено тільки generic-механізмами, бо легасі-семантика divorce відрізнялась у 4 точках: поля `spouse_*` (аліас), `has_children` = поле форми (шар `answers.*`), нумерований fallback `children_genitive` (шар `ai_raw.*` + `child.raw`), крапка в кінці деталей майна/боргів (хелпер `ensurePeriod`).

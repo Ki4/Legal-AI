@@ -18,10 +18,10 @@
 - [x] Адмін-панель: базовий конструктор форм
 - [x] Послуга розлучення (розлучення без дітей)
 - [x] Послуга аліментів (session 10, 2026-05-13)
-- [~] Моніторинг змін законів (watched_laws) — **фундамент готовий** (фіча `service-lifecycle`): 🟡
+- [x] Моніторинг змін законів (watched_laws) — **петля замкнена** (автодетект → флип → ревʼю): ✅
   - [x] `status` kill-switch (`active|needs_review|disabled`) + аудит `law_change_log` (migration 011)
   - [x] Ручні lifecycle-інструменти: `scripts/service-lifecycle.mjs` (флип статусу + фіксація зміни закону → флип залежних послуг у `needs_review`); реєстр законів `scripts/law-registry.mjs` (ідентичність по URL)
-  - [ ] Автоматичний CRON zakon.rada.gov.ua (`scripts/check-law-updates.mjs` — референс) — окрема фіча 🔵
+  - [x] Автоматичний CRON zakon.rada.gov.ua (фіча `cron-law-monitor`, session 19): `scripts/check-law-updates.mjs` (детект → канонічний `applyLawChange` з `detected_by='cron'` → флип залежних послуг у `needs_review` → панель Ольги). GitHub Actions (щотижня + кнопка `workflow_dispatch`); retry/backoff + дедуп спільних законів по URL. Хардинг `If-Modified-Since` відкладено → IMPROVEMENTS #48
   - [x] Admin-UI: бейдж статусу + флип (`is_published` → `status` як єдине джерело, session 17, #31)
   - [x] Admin-UI: панель ревʼю `law_change_log` (+ RLS для authenticated, migration 013, session 18, #32)
 

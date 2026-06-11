@@ -25,10 +25,11 @@
  * Env (apps/client/.env.local): VITE_SUPABASE_URL, SUPABASE_SERVICE_KEY (service_role — bypasses RLS).
  */
 
-import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAWS, resolveLaw, normalizeUrl, lawByUrl } from './law-registry.mjs';
+import { LAWS, resolveLaw, lawByUrl } from './law-registry.mjs';
+import { loadEnv, createSupabaseClient } from './lib/supabase-rest.mjs';
+import { applyLawChange } from './lib/law-change.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENV_FILE = resolve(ROOT, 'apps/client/.env.local');
@@ -36,22 +37,7 @@ const ENV_FILE = resolve(ROOT, 'apps/client/.env.local');
 const STATUSES = ['active', 'needs_review', 'disabled'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-// ─── env ──────────────────────────────────────────────────────────────────────
-
-function loadEnv(path) {
-  try {
-    for (const raw of readFileSync(path, 'utf8').split(/\r?\n/)) {
-      const line = raw.trim();
-      if (!line || line.startsWith('#')) continue;
-      const i = line.indexOf('=');
-      if (i === -1) continue;
-      const k = line.slice(0, i).trim();
-      if (!process.env[k]) process.env[k] = line.slice(i + 1).trim();
-    }
-  } catch {
-    /* may rely on externally-set env */
-  }
-}
+// ─── env + supabase client ──────────────────────────────────────────────────
 
 loadEnv(ENV_FILE);
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -62,37 +48,8 @@ if (!SUPABASE_URL || !SERVICE_KEY) {
   process.exit(1);
 }
 
-const headers = {
-  apikey: SERVICE_KEY,
-  Authorization: `Bearer ${SERVICE_KEY}`,
-  'Content-Type': 'application/json',
-};
-
-async function sbGet(table, query) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers });
-  if (!res.ok) throw new Error(`GET ${table}: ${res.status} ${await res.text()}`);
-  return res.json();
-}
-
-async function sbPatch(table, query, body) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
-    method: 'PATCH',
-    headers: { ...headers, Prefer: 'return=representation' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`PATCH ${table}: ${res.status} ${await res.text()}`);
-  return res.json();
-}
-
-async function sbInsert(table, row) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
-    method: 'POST',
-    headers: { ...headers, Prefer: 'return=representation' },
-    body: JSON.stringify(row),
-  });
-  if (!res.ok) throw new Error(`POST ${table}: ${res.status} ${await res.text()}`);
-  return res.json();
-}
+const client = createSupabaseClient(SUPABASE_URL, SERVICE_KEY);
+const { sbGet, sbPatch } = client;
 
 // ─── flag parsing ───────────────────────────────────────────────────────────
 
@@ -223,54 +180,38 @@ async function cmdLogLawChange() {
   const detectedBy = flags['detected-by'] || 'manual';
   if (!['manual', 'cron'].includes(detectedBy)) die(`--detected-by must be manual|cron.`);
 
-  // Reverse index: which services depend on this law (match by canonical URL, not slug).
-  const services = await sbGet('services', 'select=id,slug,status,watched_laws');
-  const affected = [];
-  let derivedOld = flags.old || null;
-  for (const s of services) {
-    const hit = (s.watched_laws || []).find((l) => normalizeUrl(l.url) === normalizeUrl(law.url));
-    if (hit) {
-      affected.push(s);
-      if (!derivedOld && hit.last_known_date) derivedOld = hit.last_known_date;
-    }
-  }
+  // Canonical flow lives in lib/law-change.mjs (shared with the CRON monitor). Run a dry
+  // pass first to report the reverse index, then the real apply unless --dry-run.
+  const preview = await applyLawChange(client, {
+    law,
+    newDate,
+    oldDate: flags.old || null,
+    detectedBy,
+    notes: flags.notes || null,
+    dry: true,
+  });
 
   console.log(`\n  Law change: ${law.slug} (${law.title})`);
   console.log(`     ${law.url}`);
-  console.log(`     revision: ${derivedOld || '?'} → ${newDate}   detected_by=${detectedBy}`);
-  console.log(`  Dependent services (reverse index by URL): ${affected.map((s) => s.slug).join(', ') || '— none —'}`);
+  console.log(`     revision: ${preview.derivedOld || '?'} → ${newDate}   detected_by=${detectedBy}`);
+  console.log(`  Dependent services (reverse index by URL): ${preview.affected.map((s) => s.slug).join(', ') || '— none —'}`);
   if (DRY) {
     console.log('\n  DRY RUN — no writes (no log row, no status flips).\n');
     return;
   }
-  if (!affected.length) {
+  if (!preview.affected.length) {
     console.log('\n  ⚠️  No dependent services — logging the change but nothing to flip.\n');
   }
 
-  // 1. Append the audit row.
-  const [logRow] = await sbInsert('law_change_log', {
-    law_slug: law.slug,
-    law_title: law.title,
-    old_revision_date: derivedOld,
-    new_revision_date: newDate,
-    detected_by: detectedBy,
-    affected_services: affected.map((s) => s.slug),
-    action: 'flagged',
+  const { logRow, affected } = await applyLawChange(client, {
+    law,
+    newDate,
+    oldDate: flags.old || null,
+    detectedBy,
     notes: flags.notes || null,
   });
   console.log(`\n  📝 law_change_log #${logRow.id} created (action=flagged).`);
-
-  // 2. Flip each dependent service to needs_review + acknowledge the new revision date in
-  //    its watched_laws entry (so a future check doesn't re-flag the same change).
   for (const s of affected) {
-    const next = (s.watched_laws || []).map((l) =>
-      normalizeUrl(l.url) === normalizeUrl(law.url) ? { ...l, last_known_date: newDate } : l
-    );
-    await sbPatch('services', `id=eq.${s.id}`, {
-      status: 'needs_review',
-      needs_law_review: true,
-      watched_laws: next,
-    });
     console.log(`  🟡 ${s.slug}: status ${s.status} → needs_review (law date → ${newDate})`);
   }
   console.log('\n  Done. Review in DB / re-activate with: set-status <slug> active\n');

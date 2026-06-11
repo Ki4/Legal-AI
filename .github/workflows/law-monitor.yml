@@ -1,0 +1,50 @@
+name: Law change monitor
+
+# Watches zakon.rada.gov.ua for changes to the laws our services depend on.
+# On a detected change: writes a law_change_log row (detected_by='cron') and flips
+# dependent services to status='needs_review'; the lawyer reviews in the admin panel.
+#
+# Runs on its own (even when no laptop / n8n / VPS is up), and can be triggered by hand
+# from the Actions tab via the "Run workflow" button (workflow_dispatch).
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   VITE_SUPABASE_URL, SUPABASE_SERVICE_KEY, TELEGRAM_BOT_TOKEN, TELEGRAM_ADMIN_CHAT_ID
+# Setup runbook: docs/runbooks/law-monitor-cron.md
+
+on:
+  # Weekly schedule is temporarily DISABLED while the reviewing lawyer (Olga) is away
+  # (~2 weeks from 2026-06-11): an auto-run would flip live services to needs_review with
+  # no one available to review/re-activate them. Re-enable by uncommenting the two lines
+  # below once a reviewer is back. The manual "Run workflow" button stays available.
+  # schedule:
+  #   - cron: '0 6 * * 1' # every Monday 06:00 UTC (~08:00–09:00 Kyiv)
+  workflow_dispatch: # manual "Run workflow" button
+    inputs:
+      dry_run:
+        description: 'Check only, no DB writes / no alert'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: law-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # No `npm install`: the script uses only Node built-ins + global fetch.
+      - name: Check for law changes
+        run: node scripts/check-law-updates.mjs ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '--dry-run' || '--notify' }}
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_ADMIN_CHAT_ID: ${{ secrets.TELEGRAM_ADMIN_CHAT_ID }}

@@ -418,6 +418,11 @@ const HELPERS = {
   concat(...parts) {
     return parts.filter((p) => p !== null && p !== undefined && p !== '').join('');
   },
+  /** Value (fallback '________' when empty) with a guaranteed trailing period. */
+  ensurePeriod(v) {
+    const s = truthy(v) ? String(v) : FALLBACK;
+    return s.endsWith('.') ? s : s + '.';
+  },
 };
 
 // ─── Context builder (computed layer shared by all services) ─────────────────
@@ -445,7 +450,8 @@ function normalizeCert(certInfo) {
 
 /**
  * children_details (one child per line: "ПІБ, дата, свідоцтво № ... від ...")
- * → [{ name, birthDate, certInfo, certInstrumental, gender }]
+ * → [{ raw, name, birthDate, certInfo, certInstrumental, gender }]
+ * `raw` keeps the trimmed line as typed (divorce inlines it verbatim).
  */
 function parseChildrenDetails(details) {
   if (!details) return [];
@@ -460,6 +466,7 @@ function parseChildrenDetails(details) {
       const certInfo = parts.slice(2).join(', ').trim();
       const nameParts = name.split(/\s+/);
       return {
+        raw: line,
         name,
         birthDate,
         certInfo,
@@ -479,15 +486,21 @@ function buildContext(answers, ai) {
   const aiIn = ai || {};
 
   const plaintiffName = joinName(a.last_name, a.first_name, a.middle_name);
-  const defendantName = joinName(a.defendant_last_name, a.defendant_first_name, a.defendant_middle_name);
+  // The divorce form names the defendant spouse_* (legacy convention) — alias
+  // per field so computed values serve both conventions (IMPROVEMENTS #49).
+  const defendantName = joinName(
+    a.defendant_last_name || a.spouse_last_name,
+    a.defendant_first_name || a.spouse_first_name,
+    a.defendant_middle_name || a.spouse_middle_name,
+  );
 
   const children = parseChildrenDetails(a.children_details);
 
   const aiSafe = {
     plaintiff_instrumental: aiIn.plaintiff_instrumental || plaintiffName,
     plaintiff_genitive: aiIn.plaintiff_genitive || plaintiffName,
-    defendant_instrumental: aiIn.defendant_instrumental || defendantName,
-    defendant_genitive: aiIn.defendant_genitive || defendantName,
+    defendant_instrumental: aiIn.defendant_instrumental || aiIn.spouse_instrumental || defendantName,
+    defendant_genitive: aiIn.defendant_genitive || aiIn.spouse_genitive || defendantName,
     marriage_place_locative: aiIn.marriage_place_locative || a.marriage_place || FALLBACK,
     children_genitive: aiIn.children_genitive
       || (children.length ? children.map((c) => `${c.name}, ${c.birthDate} р.н.`).join('; ') : FALLBACK),
@@ -498,12 +511,17 @@ function buildContext(answers, ai) {
     plaintiff_name: plaintiffName,
     defendant_name: defendantName,
     plaintiff_gender: detectGender(a.middle_name),
-    defendant_gender: detectGender(a.defendant_middle_name),
+    defendant_gender: detectGender(a.defendant_middle_name || a.spouse_middle_name),
     children,
     has_children: children.length > 0,
     n_children: children.length || 1,
     first_child_gender: children.length ? children[0].gender : 'male',
     ai: aiSafe,
+    // escape hatches for templates whose legacy semantics differ from the
+    // computed layer: raw form answers (computed keys shadow e.g. has_children)
+    // and the raw AI payload (to branch on "did AI provide X").
+    answers: a,
+    ai_raw: aiIn,
   };
 }
 

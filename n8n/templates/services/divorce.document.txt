@@ -1,0 +1,233 @@
+{{! ═══ Позовна заява про розірвання шлюбу — шаблон doc-engine (#35) ═══ }}
+{{! SSoT: цей файл у git. У Supabase services.document_template — runtime-копія }}
+{{! (заливається scripts/upload-document-template.mjs divorce).               }}
+{{! Еквівалент buildDivorceDocument байт-у-байт — див. parity-тести.          }}
+До суду за місцем проживання відповідача
+(Знайти ваш суд: https://court.gov.ua/)
+
+Позивач: {{plaintiff_name}}
+Зареєстроване місце проживання: {{registered_address}}
+{{#if not same_actual_address and actual_address}}
+Фактичне місце проживання: {{actual_address}}
+{{/if}}
+{{#if not has_no_ipn and tax_number}}
+(реєстраційний номер облікової картки платника податків (ІПН): {{tax_number}})
+{{else if has_no_ipn and passport_series}}
+(серія та номер паспорта: {{passport_series}})
+{{/if}}
+{{#if plaintiff_phone}}
+Тел.: {{plaintiff_phone}}
+{{/if}}
+{{#if plaintiff_email}}
+Адреса електронної пошти: {{plaintiff_email}}
+{{/if}}
+{{#if plaintiff_official_email == 'present'}}
+Офіційна електронна адреса: наявна в ЄСІТС
+{{else}}
+Офіційна електронна адреса — відсутня
+{{/if}}
+
+Відповідач: {{defendant_name}}
+{{#if spouse_registered_address}}
+Зареєстроване місце проживання: {{spouse_registered_address}}
+{{/if}}
+{{#if spouse_actual_address_known == 'different' and spouse_actual_address}}
+Фактичне місце проживання: {{spouse_actual_address}}
+{{else if spouse_actual_address_known == 'unknown'}}
+Фактичне місце проживання невідоме
+{{/if}}
+{{#if not spouse_has_no_ipn and spouse_tax_number}}
+(ІПН: {{spouse_tax_number}})
+{{else if spouse_has_no_ipn and spouse_passport_series}}
+(серія та номер паспорта: {{spouse_passport_series}})
+{{/if}}
+{{#if spouse_phone}}
+Тел.: {{spouse_phone}}
+{{/if}}
+{{#if spouse_email}}
+Адреса електронної пошти: {{spouse_email}}
+{{/if}}
+{{#if spouse_official_email == 'present'}}
+Офіційна електронна адреса: наявна в ЄСІТС
+{{else if spouse_official_email == 'unknown'}}
+Офіційна електронна адреса — невідома
+{{else}}
+Офіційна електронна адреса — відсутня
+{{/if}}
+
+
+{{!style: center bold keep-with-next}}
+ПОЗОВНА ЗАЯВА
+про розірвання шлюбу
+
+
+{{formatDateQuoted marriage_date}} року я, {{plaintiff_name}} (надалі за текстом – Позивач) {{gender plaintiff_gender 'зареєстрував' 'зареєструвала'}} шлюб із {{ai.defendant_instrumental}} у {{ai.marriage_place_locative}}, актовий запис № {{marriage_act_number}}{{#if marriage_cert_series}} (копія свідоцтва про шлюб Серії {{marriage_cert_series}}{{#if marriage_cert_date}} від {{formatDate marriage_cert_date}} року{{/if}}){{/if}}.
+
+{{#if spouse_consents}}
+Відповідач {{gender defendant_gender 'згоден' 'згодна'}} на розірвання шлюбу.
+{{else}}
+Відповідач не дає згоди на розірвання шлюбу.
+{{/if}}
+
+{{! has_children тут — поле форми (чекбокс), не computed: тому answers.has_children }}
+{{#if answers.has_children}}
+{{#if children_details}}
+Від даного шлюбу у сторін є спільні неповнолітні діти: {{#if n_children == 1}}{{children.0.raw}} р.н.{{else}}{{#each children}}{{@index1}}) {{raw}} р.н.{{#if not @last}}; {{/if}}{{/each}}{{/if}}
+{{else}}
+Від даного шлюбу у сторін є спільні неповнолітні діти: ________ (ПІБ та дати народження).
+{{/if}}
+{{#if children_live_with == 'plaintiff'}}
+Діти проживають з позивачем.
+{{else if children_live_with == 'defendant'}}
+Діти проживають з відповідачем.
+{{else if children_live_with == 'both'}}
+Діти проживають частково з кожним із батьків.
+{{/if}}
+
+{{else}}
+Від даного шлюбу спільних дітей у сторін немає.
+
+{{/if}}
+Відповідно до ч.3 ст.105 СК України шлюб припиняється внаслідок його розірвання за позовом одного з подружжя на підставі рішення суду.
+
+Розірвання шлюбу судом відбувається за позовом одного з подружжя відповідно до ст.110 СК України.
+
+Відповідно до ст.112 Сімейного кодексу України суд постановляє рішення про розірвання шлюбу, якщо буде встановлено, що подальше спільне життя подружжя і збереження шлюбу суперечило б інтересам одного з них, інтересам їхніх дітей, що мають істотне значення.
+
+{{! Причини: словник код → юридичне формулювання живе ТУТ (юрист може правити текст). }}
+{{! Роздільники: кома між причинами, «, а також » перед останньою.                   }}
+Підставами для розірвання шлюбу є: {{#if divorce_reasons.0}}{{#each divorce_reasons}}{{#if not @first}}{{#if @last}}, а також {{else}}, {{/if}}{{/if}}{{#if this == 'no_common_interests'}}відсутність спільних інтересів{{else if this == 'no_understanding'}}відсутність взаєморозуміння{{else if this == 'different_views'}}різні погляди на сімейне життя та обов'язки подружжя{{else if this == 'lost_feelings'}}втрата почуття любові та поваги один до одного{{else if this == 'incompatibility'}}несумісність характерів{{else if this == 'alcohol'}}зловживання алкоголем з боку відповідача{{else if this == 'abuse'}}жорстоке поводження з членами сім'ї з боку відповідача{{else if this == 'no_financial_support'}}відсутність фінансової підтримки сім'ї з боку відповідача{{else if this == 'no_child_care'}}ухилення від виховання дітей з боку відповідача{{else}}{{this}}{{/if}}{{/each}}{{else}}________{{/if}}.
+
+{{#if joint_household == 'yes'}}
+З відповідачем продовжуємо вести спільне господарство.
+{{else}}
+З відповідачем спільного господарства не ведемо.
+{{/if}}
+
+З урахуванням викладеного, вважаю, що подружні відносини між мною та відповідачем фактично припинилися. Подальше спільне життя та збереження шлюбу суперечить моїм інтересам, у зв'язку з чим наполягаю на його розірванні.
+
+{{#if answers.has_children}}
+{{#if children_dispute == 'separate'}}
+Спір щодо місця проживання та виховання дітей є, але буде вирішуватися в окремому провадженні.
+
+{{else}}
+Спір щодо місця проживання та виховання дітей відсутній.
+
+{{/if}}
+{{/if}}
+{{#if has_joint_property}}
+{{#if property_dispute == 'separate'}}
+За час шлюбу сторонами набуто спільне майно. Спір щодо поділу буде вирішуватися в окремому провадженні.
+
+{{else}}
+За час шлюбу сторонами набуто спільне майно: {{ensurePeriod property_details}}
+Позивач просить визнати за {{gender plaintiff_gender 'ним' 'нею'}} право на 1/2 частку зазначеного майна.
+
+{{/if}}
+{{/if}}
+{{#if debt_claim}}
+Між сторонами є спільні боргові зобов'язання: {{ensurePeriod debt_details}} Відповідно до ст.65 Сімейного кодексу України, позивач просить розподілити зазначені боргові зобов'язання між сторонами.
+
+{{/if}}
+Відповідно до ст.27 ЦПК України позови до фізичної особи пред'являються в суд за зареєстрованим у встановленому законом порядку місцем її проживання або перебування, якщо інше не передбачено законом.
+
+{{#if pretrial_settlement == 'conducted'}}
+Згідно з п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору проводилися (медіація / листування).
+{{else}}
+Згідно з п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору не проводилися.
+{{/if}}
+
+{{#if evidence_preservation == 'conducted'}}
+Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що заходи забезпечення доказів або позову здійснювалися.
+{{else}}
+Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що вжиття заходів забезпечення доказів або позову до подання позовної заяви не здійснювалось.
+{{/if}}
+
+{{#if originals_location == 'partial' or originals_location == 'defendant'}}
+Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що частина оригіналів документів перебуває у відповідача. Прошу суд витребувати їх у встановленому порядку.
+{{else}}
+Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що у позивача перебувають оригінали письмових або електронних доказів, копії яких додано до заяви.
+{{/if}}
+
+{{#if court_fee_exempt == 'yes'}}
+Згідно з п.9 ч.3 ст.175 ЦПК України повідомляю, що витрати на оплату судового збору відсутні у зв'язку зі звільненням від його сплати.
+{{else}}
+Згідно з п.9 ч.3 ст.175 ЦПК України повідомляю, що понесені мною витрати становлять __________ грн. (оплата судового збору), що підтверджується квитанцією.
+{{/if}}
+
+Відповідно до п.10 ч.3 ст.175 ЦПК України підтверджую, що мною не подано іншого позову (позовів) до цього ж відповідача (відповідачів) з тим самим предметом та з тих самих підстав.
+
+{{! Підстави звільнення від збору: словник код → стаття + статус живе ТУТ. }}
+{{#if court_fee_exempt == 'yes'}}
+Від сплати судового збору {{gender plaintiff_gender 'звільнений' 'звільнена'}} на підставі {{#if court_fee_exempt_reason == 'disability_1_2'}}п.1 ч.1 ст.5{{else if court_fee_exempt_reason == 'child_disability'}}п.2 ч.1 ст.5{{else if court_fee_exempt_reason == 'chornobyl'}}п.11 ч.1 ст.5{{else}}________{{/if}} Закону України «Про судовий збір» у зв'язку з наявністю статусу {{#if court_fee_exempt_reason == 'disability_1_2'}}особи з інвалідністю I або II групи{{else if court_fee_exempt_reason == 'child_disability'}}законного представника дитини з інвалідністю{{else if court_fee_exempt_reason == 'chornobyl'}}постраждалого від Чорнобильської катастрофи 1–2 категорії{{else}}________{{/if}}. Посвідчення №________ від ________ додається.
+{{else}}
+Судовий збір сплачений мною в повному обсязі на підставі пп.3 п.1 ч.2 ст.4 Закону України «Про судовий збір».
+{{/if}}
+
+На підставі вищевикладеного та керуючись ст.ст.105, 110, 112 Сімейного Кодексу України, ст.ст.175, 187, 274 ЦПК України,—
+
+{{!style: center bold keep-with-next}}
+П Р О Ш У :
+
+{{#if simplified_proceedings == 'no'}}
+1. Відкрити провадження та призначити справу до розгляду в порядку загального позовного провадження.
+{{else}}
+1. Відкрити провадження та призначити справу до розгляду в спрощеному позовному провадженні.
+{{/if}}
+
+2. Розірвати шлюб, укладений між мною, {{ai.plaintiff_instrumental}}, {{#if birth_date}}{{formatDate birth_date}} року народження{{else}}року народження ________{{/if}}, та {{ai.defendant_instrumental}}, {{formatDate spouse_birth_date}} року народження, зареєстрований {{formatDate marriage_date}} року у {{ai.marriage_place_locative}}, актовий запис № {{marriage_act_number}}.
+
+{{#if surname_after_divorce == 'maiden' and maiden_name}}
+3. Після розірвання шлюбу повернути дошлюбне прізвище – {{maiden_name}}.
+{{else}}
+3. Після розірвання шлюбу залишити прізвище – {{last_name}}.
+{{/if}}
+
+{{#if court_costs_on == 'plaintiff'}}
+4. Судові витрати по сплаті судового збору залишити за позивачем.
+{{else}}
+4. Судові витрати по сплаті судового збору покласти на відповідача.
+{{/if}}
+
+{{! Пункти 5+ необов'язкові, тому їх номери обчислюються if-ланцюжками:       }}
+{{! діти (5) → аліменти (5/6) → майно (5..7) → борги (5..8). Якщо міняєш      }}
+{{! умову появи пункту — онови й номери в усіх пунктах нижче.                 }}
+{{#if answers.has_children and children_dispute != 'separate'}}
+5. Визначити місце проживання {{#if ai_raw.children_genitive}}{{ai_raw.children_genitive}}{{else if children.0}}{{#if n_children == 1}}{{children.0.raw}} р.н.{{else}}{{#each children}}{{@index1}}) {{raw}} р.н.{{#if not @last}}; {{/if}}{{/each}}{{/if}}{{else}}________{{/if}} з {{#if children_live_with == 'plaintiff'}}позивачем{{else if children_live_with == 'defendant'}}відповідачем{{else}}________{{/if}}.
+
+{{/if}}
+{{#if alimony_claim}}
+{{#if answers.has_children and children_dispute != 'separate'}}6{{else}}5{{/if}}. Стягнути з відповідача, {{ai.defendant_genitive}}, аліменти на утримання {{#if ai_raw.children_genitive}}{{ai_raw.children_genitive}}{{else if children.0}}{{#if n_children == 1}}{{children.0.raw}} р.н.{{else}}{{#each children}}{{@index1}}) {{raw}} р.н.{{#if not @last}}; {{/if}}{{/each}}{{/if}}{{else}}________{{/if}} {{#if alimony_amount == 'percent'}}у розмірі {{#if n_children >= 3}}1/2 (50%){{else if n_children == 2}}1/3 (33%){{else}}1/4 (25%){{/if}} частини від заробітку та/або іншого доходу щомісячно до досягнення {{plural n_children 'дитиною' 'дітьми'}} повноліття.{{else if alimony_amount == 'fixed'}}у твердій грошовій сумі в розмірі __________ грн. щомісячно до досягнення {{plural n_children 'дитиною' 'дітьми'}} повноліття.{{else if alimony_amount == 'mixed'}}у розмірі {{#if n_children >= 3}}1/2 (50%){{else if n_children == 2}}1/3 (33%){{else}}1/4 (25%){{/if}} частини від заробітку та/або іншого доходу, але не менше __________ грн. щомісячно до досягнення {{plural n_children 'дитиною' 'дітьми'}} повноліття.{{else}}у розмірі __________ щомісячно до досягнення {{plural n_children 'дитиною' 'дітьми'}} повноліття.{{/if}}
+
+{{/if}}
+{{#if has_joint_property and property_dispute != 'separate'}}
+{{#if answers.has_children and children_dispute != 'separate' and alimony_claim}}7{{else if answers.has_children and children_dispute != 'separate' or alimony_claim}}6{{else}}5{{/if}}. Визнати за позивачем право на 1/2 частку спільного майна подружжя, а саме: {{ensurePeriod property_details}}
+
+{{/if}}
+{{#if debt_claim}}
+{{#if answers.has_children and children_dispute != 'separate' and alimony_claim and has_joint_property and property_dispute != 'separate'}}8{{else if answers.has_children and children_dispute != 'separate' and alimony_claim or answers.has_children and children_dispute != 'separate' and has_joint_property and property_dispute != 'separate' or alimony_claim and has_joint_property and property_dispute != 'separate'}}7{{else if answers.has_children and children_dispute != 'separate' or alimony_claim or has_joint_property and property_dispute != 'separate'}}6{{else}}5{{/if}}. Розподілити між сторонами спільні боргові зобов'язання: {{ensurePeriod debt_details}}
+
+{{/if}}
+{{!style: keep-with-next}}
+Додатки:
+{{#if court_fee_exempt == 'yes'}}
+- копія посвідчення про право на звільнення від судового збору — 2 примірники;
+{{else}}
+- квитанція про сплату судового збору (оригінал для суду, копія — відповідачу);
+{{/if}}
+- свідоцтво про шлюб (оригінал для суду, копія — відповідачу);
+- копія паспорта та РНОКПП позивача — 2 примірники;
+{{#if answers.has_children}}
+- копія/копії свідоцтва/свідоцтв про народження дитини/дітей — по 2 примірники;
+{{/if}}
+{{#if has_joint_property}}
+- документи, що підтверджують право власності на спільне майно — по 2 примірники;
+{{/if}}
+{{#if debt_claim}}
+- копії документів щодо боргових зобов'язань (кредитні договори тощо) — по 2 примірники;
+{{/if}}
+- 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.
+
+{{!style: keep-together}}
+
+«___» _______ 20__ року                                              (підпис)    {{plaintiff_name}}

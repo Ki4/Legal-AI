@@ -354,8 +354,14 @@ describe('buildContext', () => {
   it('no children: n_children stays 1 (legacy builder semantics), male default', () => {
     const c = buildContext({}, {})
     expect(c.children).toEqual([])
+    expect(c.has_children).toBe(false)
     expect(c.n_children).toBe(1)
     expect(c.first_child_gender).toBe('male')
+  })
+
+  it('has_children distinguishes empty list from n_children fallback', () => {
+    expect(buildContext(answers, {}).has_children).toBe(true)
+    expect(buildContext({}, {}).has_children).toBe(false)
   })
 
   it('ai layer falls back to assembled names', () => {

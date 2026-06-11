@@ -500,6 +500,7 @@ function buildContext(answers, ai) {
     plaintiff_gender: detectGender(a.middle_name),
     defendant_gender: detectGender(a.defendant_middle_name),
     children,
+    has_children: children.length > 0,
     n_children: children.length || 1,
     first_child_gender: children.length ? children[0].gender : 'male',
     ai: aiSafe,

@@ -1,10 +1,56 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-10 (session 15 — workflow hardening v7 + local-dev infra recovery)
+> Updated: 2026-06-11 (session 18 — law_change_log review panel + service ownership fix)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 15 (2026-06-10) — Надійність n8n v7 + локальна інфра (фокус: reliability)
+## 🆕 Session 18 (2026-06-10/11) — Панель ревʼю law_change_log + власність послуг (фокус: lifecycle UI)
+
+### Головне — стан ЗАРАЗ
+- **Фіча `law-change-log-review` ЗАВЕРШЕНА, змержена в `main`, перевірена живцем.** Гілка `feature/law-change-log-review` (commit `d7684bb`) → merge `0a62a74`, **Issue #32 closed**. main чистий, активних feature-гілок немає.
+- **Lifecycle для Ольги тепер видимий end-to-end:** статус-флип (s17) + панель ревʼю змін законів (s18). Лишився **виробник** записів — CRON-моніторинг (наступна сесія).
+
+### Що зроблено — панель ревʼю
+- **migration 013** (`supabase/migrations/013_law_change_log_review.sql`, **застосовано**) — RLS на `law_change_log`: `SELECT`+`UPDATE` для `authenticated` (юрист читає+позначає ревʼю); `INSERT`/`DELETE` лишаються service_role-only (append-only з UI — рядки створює лише скрипт/CRON).
+- **`apps/client/src/lib/lawChangeLog.ts`** — SSoT (типи, `ACTION_META` UA, `reviewActions` переходи, `isPending`/`pendingCount`/`formatRevision`) + **14 тестів**.
+- **`apps/client/src/admin/pages/LawChangeLogPage.tsx`** — список (нові зверху) + фільтр «лише очікують» (лічильник) + дії Переглянуто/Відхилити/Повернути + нотатки + чипи зачеплених послуг + штамп хто/коли. Роут `law-changes` + nav-лінк «📋 Зміни законів».
+- **Тести:** client vitest **92/92** ✅ (було 78) · tsc clean. **Playwright live (вхід Олги):** строка видна, ревʼю-цикл працює, persistence у БД підтверджено service_role-запитом.
+
+### Власність послуг — полагоджено розірвану петлю
+- **Симптом:** «Мої послуги» в адмінці порожні, хоча divorce/alimony живі. **Корінь:** `DashboardPage` фільтрує `lawyer_id = user.id`, а сіяні міграціями послуги мали `lawyer_id = null` (бесхозні). Несоответствие моделі: мультитенантний дашборд проти спільного каталогу.
+- **Фікс (варіант B):** `UPDATE services SET lawyer_id='2909df04-…' WHERE slug IN ('divorce','alimony')` (live, service_role; env-specific uid → НЕ міграція). Обидві тепер у списку. Плейсхолдери (military/business/court_search) лишаються прихованими.
+- **Lawyer auth uid:** `2909df04-0977-400d-9c44-ee60e3633c9c` (sergeykichukki4@gmail.com — поки єдиний акаунт; `disable_signup=true`).
+- **Майбутнє:** довгостроковий відповідь — 2-tier ролі (`project_admin_lawyer_roles.md`).
+
+### Security-review (push sweep) — acknowledged, не блокує
+3 знахідки на migration 013 (broad `USING(true)` UPDATE; bare-`authenticated` gate; client-stamped `reviewed_by`) = свідомо відкладений компроміс **IMPROVEMENTS #47**. **Мітигація:** `disable_signup=true` (invite-only) → `authenticated` = команда (1 акаунт). **Тригер хардингу** (у #47): RPC/тригер для штампу `reviewed_by` + role-gate ПЕРЕД self-signup / 2-м юристом.
+
+### 🔴 Наступний фокус (НОВА сесія — узгоджено)
+**CRON-моніторинг zakon.rada.gov.ua** — виробник записів у `law_change_log` (`detected_by='cron'`), який панель s18 вже вміє показувати. Референс: `scripts/check-law-updates.mjs`. Замикає lifecycle-петлю: автодетект зміни закону → запис у лог + флип залежних послуг у `needs_review` → юрист ревʼю в панелі. Інші кандидати: сервіс-агностична генерація документа (остання розірвана петля) 🟡; n8n v7 hardening хвости 🟡.
+
+### Cosmetic (out of scope, відмічено)
+Dashboard показує «0 полів» для tabs-based послуг (лічильник читає `form_config.steps`, alimony на `tabs`).
+
+---
+
+## Session 17 (2026-06-10) — admin lifecycle: is_published → status (single source) — #31
+
+- **Фіча `status-single-source` змержена в `main`** (`b169458`), Issue #31. Розірвана петля: адмінка писала декоративний `is_published`, а serving-шлях (n8n + TWA) читає `status`. Зведено на `status` як єдине джерело; `is_published` = deprecated-дзеркало.
+- **migration 012** (`012_status_single_source.sql`, **застосовано**) — реконсиляція `is_published := (status='active')` + COMMENT deprecated.
+- **`apps/client/src/lib/serviceStatus.ts`** (NEW) — SSoT статусу: `STATUS_META` (UA), `statusActions` (переходи), `toServiceStatus`/`isPublishedFor` + 10 тестів.
+- **DashboardPage** — бейдж 3 станів + дії (Активувати/Вимкнути/Підтвердити). **ServiceEditPage** — toggle Опубліковано → status-дропдаун (3 стани); нова послуга → `disabled`.
+- `docs/architecture/ARCHITECTURE.md` — `status` авторитетний, `is_published` deprecated.
+
+## Session 16 (2026-06-10) — trim SDD ceremony to tiers (effort ∝ risk)
+
+- Для соло-команди повний spec-триплет на КОЖНУ фічу = overhead. Узгоджено: церемонія ∝ ризик.
+- **`docs/architecture/SDD-GUIDE.md`** — рівні **Tier 0/1/2** + тригери Tier 2; Feature Loop = Tier-2-only.
+- **`CLAUDE.md` (root)** — default Tier 1 (issue only); `specs/features/` лише Tier 2.
+- **`apps/client/CLAUDE.md` + changelog** — Change Documentation Rule полегшено (прибрано pending-staging ритуал; why-log, лише non-trivial).
+
+---
+
+## Session 15 (2026-06-10) — Надійність n8n v7 + локальна інфра (фокус: reliability)
 
 ### Головне — стан ЗАРАЗ
 - **Стратегічний розворот:** нові сервіси НА ПАУЗІ. Будуємо фундамент НАВКОЛО сервісів, щоб юрист додавав їх легко. Деталі + бэклог: пам'ять `project_phase_foundation.md`. **3 розірвані петлі self-service:** (1) документ НЕ генерується з налаштувань адмінки (захардкоджений dispatch divorce/alimony, `ai_prompt` декоративний); (2) `is_published` (адмінка) ≠ `status` (kill-switch) — рознесені; (3) `watched_laws` без UI.

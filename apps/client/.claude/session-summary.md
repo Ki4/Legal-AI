@@ -1,10 +1,47 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-11 (session 18 — law_change_log review panel + service ownership fix)
+> Updated: 2026-06-11 (session 19 — CRON-моніторинг законів: lifecycle-петля замкнена)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 18 (2026-06-10/11) — Панель ревʼю law_change_log + власність послуг (фокус: lifecycle UI)
+## 🆕 Session 19 (2026-06-11) — CRON-моніторинг змін законів (фокус: автоматизація lifecycle)
+
+### Головне — стан ЗАРАЗ
+- **Фіча `cron-law-monitor` ЗАВЕРШЕНА, змержена в `main`, запушена, перевірена живцем у хмарі.** Issue **#33** (лишається відкритою як трекер 2 відкладених пунктів). main чистий, активних feature-гілок немає.
+- **Lifecycle-петля ЗАМКНЕНА end-to-end:** автодетект зміни закону (CRON) → `law_change_log` (`detected_by='cron'`) → флип залежних послуг у `needs_review` → панель ревʼю Ольги (s18). Виробник записів, якого бракувало, тепер є.
+
+### Що зроблено — детектор + планувальник
+- **`scripts/lib/` (NEW shared layer):**
+  - `supabase-rest.mjs` — спільний REST-клієнт + `loadEnv` (прибрав дубль між 2 скриптами).
+  - `rada.mjs` — `extractRevisionDate` (чистий парсер дат) + `fetchWithRetry` (backoff+jitter+`Retry-After` на 429/5xx/мережеві) + `fetchRevisionDate`. Виправлено баг референса (`printUrl` ReferenceError).
+  - `law-change.mjs` — **канонічний `applyLawChange`** (reverse-index по URL → `law_change_log` `action=flagged` → флип услуг у `needs_review` + bump `last_known_date`). Anti-drift: тепер ОДИН producer для ручного CLI і CRON.
+- **`scripts/check-law-updates.mjs`** — REWRITE: ітерує реєстр (дедуп спільних законів по URL — СК фетчиться раз на divorce+alimony), детект → `applyLawChange(detected_by='cron')` → Telegram-алерт. Ідемпотентний.
+- **`scripts/service-lifecycle.mjs`** — `log-law-change` тепер кличе спільний `applyLawChange` (без інлайн-дублю).
+- **`.github/workflows/law-monitor.yml`** — GitHub Actions: `workflow_dispatch` (кнопка + опц. dry_run) + `schedule` (пн 06:00 UTC) **закоментований** поки Ольга недоступна. Без `npm install` (лише Node built-ins+fetch). actions@v5 + Node 22.
+
+### Тести
+- **root vitest 213/213 ✅** (було 162, +51: rada + law-change + ін.). 27 нових тестів у `scripts/lib/__tests__/` (парсер дат + ловушка adoption-date; retry/Retry-After/exhaustion/404-no-retry; reverse-index крізь slug-drift; dry/live applyLawChange).
+- **Live перевірка (хмара + локально):** dry-run проти zakon.rada коректний — судовий збір збігся з відомою датою (`2026-03-10` ✅), СК і ЦПК розійшлися (🔴). GitHub Actions прогін: Success, БД не тронута.
+
+### 🔴 Архітектурні рішення сесії (узгоджено в чаті)
+- **Хост = GitHub Actions** (не n8n, не Vercel): працює незалежно від ноута/n8n/VPS — надійність важливіша за «все в стеку». + ручна кнопка + локальний запуск.
+- **Будували одразу під ріст каталогу:** дедуп спільних законів, retry/backoff. Закон пропускається лише після вичерпання ретраїв, не на першому блипі.
+- **Розклад свідомо вимкнено** поки немає ревʼюера (авто-флип нікому ревʼюити).
+
+### ⏰ Відкладено з датою (записано в память `project_cron_schedule_pending.md`)
+**~2026-06-25, коли Ольга повернеться:**
+1. Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml` (2 рядки) → увімкнути авто-CRON.
+2. **2 РЕАЛЬНІ зміни, знайдені dry-run** — СК `2026-03-04→2026-05-25`, ЦПК `2025-07-17→2026-04-24` — вирішити релевантність нашим шаблонам (ст. 109 СК, 180-184 аліменти, ст. 175 ЦПК) → флипати чи ні. Живий флип НЕ робився (зняв би divorce+alimony з продажу).
+
+### 🔴 Наступний фокус (НОВА сесія — кандидати)
+- **Сервіс-агностична генерація документа** 🟡 — *остання розірвана петля фундаменту*, прямий розблокувальник «юрист додає послугу сам». Зараз dispatch захардкоджено (divorce/alimony JS-файли), `ai_prompt` декоративний. **Рекомендація.**
+- **VPS-деплой** (Hetzner) 🟡 — прибрати ngrok, прод перестане залежати від ноута.
+- n8n v7 hardening хвости (items 3–7 `workflow-improvements.md`) 🟡.
+- Повний backlog: `specs/roadmap.md` (v2 GraphRAG, v3 UX) + `project_phase_foundation.md`.
+
+---
+
+## Session 18 (2026-06-10/11) — Панель ревʼю law_change_log + власність послуг (фокус: lifecycle UI)
 
 ### Головне — стан ЗАРАЗ
 - **Фіча `law-change-log-review` ЗАВЕРШЕНА, змержена в `main`, перевірена живцем.** Гілка `feature/law-change-log-review` (commit `d7684bb`) → merge `0a62a74`, **Issue #32 closed**. main чистий, активних feature-гілок немає.

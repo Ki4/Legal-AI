@@ -15,6 +15,18 @@
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
+### 2026-06-11 (session 21) — divorce портовано на шаблон doc-engine (#35)
+**Status:** COMMITTED `5760cc1` + docs commit · branch `feature/divorce-template-port`
+**Why:** Друга (остання) послуга злазить з hardcoded JS-білдера: контент divorce тепер дані в БД, юрист може правити формулювання без розробника. Спірне зі спеки #34 вирішено: сервіс-специфічні словники (REASONS_MAP, EXEMPT_REASONS) і динамічна нумерація «ПРОШУ» — у самому шаблоні (if-ланцюжки), движок лишився сервіс-агностичним. Движок розширено тільки generic-механізмами, бо легасі-семантика divorce відрізнялась у 4 точках: поля `spouse_*` (аліас), `has_children` = поле форми (шар `answers.*`), нумерований fallback `children_genitive` (шар `ai_raw.*` + `child.raw`), крапка в кінці деталей майна/боргів (хелпер `ensurePeriod`).
+**Files:**
+- `n8n/templates/render-document.js` — generic-розширення buildContext + `ensurePeriod` (всі з тестами)
+- `n8n/templates/services/divorce.document.txt` — **NEW** — шаблон, байт-у-байт еквівалент `buildDivorceDocument`
+- `n8n/templates/__tests__/divorce-template-parity.test.js` — **NEW** — 263 parity-тести (матриця нумерації + AI-fallbacks + toggles + 4 голдени)
+- `n8n/workflows/current/form-submit.json` — Build Document регенеровано (движок оновився)
+- `scripts/set-generation-mode.mjs` — **NEW** — флип `generation_mode` (rollback-інструмент, з guard'ом)
+- docs: DECISIONS (divorce-порт), IMPROVEMENTS #52, roadmap, runbook document-template-editing
+**Tests:** root vitest 655/655 ✅ (було 385). **Live:** деплой 28 нод → divorce js-регресія exec 40 ✓ → флип template: exec 41 (діти+аліменти), 42 (простий) — live `_content` === движок === legacy байт-у-байт → rollback-флип js exec 43 ✓ → назад template → alimony-регресія exec 44 ✓. Обидві послуги live на `generation_mode='template'`.
+
 ### 2026-06-10 (session 15) — local dev runbook + dev-up + Google OAuth recovery
 **Status:** COMMITTED `5ce0093` · merged to main via #30
 **Why:** Error Trigger (щойно задеплоєний) одразу виявив РЕАЛЬНИЙ тихий збій: нода `Copy Template` падала з Google-OAuth `invalid/expired/revoked` → документи не генерувались, юзер бачив лише «готується». Корінь: OAuth consent screen у Testing → Google анулює refresh-токен за 7 днів простою; плюс ngrok гасився, плюс забутий пароль n8n без SMTP. Зафіксували весь шлях відновлення, щоб не «відкривати в моменті».

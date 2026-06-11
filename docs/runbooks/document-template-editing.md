@@ -1,8 +1,10 @@
 # Як змінити текст документа послуги (doc-engine)
 
-> Для послуг з `generation_mode = 'template'` (зараз: **alimony**). Текст позовної заяви —
-> це ШАБЛОН (дані), а не код: правка формулювання не потребує передеплою n8n.
+> Для послуг з `generation_mode = 'template'` (зараз: **alimony** і **divorce**). Текст позовної
+> заяви — це ШАБЛОН (дані), а не код: правка формулювання не потребує передеплою n8n.
 > Контракт DSL: `specs/features/doc-engine/requirements.md` §3.
+> У divorce-шаблоні словники (причини розлучення, підстави звільнення від збору) та номери
+> пунктів «ПРОШУ» — прямо в шаблоні if-ланцюжками; міняючи умову появи пункту, онови номери нижче.
 
 ## Швидкий шлях (правка формулювання)
 
@@ -26,6 +28,8 @@
 ## Перевірка наживо
 
 ```bash
+node scripts/test-webhook.mjs 1    # divorce простий
+node scripts/test-webhook.mjs 2    # divorce діти+аліменти
 node scripts/test-webhook.mjs a1   # alimony percent
 node scripts/test-webhook.mjs a2   # alimony fixed
 ```
@@ -34,10 +38,12 @@ node scripts/test-webhook.mjs a2   # alimony fixed
 ## Rollback
 
 Миттєвий, без деплою — флип колонки назад на legacy JS-білдер:
-```sql
-UPDATE services SET generation_mode = 'js' WHERE slug = '<slug>';
+```bash
+node scripts/set-generation-mode.mjs <slug> js        # відкат на legacy білдер
+node scripts/set-generation-mode.mjs <slug> template  # назад, коли полагодиш шаблон
 ```
-(і назад на `'template'`, коли полагодиш шаблон). Той самий патерн, що status kill-switch.
+(скрипт відмовиться вмикати `template`, якщо в БД немає шаблону). Той самий патерн,
+що status kill-switch.
 
 ## Якщо шаблон зламаний (помилка DSL)
 

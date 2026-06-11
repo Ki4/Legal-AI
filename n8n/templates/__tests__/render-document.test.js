@@ -308,6 +308,14 @@ describe('HELPERS', () => {
     expect(HELPERS.concat('a', '', 'b', null, 'c')).toBe('abc')
     expect(HELPERS.concat('', null)).toBe('')
   })
+
+  it('ensurePeriod adds a period only when missing; empty → fallback + period', () => {
+    expect(HELPERS.ensurePeriod('квартира')).toBe('квартира.')
+    expect(HELPERS.ensurePeriod('квартира.')).toBe('квартира.')
+    expect(HELPERS.ensurePeriod('')).toBe(`${FALLBACK}.`)
+    expect(HELPERS.ensurePeriod(undefined)).toBe(`${FALLBACK}.`)
+    expect(HELPERS.ensurePeriod(false)).toBe(`${FALLBACK}.`)
+  })
 })
 
 // ─── buildContext (computed layer) ───────────────────────────────────────────
@@ -377,6 +385,54 @@ describe('buildContext', () => {
     expect(c.ai.children_genitive).toBe(
       'Іванов Олег Іванович, 15.05.2018 р.н.; Іванова Марія Іванівна, 20.08.2020 р.н.'
     )
+  })
+
+  it('children keep the raw line as typed (divorce inlines it verbatim)', () => {
+    const c = buildContext({ children_details: '  Іванов Олег,15.05.2018  ' }, {})
+    expect(c.children[0].raw).toBe('Іванов Олег,15.05.2018')
+    expect(c.children[0].name).toBe('Іванов Олег')
+  })
+
+  it('defendant_* computed fields fall back to legacy spouse_* answers (divorce)', () => {
+    const c = buildContext({
+      spouse_last_name: 'Петренко', spouse_first_name: 'Андрій', spouse_middle_name: 'Сергійович',
+    }, {})
+    expect(c.defendant_name).toBe('Петренко Андрій Сергійович')
+    expect(c.defendant_gender).toBe('male')
+    expect(c.ai.defendant_instrumental).toBe('Петренко Андрій Сергійович')
+    const female = buildContext({ spouse_middle_name: 'Вікторівна' }, {})
+    expect(female.defendant_gender).toBe('female')
+  })
+
+  it('defendant_* answers win over spouse_* when both present', () => {
+    const c = buildContext({
+      defendant_last_name: 'Іванов', spouse_last_name: 'Петренко',
+      defendant_middle_name: 'Іванович', spouse_middle_name: 'Вікторівна',
+    }, {})
+    expect(c.defendant_name).toBe('Іванов Іванович')
+    expect(c.defendant_gender).toBe('male')
+  })
+
+  it('ai layer accepts legacy spouse_* declension keys (divorce AI contract)', () => {
+    const c = buildContext(answers, { spouse_instrumental: 'Івановим Іваном Івановичем' })
+    expect(c.ai.defendant_instrumental).toBe('Івановим Іваном Івановичем')
+    // unified key wins when both present
+    const c2 = buildContext(answers, {
+      defendant_genitive: 'Іванова Івана Івановича', spouse_genitive: 'інше',
+    })
+    expect(c2.ai.defendant_genitive).toBe('Іванова Івана Івановича')
+  })
+
+  it('answers layer exposes raw form values shadowed by computed keys', () => {
+    const c = buildContext({ has_children: true, children_details: '' }, {})
+    expect(c.has_children).toBe(false) // computed (parsed list is empty)
+    expect(c.answers.has_children).toBe(true) // raw form field
+  })
+
+  it('ai_raw exposes the AI payload without fallbacks', () => {
+    const c = buildContext(answers, {})
+    expect(c.ai_raw.children_genitive).toBeUndefined()
+    expect(c.ai.children_genitive).not.toBe('') // aiSafe has the fallback
   })
 })
 

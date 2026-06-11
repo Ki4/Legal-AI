@@ -9,3 +9,6 @@
 *.sql text eol=lf
 *.css text eol=lf
 *.html text eol=lf
+# doc-engine: byte-identical golden comparison requires stable LF
+n8n/templates/services/*.document.txt text eol=lf
+test-data/** text eol=lf

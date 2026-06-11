@@ -1,0 +1,154 @@
+{{! ═══ Позовна заява про стягнення аліментів — шаблон doc-engine (#34) ═══ }}
+{{! SSoT: цей файл у git. У Supabase services.document_template — runtime-копія }}
+{{! (заливається scripts/upload-document-template.mjs alimony).               }}
+{{! Еквівалент buildAlimonyDocument байт-у-байт — див. parity-тести.          }}
+До суду за місцем проживання відповідача
+(Знайти ваш суд: https://court.gov.ua/)
+
+Позивач: {{plaintiff_name}}
+Зареєстроване місце проживання: {{registered_address}}
+{{#if not same_actual_address and actual_address}}
+Фактичне місце проживання: {{actual_address}}
+{{/if}}
+{{#if not has_no_ipn and tax_number}}
+(реєстраційний номер облікової картки платника податків (ІПН): {{tax_number}})
+{{else if has_no_ipn and passport_series}}
+(серія та номер паспорта: {{passport_series}})
+{{/if}}
+{{#if plaintiff_phone}}
+Тел.: {{plaintiff_phone}}
+{{/if}}
+{{#if plaintiff_email}}
+Адреса електронної пошти: {{plaintiff_email}}
+{{/if}}
+{{#if plaintiff_official_email == 'present'}}
+Офіційна електронна адреса: наявна в ЄСІТС
+{{else}}
+Офіційна електронна адреса — відсутня
+{{/if}}
+
+Відповідач: {{defendant_name}}
+{{#if defendant_registered_address}}
+Зареєстроване місце проживання: {{defendant_registered_address}}
+{{/if}}
+{{#if defendant_actual_address_known == 'different' and defendant_actual_address}}
+Фактичне місце проживання: {{defendant_actual_address}}
+{{else if defendant_actual_address_known == 'unknown'}}
+Фактичне місце проживання невідоме
+{{/if}}
+{{#if not defendant_has_no_ipn and defendant_tax_number}}
+(ІПН: {{defendant_tax_number}})
+{{else if defendant_has_no_ipn and defendant_passport_series}}
+(серія та номер паспорта: {{defendant_passport_series}})
+{{/if}}
+{{#if defendant_phone}}
+Тел.: {{defendant_phone}}
+{{/if}}
+{{#if defendant_email}}
+Адреса електронної пошти: {{defendant_email}}
+{{/if}}
+{{#if defendant_official_email == 'present'}}
+Офіційна електронна адреса: наявна в ЄСІТС
+{{else if defendant_official_email == 'unknown'}}
+Офіційна електронна адреса — невідома
+{{else}}
+Офіційна електронна адреса — відсутня
+{{/if}}
+
+
+{{!style: center bold keep-with-next}}
+ПОЗОВНА ЗАЯВА
+про стягнення аліментів
+
+
+{{#if marital_status != 'never_married'}}
+{{formatDate marriage_date}} року я, {{plaintiff_name}}, {{formatDate birth_date}} року народження, {{gender plaintiff_gender 'уклав' 'уклала'}} шлюб з {{ai.defendant_instrumental}}, {{formatDate defendant_birth_date}} року народження, який ми зареєстрували у {{ai.marriage_place_locative}}, про що зроблений актовий запис № {{marriage_act_number}}.
+
+{{/if}}
+{{#if marital_status == 'divorced'}}
+Шлюб між мною та відповідачем розірвано {{formatDate divorce_date}} року, що підтверджується {{#if divorce_court and divorce_case_number}}рішенням {{divorce_court}} від {{formatDate divorce_date}} по справі № {{divorce_case_number}}{{else if divorce_court}}рішенням {{divorce_court}} від {{formatDate divorce_date}}{{else}}копією рішення суду{{/if}}.
+
+{{/if}}
+{{#if not has_children}}
+{{#if marital_status == 'never_married'}}Від наших стосунків у нас{{else}}У шлюбі у нас{{/if}} народилась дитина: ________ (ПІБ дитини), ________ року народження, що підтверджується свідоцтвом про народження № ________ від ________ року.
+
+{{else if n_children == 1}}
+{{#if marital_status == 'never_married'}}Від наших стосунків у нас{{else}}У шлюбі у нас{{/if}} народилась дитина: {{children.0.name}}, {{children.0.birthDate}} року народження, що підтверджується {{#if children.0.certInfo}}{{children.0.certInstrumental}}{{else}}свідоцтвом про народження № ________ від ________ року{{/if}}.
+
+{{else}}
+{{#if marital_status == 'never_married'}}Від наших стосунків у нас{{else}}У шлюбі у нас{{/if}} народились діти:
+{{#each children}}
+{{@index1}}) {{name}}, {{birthDate}} року народження{{#if certInfo}}, що підтверджується {{certInstrumental}}{{/if}};
+{{/each}}
+
+{{/if}}
+{{plural n_children 'Дитина проживає' 'Діти проживають'}} разом зі мною, що підтверджується довідкою про склад сім'ї від {{formatDate family_cert_date}} року.
+
+Відповідно до ст. 180 Сімейного кодексу України (надалі – СК України), батьки зобов'язані утримувати дитину до досягнення нею повноліття, а відповідач з {{formatDate abandonment_date}} року не бере участі у вихованні та утриманні {{#if n_children > 1}}наших спільних дітей{{else}}{{gender first_child_gender 'нашого спільного сина' 'нашої спільної доньки'}}{{/if}}.
+
+Відповідно до ст. 150 СК України, батьки зобов'язані виховувати дитину в дусі поваги до прав та свобод інших людей, любові до своєї сім'ї та родини, свого народу, своєї Батьківщини. Батьки зобов'язані піклуватися про здоров'я дитини, її фізичний, духовний та моральний розвиток. Батьки зобов'язані забезпечити здобуття дитиною повної загальної середньої освіти, готувати її до самостійного життя.
+
+Таким чином, {{plural n_children 'дитині' 'дітям'}} повинен бути забезпечений належний рівень життя, необхідний для фізичного, розумового, духовного, морального і соціального розвитку.
+
+{{#if alimony_type == 'fixed'}}
+Такий рівень {{gender plaintiff_gender 'я один' 'я одна'}} не зможу забезпечити самостійно, тому {{gender defendant_gender 'батько' 'мати'}}, {{gender defendant_gender 'який є здоровим та працездатним' 'яка є здоровою та працездатною'}}, зможе сплачувати аліменти у твердій грошовій сумі в розмірі {{alimony_fixed_amount}} гривень щомісяця{{#if defendant_employed == 'yes' and defendant_employer}}, оскільки працює в {{defendant_employer}}{{#if defendant_position}} на посаді {{defendant_position}}{{/if}}{{#if defendant_salary}}, отримує дохід у розмірі {{defendant_salary}} грн{{/if}}{{/if}}.
+
+{{else}}
+Такий рівень {{gender plaintiff_gender 'я один' 'я одна'}} не зможу забезпечити, тому {{gender defendant_gender 'батько' 'мати'}}, {{gender defendant_gender 'який є здоровим та працездатним' 'яка є здоровою та працездатною'}}, зможе сплачувати аліменти на рівні {{alimonyFraction n_children}} частини з усіх видів заробітку (доходу){{#if defendant_employed == 'yes' and defendant_employer}}, оскільки працює в {{defendant_employer}}{{#if defendant_position}} на посаді {{defendant_position}}{{/if}}{{#if defendant_salary}} та має постійний дохід у розмірі {{defendant_salary}} грн{{/if}}{{else if defendant_employed == 'no'}}. Відповідач на даний час офіційно не працевлаштований, проте є працездатним і може отримувати доходи{{/if}}.
+
+{{/if}}
+{{#if defendant_other_income}}
+Крім того, відповідач має інші джерела доходу: {{defendant_other_income}}.
+
+{{/if}}
+У відповідності до ст. 141 СК України мати, батько мають рівні права та обов'язки щодо дитини, незалежно від того, чи перебували вони у шлюбі між собою. Розірвання шлюбу між батьками, проживання їх окремо від дитини не впливає на обсяг їхніх прав і не звільняє від обов'язків щодо дитини.
+
+Відповідно до ч. 2 ст. 182 СК України розмір аліментів має бути необхідним та достатнім для забезпечення гармонійного розвитку дитини.
+
+Крім цього, відповідно до вимог Сімейного кодексу України (ст. 182-184), вирішуючи питання щодо розміру аліментів, суд повинен ураховувати: стан здоров'я, матеріальне становище дитини і платника аліментів; наявність в останнього інших неповнолітніх дітей, непрацездатних чоловіка, дружини, батьків, повнолітніх дочки, сина; наявність рухомого та нерухомого майна, грошових коштів; інші обставини, що мають істотне значення.
+
+Так, відповідач є працездатним, отримує дохід, а тому вважаю, що {{gender defendant_gender 'він' 'вона'}} може сплачувати аліменти у зазначеному розмірі.
+
+Відповідно до п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору не проводилися.
+
+Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що вжиття заходів забезпечення доказів або позову до подання позовної заяви не здійснювалось.
+
+Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що у позивача перебувають оригінали письмових або електронних доказів, копії яких додано до заяви.
+
+Згідно із п.9 ч.3 ст.175 ЦПК України повідомляю, що витрати на правову допомогу відсутні.
+
+У відповідності із п.10 ч.3 ст.175 ЦПК України підтверджую, що мною не подано іншого позову (позовів) до цього ж відповідача (відповідачів) з тим самим предметом та з тих самих підстав.
+
+Від сплати судового збору за подання позову про стягнення аліментів я {{gender plaintiff_gender 'звільнений' 'звільнена'}} на підставі п.3 ч.1 ст.5 Закону України «Про судовий збір».
+
+На підставі викладеного та у відповідності до ст.ст. 150, 180–184 СК України, керуючись ст.ст. 174, 175 ЦПК України,—
+
+{{!style: center bold keep-with-next}}
+П Р О Ш У  С У Д :
+
+{{#if alimony_type == 'fixed'}}
+1. Стягнути з {{ai.defendant_genitive}}, {{formatDate defendant_birth_date}} року народження, на користь {{ai.plaintiff_genitive}}, {{formatDate birth_date}} року народження, аліменти на утримання {{ai.children_genitive}} у твердій грошовій сумі в розмірі {{alimony_fixed_amount}} гривень щомісячно, починаючи стягнення з {{formatDate alimony_start_date}} року і до повноліття {{plural n_children 'дитини' 'дітей'}}.
+
+{{else}}
+1. Стягнути з {{ai.defendant_genitive}}, {{formatDate defendant_birth_date}} року народження, на користь {{ai.plaintiff_genitive}}, {{formatDate birth_date}} року народження, аліменти на утримання {{ai.children_genitive}} в розмірі {{alimonyFraction n_children}} частини з усіх видів заробітку (доходу), але не менше 50 відсотків прожиткового мінімуму для дитини відповідного віку, щомісячно, починаючи стягнення з {{formatDate alimony_start_date}} року і до повноліття {{plural n_children 'дитини' 'дітей'}}.
+
+{{/if}}
+{{!style: keep-with-next}}
+Додатки:
+{{#if marital_status != 'never_married'}}
+- копія свідоцтва про укладення шлюбу — 2 примірники;
+{{/if}}
+{{#if marital_status == 'divorced'}}
+- копія рішення суду про розірвання шлюбу — 2 примірники;
+{{/if}}
+- копія {{plural n_children 'свідоцтва про народження дитини' 'свідоцтв про народження дітей'}} — по 2 примірники;
+- довідка про склад сім'ї — 2 примірники;
+- копія паспорта позивача — 2 примірники;
+{{#if not has_no_ipn}}
+- копія облікової картки платника податків позивача — 2 примірники;
+{{/if}}
+- 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.
+
+{{!style: keep-together}}
+
+«___» _______ 20__ року                                              (підпис)    {{plaintiff_name}}

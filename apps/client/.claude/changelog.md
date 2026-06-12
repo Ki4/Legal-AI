@@ -65,6 +65,23 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-12 (session 22, продовження) — citation-coverage: regex-екстрактор + golden-страж + закриття дрейфу (#36)
+**Status:** PENDING COMMIT · branch `feature/citation-coverage` · Refs #36
+**Why:** Шаг 0 GraphRAG (ярус 1 — явні посилання на статті законів: regex, авто-приймається, без ревʼю юриста). Карта каталогу (сесія 22) знайшла дрейф між тим, що цитують шаблони документів, і тим, що відстежує CRON law-monitor через `watched_laws` (cited-but-not-watched = слабка точка: зміна закону може пройти непоміченою). Побудовано regex-екстрактор цитат → golden SSoT (`<slug>.citations.json`) + vitest-страж дрейфу шаблон↔golden → CLI `report`/`sync --dry-run` звіряє golden↔`watched_laws`. Знайдено 2 реальних дрейфи (ст.27 ЦПК divorce, ст.174 ЦПК alimony) і 1 false positive (ст.181 СК alimony — екстрактор коректно розгорнув діапазон «180–184» через en-dash, watched_laws вже коректний). Migration 015 закриває обидва дрейфи + проактивно додає ст.113 СК (divorce, `surname_after_divorce` — готуємо watched_laws заздалегідь під правку шаблону ~2026-06-25).
+**Files:**
+- `scripts/lib/citations.mjs` — **NEW** — regex-екстрактор (two-pass: citation-перед-законом / закон-перед-дужкою), `expandArticleList` (діапазони через `-`/`–`), нормалізація через `law-registry`
+- `scripts/lib/__tests__/citations.test.mjs` — **NEW** — 16 тестів (діапазони, `ст.ст.`, edge case if-ланцюжка, реальні шаблони)
+- `n8n/templates/services/{divorce,alimony}.citations.json` — **NEW** — golden SSoT (згенеровано через `--write`)
+- `n8n/templates/__tests__/citations-drift.test.js` — **NEW** — страж: `golden === extract(template)`
+- `scripts/extract-citations.mjs` — **NEW** — CLI: `--write` / `report` / `sync --dry-run`
+- `supabase/migrations/015_citation_coverage.sql` — **NEW** — закриває ст.27 ЦПК (divorce), ст.174 ЦПК (alimony) + додає ст.113 СК (divorce, проактивно). `$json$...$json$::jsonb` dollar-quoting (як migration 010) — без екранування апострофів в українському тексті.
+- `docs/architecture/DECISIONS.md` — новий розділ «Citations as data: regex-екстрактор + golden-страж (GraphRAG крок 0)» + TOC
+- `specs/roadmap.md` — нова підсекція «2.0 Citation coverage (крок 0, regex-шар) ✅»
+**Tests:** root vitest 674/674 ✅ (було 655)
+**Live:** migration 015 застосована через Supabase REST (`sbPatch`, без SQL — апострофи в JSON не проблема); `node scripts/extract-citations.mjs report` → «✅ All cited articles are watched» (exit 0). SQL-файл міграції — відтворювана фіксація цієї зміни (ідемпотентний при повторному запуску).
+**Note:** перша спроба прогнати SQL-файл вручну в Supabase SQL Editor дала синтаксичну помилку (неекрановані апострофи в `'[...]'::jsonb`, напр. «пред'явлення»). Виправлено переходом на `$json$...$json$::jsonb` (як migration 010) — усуває проблему екранування повністю, без зміни даних (live вже коректний).
+**Next step:** merge `feature/citation-coverage` → main з `Closes #36`.
+
 ### 2026-06-12 (session 22) — правило model-routing: модель на сессию по тиру задачи
 **Status:** COMMITTED · branch `chore/session-22-summary` → main
 **Why:** Сергей спросил, стоит ли использовать топ-модель (Fable) для рутинных задач. Решение: модель выбирается раз на сессию по SDD-тиру следующей задачи (1 сессия = 1 фокус → выбор в момент `/session-start`): Tier 0/1 по готовому issue → Sonnet; Tier 2 / архитектура / research / юр-критичное → Opus+. Skill-роутер не пишем — субагенты стартуют с холодным контекстом, совещательной строки в briefing достаточно. Переключение `/model` сохраняет контекст разговора.

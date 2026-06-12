@@ -36,6 +36,12 @@
 
 Мета: вийти за межі простих документів. Складні кейси (розлучення + аліменти + майно) вимагають розуміння зв'язків між законами, а не просто пошуку схожого тексту.
 
+### 2.0 Citation coverage (крок 0, regex-шар) ✅
+- [x] `scripts/lib/citations.mjs` — regex-екстрактор цитат із doc-engine шаблонів 🟢
+- [x] Голдени `n8n/templates/services/<slug>.citations.json` (SSoT) + vitest-страж від дрейфу 🟢
+- [x] `scripts/extract-citations.mjs report` — звірка golden ↔ `watched_laws` (Supabase) 🟢
+- [x] Migration 015: закрито дрейф ст.27 ЦПК (divorce), ст.174 ЦПК (alimony) + проактивно ст.113 СК (divorce) 🟢
+
 ### 2.1 GraphRAG (Supabase-first)
 - [ ] Таблиця `law_relations (from_chunk_id, to_chunk_id, relation_type)` 🟡
 - [ ] relation_type: "requires", "overrides", "exception_if", "references"

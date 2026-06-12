@@ -1,0 +1,36 @@
+{
+  "slug": "alimony",
+  "laws": [
+    {
+      "url": "https://zakon.rada.gov.ua/laws/show/2947-14",
+      "slug": "simeinyi-kodeks",
+      "title": "Сімейний кодекс України",
+      "articles": [
+        "141",
+        "150",
+        "180",
+        "181",
+        "182",
+        "183",
+        "184"
+      ]
+    },
+    {
+      "url": "https://zakon.rada.gov.ua/laws/show/1618-15",
+      "slug": "tsyvilnyi-protsesualnyi-kodeks",
+      "title": "Цивільний процесуальний кодекс України",
+      "articles": [
+        "174",
+        "175"
+      ]
+    },
+    {
+      "url": "https://zakon.rada.gov.ua/laws/show/3674-17",
+      "slug": "pro-sudovyi-zbir",
+      "title": "Закон України «Про судовий збір»",
+      "articles": [
+        "5"
+      ]
+    }
+  ]
+}

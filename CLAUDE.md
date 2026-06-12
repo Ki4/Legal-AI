@@ -55,6 +55,7 @@ scripts/        ← Repo-level utility scripts (not part of any app)
 
 - **Branch always:** every task — any tier, including trivial — on its own branch off `main`. Never commit straight to `main`. `main` stays deployable; merge when verified; rollback = delete the branch (cheap, so prefer acting over over-confirming).
 - Start: read `apps/client/.claude/session-summary.md` + `apps/client/.claude/changelog.md`; if a feature is in progress, mark its GitHub issue in-progress.
+- **Model per session (routing by tier):** the `/session-start` briefing must end with a **Recommended model** line for the next task — Tier 0/1 implementation from a ready issue/spec → **Sonnet**; Tier 2 specs, architecture, research, debugging the unknown, legally-critical logic design → **Opus or higher**. Sergey switches via `/model` right after the briefing; a mid-session switch keeps the full conversation context (only the generating model changes).
 - End (phrases: "закінчуємо", "на сьогодні все", "на добраніч", "good night"): update both files; tick the issue checklist + comment progress on the active issue.
 - Language: UI = Ukrainian, chat = Russian OK, code comments = English
 

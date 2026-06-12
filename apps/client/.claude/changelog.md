@@ -65,6 +65,13 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-12 (session 22) — правило model-routing: модель на сессию по тиру задачи
+**Status:** COMMITTED · branch `chore/session-22-summary` → main
+**Why:** Сергей спросил, стоит ли использовать топ-модель (Fable) для рутинных задач. Решение: модель выбирается раз на сессию по SDD-тиру следующей задачи (1 сессия = 1 фокус → выбор в момент `/session-start`): Tier 0/1 по готовому issue → Sonnet; Tier 2 / архитектура / research / юр-критичное → Opus+. Skill-роутер не пишем — субагенты стартуют с холодным контекстом, совещательной строки в briefing достаточно. Переключение `/model` сохраняет контекст разговора.
+**Files:**
+- `CLAUDE.md` (root) — пункт «Model per session (routing by tier)» в Session protocol
+- `.claude/commands/session-start.md` — briefing завершается строкой **Recommended model** + критерии выбора
+
 ### 2026-06-12 (session 22) — карта каталога услуг + ветвлений → вход для GraphRAG шага 0
 **Status:** COMMITTED · branch `docs/service-catalog-branching-map` → main
 **Why:** Сергей попросил понять полный желаемый каталог услуг (не только live) и от чего зависят ветвления документов — как вход для retrieval-архитектуры (intent detection, FAQ-индексация, clarifying questions из доклада о RAG-маршрутизации). Анализ live-данных (watched_laws + form_config из Supabase + regex по шаблонам) показал: (1) весь семейный кластер сидит на 3 законах — граф один на кластер; (2) ветвления делятся на юр-значимые (≈ готовые рёбра яруса 3 «факт → норма», уже покрыты parity-тестами) и реквизитные; (3) ядро уже реализует детерминированную версию паттернов доклада — техники применимы к трём будущим слоям, не к ядру; (4) найден drift шаблоны↔watched_laws (ст.27, ст.174 ЦПК не watched; ст.113 СК не цитируется) — ровно класс ошибок под regex-слой s21.

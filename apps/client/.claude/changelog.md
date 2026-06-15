@@ -24,7 +24,7 @@ _Зараз порожньо — усе закоммічено (звірено �
 > When a pending group above is committed, move it here with the commit hash and date.
 
 ### 2026-06-08 (session 11) — Decisions doc (RAG/GraphRAG) + portfolio-value + untrack local settings
-**Commit:** (this session)
+**Commit:** `209a8d1`
 **Why:** зафіксувати рішення RAG/GraphRAG/Hybrid у DECISIONS.md; зберегти portfolio-value як стратегічний «why»-док; прибрати `.claude/settings.local.json` з git (персональний файл — шум між машинами/сесіями).
 **Files:**
 - `docs/architecture/DECISIONS.md` — розділ «RAG vs GraphRAG vs Hybrid Template»

@@ -1,5 +1,5 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-08 (session 11 — SDD-фундамент змержено + стратегія/research + консолідація гілок)
+> Updated: 2026-06-15 (session 11 — SDD merge + service-demand research + консолідація гілок + гігієна)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
@@ -33,6 +33,13 @@
 3. (опц.) Прибрати злиті гілки `fervent-pascal` / `spec-driven`.
 4. **n8n v7 hardening — committed-but-unfinished (НЕ внедрено):** ensure-profile wiring + Error Trigger (admin alert) + guard IF-ноди + try/catch у Build Document. План: `docs/architecture/workflow-improvements.md` items 3–7. Без цього workflow падає тихо при помилці після валідації.
 5. Хвости з session 10: dev/prod розділення, аудит Supabase/services, документація `form_config`.
+
+### Гігієна + уроки (session 11, доповнення 2026-06-15)
+- **changelog почищено:** усі старі «pending» групи звірено по git і перенесено в Commit history; секція Pending тепер порожня. Урок зашито: **«закоммічено ≠ закрито»** — звіряй задачу/чек-ліст, не лише git.
+- **DECISIONS.md** доповнено розділом «RAG vs GraphRAG vs Hybrid Template» (`209a8d1`).
+- **`docs/strategy/portfolio-value.md`** — **NEW** — цінність проекту як портфоліо AI Engineer.
+- **`.claude/settings.local.json`** знято з git і додано в `.gitignore` (персональний файл — не комітимо).
+- **Урок «дві копії»:** локальне і хмарне редагування одночасно → merge-конфлікт (portfolio-value.md). Правило: у момент часу авторитетна ОДНА копія; `git pull` перед/після передачі роботи між машиною і хмарою.
 
 ---
 

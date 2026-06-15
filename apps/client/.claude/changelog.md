@@ -15,6 +15,19 @@
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
+### 2026-06-15/16 (session 24, продовження) — alimony-change G1: повна реалізація (#37)
+**Status:** uncommitted · branch `feature/alimony-change-g1`
+**Why:** Пілотна реалізація нового сервісу «Зміна розміру аліментів (↑/↓)» у режимі `generation_mode='template'` (перший сервіс, що не має legacy JS-builder). G1 охоплює: L0.5 routing (route.js), шаблон документа (147 рядків DSL), form_config для UI (TS), 3 golden-сценарії (TC1/TC2/TC9) з очікуваними виводами байт-в-байт, 132 parity-тести (структурна матриця 96 комбо + 29 гілочних перемикачів + 3 golden-луп), citations.json (витягнутий extract-citations.mjs), SQL-міграція 016. Виявлено та виправлено: вкладений `{{ai.reasoning}}` всередині `{{! comment }}` ламав нежадібний TAG_RE-токенізатор → рендер повертав сміттєвий перший рядок.
+**Files:**
+- `n8n/templates/route-alimony-change.js` — **NEW** — L0.5 route() + ROUTE enum + ABSTAIN_MESSAGES; default enabled=false (G1)
+- `n8n/templates/services/alimony-change.document.txt` — **NEW** — 147-рядковий шаблон DSL (юрисдикція, сторони, підстави, збір, борг, ПРОШУ, Додатки)
+- `apps/client/src/data/alimonyChangeFormConfig.ts` — **NEW** — FormConfig 4 таби (Сторони/Попереднє рішення/Діти/Зміна обставин), ~38 полів із show_if і hint
+- `test-data/alimony-change/fixtures/scenario-{1,2,3}.mjs` — **NEW** — golden-фікстури (TC1 збільш/%, TC2 зменш/fixed non-floor, TC9 зменш/fixed floor+existing_debt)
+- `test-data/alimony-change/expected/scenario-{1,2,3}.txt` — **NEW** — байт-ідентичні очікувані виводи
+- `n8n/templates/__tests__/alimony-change-template-parity.test.js` — **NEW** — 132 тести (96 структурна матриця + 29 гілочних + 3 golden)
+- `n8n/templates/services/alimony-change.citations.json` — **NEW** — авто-витягнутий (СК 182-184/191/192/197, ЦПК 27/28/174/175/176, ЗСЗ 4/5)
+- `supabase/migrations/016_alimony_change_service.sql` — **NEW** — INSERT alimony-change (status='disabled', generation_mode='template', watched_laws)
+
 ### 2026-06-14/15 (session 23) — Tier-каталог услуг (ТЗ) + критич. обзор legaltech + консолидация веток в main
 **Status:** COMMITTED · напрямую в `main` (`35e9381`, `d54aa88`, `a3ccbf9`, + этот коммит) — сессия = свод всего в один main по просьбе Сергея; ветки удалены вручную (git-прокси окружения блокирует ref-delete 403)
 **Why:** Сергей с другом-AI-инженером прорабатывали Tier 2/3 услуги: какие услуги попадают в категории, какой Input/Output, как строить AI-харнесс (что детерминировать, где критик, как подсвечивать галлюцинации, что и в каком формате отдавать юристу). Затем — взгляд критика: как это закрывали в мире. Веб-сверка: Stanford (Lexis+ 17% / Westlaw 33% галлюцинаций ДАЖЕ с RAG), DoNotPay/FTC ($193k за overpromise), HotDocs/Docassemble (document automation без LLM 30 лет), Harvey/CoCounsel (юрист в петле + citation grounding + Shepardization, ~0.2%). Вывод усиливает курс: операбельный текст детерминированный, генерация выносится из доверенного пути, abstention + «перевірено юристом» = ров. Закреплён канон Document-Tier 0/1/2/3 (≠ SDD-Tier). Это ТЗ/research — НЕ реализация.

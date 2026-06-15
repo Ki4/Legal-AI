@@ -1,0 +1,146 @@
+{{! ═══ Позовна заява про зміну розміру аліментів (↑/↓) — шаблон doc-engine (G1, issue #37) ═══ }}
+{{! SSoT: цей файл у git. generation_mode='template' у G1 (status='disabled'); G3/G4 додають L3. }}
+{{! ai.reasoning — поки завжди порожнє (без LLM); рендериться generic-абзац ст.182-184. }}
+{{#if change_direction == 'increase'}}
+До суду за зареєстрованим місцем проживання позивача або відповідача — за вибором позивача (ст. 28 ч.1 ЦПК України)
+(Знайти ваш суд: https://court.gov.ua/)
+{{else}}
+До суду за зареєстрованим місцем проживання відповідача (ст. 27 ЦПК України)
+(Знайти ваш суд: https://court.gov.ua/)
+{{/if}}
+
+Позивач: {{plaintiff_name}}
+Зареєстроване місце проживання: {{registered_address}}
+{{#if not same_actual_address and actual_address}}
+Фактичне місце проживання: {{actual_address}}
+{{/if}}
+{{#if not has_no_ipn and tax_number}}
+(реєстраційний номер облікової картки платника податків (ІПН): {{tax_number}})
+{{else if has_no_ipn and passport_series}}
+(серія та номер паспорта: {{passport_series}})
+{{/if}}
+{{#if plaintiff_phone}}
+Тел.: {{plaintiff_phone}}
+{{/if}}
+{{#if plaintiff_email}}
+Адреса електронної пошти: {{plaintiff_email}}
+{{/if}}
+{{#if plaintiff_official_email == 'present'}}
+Офіційна електронна адреса: наявна в ЄСІТС
+{{else}}
+Офіційна електронна адреса — відсутня
+{{/if}}
+
+Відповідач: {{defendant_name}}
+{{#if defendant_registered_address}}
+Зареєстроване місце проживання: {{defendant_registered_address}}
+{{/if}}
+{{#if defendant_actual_address_known == 'different' and defendant_actual_address}}
+Фактичне місце проживання: {{defendant_actual_address}}
+{{else if defendant_actual_address_known == 'unknown'}}
+Фактичне місце проживання невідоме
+{{/if}}
+{{#if not defendant_has_no_ipn and defendant_tax_number}}
+(ІПН: {{defendant_tax_number}})
+{{else if defendant_has_no_ipn and defendant_passport_series}}
+(серія та номер паспорта: {{defendant_passport_series}})
+{{/if}}
+{{#if defendant_phone}}
+Тел.: {{defendant_phone}}
+{{/if}}
+{{#if defendant_email}}
+Адреса електронної пошти: {{defendant_email}}
+{{/if}}
+{{#if defendant_official_email == 'present'}}
+Офіційна електронна адреса: наявна в ЄСІТС
+{{else if defendant_official_email == 'unknown'}}
+Офіційна електронна адреса — невідома
+{{else}}
+Офіційна електронна адреса — відсутня
+{{/if}}
+
+
+{{!style: center bold keep-with-next}}
+ПОЗОВНА ЗАЯВА
+{{#if change_direction == 'increase'}}
+про збільшення розміру аліментів
+{{else}}
+про зменшення розміру аліментів
+{{/if}}
+
+
+{{#if prior_basis == 'court_decision'}}
+{{#if change_direction == 'increase'}}
+Рішенням {{prior_court}} від {{formatDate prior_decision_date}} року по справі № {{prior_case_number}} з відповідача, {{ai.defendant_genitive}}, на мою користь стягнуто аліменти на утримання {{ai.children_genitive}} {{#if prior_alimony_type == 'percent'}}у розмірі {{prior_alimony_value}} частини з усіх видів заробітку (доходу){{else}}у твердій грошовій сумі в розмірі {{formatMoney prior_alimony_value}} грн{{/if}} щомісячно.
+{{else}}
+Рішенням {{prior_court}} від {{formatDate prior_decision_date}} року по справі № {{prior_case_number}} з мене на користь відповідача, {{ai.defendant_genitive}}, стягнуто аліменти на утримання {{ai.children_genitive}} {{#if prior_alimony_type == 'percent'}}у розмірі {{prior_alimony_value}} частини з усіх видів заробітку (доходу){{else}}у твердій грошовій сумі в розмірі {{formatMoney prior_alimony_value}} грн{{/if}} щомісячно.
+{{/if}}
+{{else}}
+Договором про сплату аліментів від {{formatDate prior_decision_date}} року, укладеним між мною та відповідачем, встановлено аліменти на утримання {{ai.children_genitive}} {{#if prior_alimony_type == 'percent'}}у розмірі {{prior_alimony_value}} частини з усіх видів заробітку (доходу){{else}}у твердій грошовій сумі в розмірі {{formatMoney prior_alimony_value}} грн{{/if}} щомісячно.
+{{/if}}
+
+{{#if prior_basis == 'court_decision'}}
+З моменту ухвалення зазначеного рішення обставини істотно змінилися.
+{{else}}
+З моменту укладення зазначеного договору обставини істотно змінилися.
+{{/if}}
+
+{{#if ai.reasoning}}
+{{ai.reasoning|raw}}
+{{else}}
+Відповідно до ч. 2 ст. 182 СК України розмір аліментів має бути необхідним та достатнім для забезпечення гармонійного розвитку дитини. Вирішуючи питання щодо розміру аліментів, суд враховує стан здоров'я та матеріальне становище дитини й платника аліментів, наявність у платника інших дітей та інші обставини, що мають істотне значення (ст.ст. 182–184 СК України).
+{{/if}}
+
+Відповідно до ст. 192 Сімейного кодексу України (далі — СК України) розмір аліментів, {{#if prior_basis == 'court_decision'}}визначений за рішенням суду{{else}}встановлений договором{{/if}}, може бути згодом {{#if change_direction == 'increase'}}збільшено за рішенням суду за позовом одержувача{{else}}зменшено за рішенням суду за позовом платника{{/if}} у разі зміни матеріального стану, та в інших випадках, передбачених цим Кодексом.
+
+Відповідно до п.6 ч.3 ст.175 ЦПК України повідомляю, що заходи досудового врегулювання спору не проводилися.
+
+Відповідно до п.7 ч.3 ст.175 ЦПК України повідомляю, що вжиття заходів забезпечення доказів або позову до подання позовної заяви не здійснювалось.
+
+Відповідно до п.8 ч.3 ст.175 ЦПК України повідомляю, що у позивача перебувають оригінали письмових або електронних доказів, копії яких додано до заяви.
+
+Згідно із п.9 ч.3 ст.175 ЦПК України повідомляю, що витрати на правову допомогу відсутні.
+
+У відповідності із п.10 ч.3 ст.175 ЦПК України підтверджую, що мною не подано іншого позову (позовів) до цього ж відповідача (відповідачів) з тим самим предметом та з тих самих підстав.
+
+{{#if change_direction == 'increase'}}
+Від сплати судового збору за подання позову про збільшення розміру аліментів я {{gender plaintiff_gender 'звільнений' 'звільнена'}} на підставі п.3 ч.1 ст.5 Закону України «Про судовий збір».
+{{else}}
+Ціна позову становить {{formatMoney price_of_claim}} грн (сума, на яку зменшується розмір аліментів за один рік, ст. 176 ЦПК України). За подання цього позову сплачено судовий збір у розмірі {{formatMoney court_fee}} грн ({{#if court_fee_is_floor}}0,4 прожиткового мінімуму для працездатних осіб — підлога{{else}}1% ціни позову{{/if}}, ст. 4 Закону України «Про судовий збір»), квитанція додається.
+{{/if}}
+{{#if change_direction == 'decrease' and existing_debt == 'yes'}}
+
+Окремо зазначаю, що наявна заборгованість зі сплати аліментів за минулий період (ст. 197 СК України) не погашається та не списується внаслідок зменшення розміру аліментів за цим позовом і підлягає стягненню в окремому порядку.
+{{/if}}
+
+{{#if change_direction == 'increase'}}
+На підставі викладеного та у відповідності до ст.ст. 182–184, 191, 192 СК України, керуючись ст.ст. 28, 174, 175 ЦПК України, —
+{{else}}
+На підставі викладеного та у відповідності до ст.ст. 182–184, 191, 192 СК України, керуючись ст.ст. 27, 174, 175, 176 ЦПК України, —
+{{/if}}
+
+{{!style: center bold keep-with-next}}
+П Р О Ш У  С У Д :
+
+{{#if change_direction == 'increase'}}1. Збільшити{{else}}1. Зменшити{{/if}} розмір аліментів, стягнутих з {{#if change_direction == 'increase'}}{{ai.defendant_genitive}}, {{formatDate defendant_birth_date}} року народження, на користь {{ai.plaintiff_genitive}}, {{formatDate birth_date}} року народження{{else}}{{ai.plaintiff_genitive}}, {{formatDate birth_date}} року народження, на користь {{ai.defendant_genitive}}, {{formatDate defendant_birth_date}} року народження{{/if}}, на утримання {{ai.children_genitive}}, з {{#if prior_alimony_type == 'percent'}}{{prior_alimony_value}}{{else}}{{formatMoney prior_alimony_value}}{{/if}} до {{#if requested_alimony_type == 'percent'}}{{requested_alimony_value}} частини з усіх видів заробітку (доходу) щомісячно, але не менше 50 відсотків прожиткового мінімуму для {{plural n_children 'дитини' 'кожної дитини'}} відповідного віку (станом на 2026 рік — {{#each children}}{{formatMoney pmFloor}} грн{{#if not @last}}, {{/if}}{{/each}}){{else}}{{formatMoney requested_alimony_value}} грн щомісячно{{/if}}, починаючи з дня набрання рішенням суду законної сили і до повноліття {{plural n_children 'дитини' 'дітей'}}.
+
+{{!style: keep-with-next}}
+Додатки:
+{{#if prior_basis == 'court_decision'}}
+- копія рішення {{prior_court}} від {{formatDate prior_decision_date}} у справі № {{prior_case_number}} — 2 примірники;
+{{else}}
+- копія договору про сплату аліментів від {{formatDate prior_decision_date}} — 2 примірники;
+{{/if}}
+- копія {{plural n_children 'свідоцтва про народження дитини' 'свідоцтв про народження дітей'}} — по 2 примірники;
+{{#if change_direction == 'decrease'}}
+- квитанція про сплату судового збору — 2 примірники;
+{{/if}}
+- копія паспорта позивача — 2 примірники;
+{{#if not has_no_ipn}}
+- копія облікової картки платника податків позивача — 2 примірники;
+{{/if}}
+- 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.
+
+{{!style: keep-together}}
+
+«___» _______ 20__ року                                              (підпис)    {{plaintiff_name}}

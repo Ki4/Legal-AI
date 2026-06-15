@@ -1,10 +1,27 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-12 (session 22 — карта каталогу/розгалужень + issue #36 + model-routing)
+> Updated: 2026-06-15 (session 23 — тір-канон + alimony-change юр.deep-dive + практичний бриф для друга + issue #37)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 22 (2026-06-12) — карта каталогу услуг + розгалужень → issue #36 (citation-coverage) + model-routing правило
+## 🆕 Session 23 (2026-06-15) — тір-канон, alimony-change юридичний deep-dive, практичний бриф (.NET) для друга, issue #37
+
+### Головне — стан ЗАРАЗ
+- **Тір-канон Tier 0/1/2/3 підтверджено** (`docs/research/document-tiers-tz.md`) — узгоджено з усіма іншими доками; alimony-change = пілот Tier 2 (гібрид: детермінований скелет + 1 генеративний абзац).
+- **Юридичний deep-dive alimony-change синтезовано в спеку** (`specs/features/alimony-change/{requirements,plan,validation,example}.md` + новий `test-matrix.md`):
+  - ✅ **RESOLVED і вже в спеці**: асиметрична підсудність (`increase`→ст.28 ч.1 ЦПК, `decrease`→ст.27 ЦПК), момент дії «ПРОШУ» (з набрання рішенням законної сили, ППВСУ №3/2006 п.23), ПМ-2026 (3328 / floor збору 1331.20 / 2817 / 1408.50 / 3512 / 1756).
+  - 🆕 **Proposed design, pending Оля (~2026-06-25)** — `test-matrix.md` §6, 6 пунктів: новий шар **L0.5 routing** (`route()` → `PROCEED`/`ABSTAIN_EXTRAORDINARY`/`ABSTAIN_INDEXATION`), split enum `child_needs_up_general`/`_extraordinary`, нові поля `agreement_own_procedure` (ст.189) / `existing_debt` (ст.197). До підтвердження — `route()` завжди `PROCEED`, нічого не блокує G1.
+- **`docs/research/tier2-practice-brief-dotnet.md`** — **NEW** — самодостатнє практичне ТЗ (укр.) для друга (AI engineer, практика на .NET): вхідний JSON, база знань L2 (13 статей + посилання zakon.rada.gov.ua), L0.5 `route()`, детермінований скелет з registry-2026, L3/L4 grounding+critics, 2 worked examples (TC1/TC3), TC1-TC12, критерії успіху, «що не задано» + посилання на реальні зразки позовних заяв.
+- **Issue #37 створено** — alimony-change Tier 2 pilot, чекліст G1-G5 (з `plan.md`), «вне скоупу» = ті самі 6 пунктів pending Олі.
+- Усе на гілці `docs/alimony-change-legal-deep-dive` → змержено в `main`.
+
+### 🔴 Наступний фокус (НОВА сесія)
+1. **#37, G1** (рекомендована модель: **Sonnet** — Tier 1-подібна реалізація з повністю готової спеки) — детермінований скелет `alimony-change.document.txt` + L0.5 `route()` (завжди `PROCEED`) + abstain-шаблони-плейсхолдери + `form_config` (`disabled`) + parity/golden vitest. **Не блокується відсутністю Олі.**
+2. ⏰ **~2026-06-25 (Оля):** law-monitor CRON schedule + 2 зміни СК/ЦПК (#33) + `test-matrix.md` §6 — 6 пунктів proposed design (#37, поза G1).
+
+---
+
+## Session 22 (2026-06-12) — карта каталогу услуг + розгалужень → issue #36 (citation-coverage) + model-routing правило
 
 ### Головне — стан ЗАРАЗ
 - **main чистий**, активних feature-гілок немає. Дві docs/chore-гілки змержені й прибрані.

@@ -65,6 +65,15 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-15 (session 23, продовження) — практичний бриф для друга (.NET AI engineer) + issue #37 (alimony-change Tier 2 pilot)
+**Status:** COMMITTED `3d619b2`/`ecb3891`/`b029b1b` · branch `docs/alimony-change-legal-deep-dive`
+**Why:** Сергій хоче віддати другу (AI engineer, практика на .NET) самодостатнє практичне ТЗ за мотивами alimony-change — WHAT (вхід/правила/вихід/тест-кейси/критерії), HOW цілком на його розсуд. Окремо: Оля ще не повернулась (~2026-06-25) — позначили 6 пунктів «proposed design» у `test-matrix.md` §6 як pending на той самий таймлайн (зв'язано з `project_cron_schedule_pending`). І заведено issue #37 з чеклістом G1–G5 (`plan.md`) для самого пілота alimony-change — фокус наступної сесії.
+**Files:**
+- `docs/research/tier2-practice-brief-dotnet.md` — **NEW** — самодостатній практичний бриф (укр.): вхідний JSON, база знань L2 (13 статей, з посиланнями на zakon.rada.gov.ua), L0.5 `route()`, детермінований скелет L1 (registry 2026, 50%-floor як review-card flag, не hard-валідація), L3/L4 grounding+critics, 2 worked examples (TC1/TC3), TC1–TC12, критерії успіху, «що не задано», + посилання на реальні зразки позовних заяв
+- `specs/features/alimony-change/test-matrix.md` §6 — нотатка про недоступність Олі (~2026-06-25)
+**Issue:** [#37](https://github.com/Ki4/Legal-AI/issues/37) — alimony-change Tier 2 pilot, чекліст G1–G5, G1 не блокується відсутністю Олі (`route()`=`PROCEED` за замовчуванням)
+**Next step:** нова сесія — G1 (#37) на окремій гілці: детермінований скелет + L0.5 routing, vitest, без LLM.
+
 ### 2026-06-15 (session 23) — alimony-change: юридичний deep-dive (підсудність, індексація, новий шар L0.5)
 **Status:** COMMITTED `4ac802b` · branch `docs/alimony-change-legal-deep-dive`
 **Why:** Сергій помітив неузгодженість тірів (T0/T1/T2 vs T1/T2/T3) і попросив звести канон + дослідити українське законодавство для пілота Tier 2 (alimony-change), щоб переконатись, що нічого не пропущено, та написати ТЗ (вхідні варіації / тест-кейси / очікуваний вихід). Канон Tier 0/1/2/3 підтверджено (`document-tiers-tz.md`). Юридичне дослідження дало 8 знахідок: 2 КРИТИЧНІ (формулювання `child_needs_up` плутає ст.192 з ст.181/185; `cost_of_living_up` для твердої суми — це індексація ст.184, не ст.192), 2 ВИСОКІ (текст «ПРОШУ» — момент дії; підсудність асиметрична за напрямком), 3 СЕРЕДНІ (значення ПМ-2026; процедура за договором ст.189; борг ст.197) + 1 спостереження (відсутнє значення enum `recipient_income_up`).

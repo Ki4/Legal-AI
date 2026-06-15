@@ -1,6 +1,30 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-12 (session 22 — карта каталогу/розгалужень + issue #36 + model-routing)
+> Updated: 2026-06-15 (session 23 — Tier-каталог ТЗ + критич. обзор legaltech + консолидация в один main)
 > Прочитай эту секцию первой — она самая свежая.
+
+---
+
+## 🆕 Session 23 (2026-06-14/15) — Tier-каталог услуг (ТЗ) + критич. обзор legaltech + консолидация в один main
+
+### Головне — стан ЗАРАЗ
+- **main = єдина гілка.** Усі 4 `claude/*` гілки зведені в main і видалені (Сергієм — git-прокси оточення блокує ref-delete 403). Коміти сесії: `35e9381`, `d54aa88`, `a3ccbf9` (+ журнал). Комітили **прямо в main** свідомо: мета = один main + housekeeping; гілку не створювали, бо видалити її не можу (403). Надалі — branch-always.
+- **Це ТЗ + research, НЕ реалізація.** У проді нічого не змінилось.
+
+### Що зроблено
+- **Канон рівнів:** `docs/research/document-tiers-tz.md` — Document-Tier 0/1/2/3 (≠ SDD-Tier!): Tier 0 детермінований (live: стягнення аліментів, розлучення без дітей), Tier 1 комбінаторний/вибір блоків (0% генерації), Tier 2 гібридний (1 секція генерованої прози + харнесс), Tier 3 триаж/ескалація (військові спори). Межі: 0/1→2 = поява генерованої прози; 2→3 = вихід не документ.
+- **Критичний огляд legaltech** (веб): Stanford (RAG не лікує — Lexis 17%/Westlaw 33%), DoNotPay/FTC ($193k overpromise), HotDocs/Docassemble (без LLM), Harvey/CoCounsel (юрист у петлі + citation grounding + Shepardization, ~0.2%) → 7 покращень I1–I7 (eval-гейт, runtime good-law, citations користувачу, augment→automate, product-guardrail, outcome-петля, critic-1 первинний).
+- **Перша Tier 2-послуга — ТЗ:** `specs/features/alimony-change/` (plan/requirements/validation/example). «Зміна розміру аліментів (↑/↓)»: Input/Output, юр. алгоритм (ст.192/182/183/184/191 СК; ст.28/176/175 ЦПК; ст.4/5 ЗСЗ), детерм. гілка суд. збору (↑ звільнення / ↓ платить — exception_if), харнесс L0–L5, приклад з 🟢/🟡/🔴.
+- **Deep-dive харнесса:** `docs/research/service-tiers-and-ai-harness.md`. **README.md (EN)** в корінь. **IMPROVEMENTS #53–#68** (security/CI аудит, +5).
+
+### Ключові рішення
+- **Tier 2 стадійно (augment → automate):** v0 = Опція B (юрист пише обґрунтування, revenue-share, gold-датасет); v1/v2 = Опція C (AI + критики + abstention) лише після зеленого eval. Abstention = «не гірше за валідний Tier-0». Повна AI-генерація (D) відхилена.
+- **Найнебезпечніше — не вигадані статті (enum-констрейнт прибиває), а вигадані оцінки** (ловить groundedness-критик, 🟡).
+
+### 🔴 Наступний фокус
+1. alimony-change: спершу **eval-харнесс (I1)**, потім Опція B. Реалізація НЕ почата.
+2. Далі: GraphRAG крок 1 (`law_relations`), фаза 2 типографіки (#50), VPS. #36 вже в main.
+3. Open questions Ользі: поріг ст.192, момент дії ст.191, ПМ працездатних 2026.
+4. ⏰ ~2026-06-25 (Ольга) — law-monitor schedule + ревʼю змін законів.
 
 ---
 

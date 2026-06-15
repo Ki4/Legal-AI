@@ -15,6 +15,20 @@
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
+### 2026-06-14/15 (session 23) — Tier-каталог услуг (ТЗ) + критич. обзор legaltech + консолидация веток в main
+**Status:** COMMITTED · напрямую в `main` (`35e9381`, `d54aa88`, `a3ccbf9`, + этот коммит) — сессия = свод всего в один main по просьбе Сергея; ветки удалены вручную (git-прокси окружения блокирует ref-delete 403)
+**Why:** Сергей с другом-AI-инженером прорабатывали Tier 2/3 услуги: какие услуги попадают в категории, какой Input/Output, как строить AI-харнесс (что детерминировать, где критик, как подсвечивать галлюцинации, что и в каком формате отдавать юристу). Затем — взгляд критика: как это закрывали в мире. Веб-сверка: Stanford (Lexis+ 17% / Westlaw 33% галлюцинаций ДАЖЕ с RAG), DoNotPay/FTC ($193k за overpromise), HotDocs/Docassemble (document automation без LLM 30 лет), Harvey/CoCounsel (юрист в петле + citation grounding + Shepardization, ~0.2%). Вывод усиливает курс: операбельный текст детерминированный, генерация выносится из доверенного пути, abstention + «перевірено юристом» = ров. Закреплён канон Document-Tier 0/1/2/3 (≠ SDD-Tier). Это ТЗ/research — НЕ реализация.
+**Files:**
+- `docs/research/document-tiers-tz.md` — **NEW** — канон Tier 0/1/2/3 + критич. обзор мирового legaltech (4 эталона, 7 improvements I1–I7); Tier 0 пример (стягнення аліментів: алгоритм + нюансы), схожая Tier 2 (зміна розміру аліментів: сложности/опции/цели, augment→automate)
+- `docs/research/service-tiers-and-ai-harness.md` — **NEW** — deep-dive 6-слойного харнесса + 7 дискриминаторов; T1/T2/T3 → канон Tier 0/1/2/3
+- `specs/features/alimony-change/{plan,requirements,validation,example}.md` — **NEW** — полное Tier 2 ТЗ: Input/Output, юр. алгоритм (ст.192/182/183/184/191 СК; ст.28/176/175 ЦПК; ст.4/5 ЗСЗ), асимметрия суд. сбора ↑/↓ (exception_if), харнесс L0–L5 (enum-констрейнт + 2 критика + abstention + review-card), пример с подсветкой 🟢/🟡/🔴
+- `specs/roadmap.md` — v2.3 указывает на новое ТЗ
+- `README.md` — **NEW** — корневой README (EN), порт из ecstatic-bohr (UK-вариант не тащили)
+- `docs/architecture/IMPROVEMENTS.md` — порт CI + security-аудита как #53–#68 (+5, чтобы не задеть стабильные #48–#52)
+- `apps/client/.claude/{changelog,session-summary}.md` — этот журнал
+**Branches:** свёл в main: adoring-dirac (доки, FF), ecstatic-bohr (README+IMPROVEMENTS); fervent-pascal и spec-driven были уже в main. Все 4 удалены — остался только `main`.
+**Next:** реализация alimony-change НЕ начата. Перед Tier 2 Опцией C — стендовый eval-харнесс (I1). Рекомендованный v0 = Опция B (юрист пишет обоснование).
+
 ### 2026-06-12 (session 21, продолжение) — research GraphRAG-стека + решение в DECISIONS
 **Status:** COMMITTED · branch `docs/graphrag-research` → main
 **Why:** Сергей принёс кандидатов (PageIndex, LightRAG, NornicDB, Weaviate-стек из видео) и спросил: как в мире строят GraphRAG, можно ли извлекать связи без юриста, есть ли решения «малый корпус без галлюцинаций». Проведено внешнее веб-исследование (Stanford о галлюцинациях Lexis/Westlaw 17–33%, Citation Grounding на украинских судебных данных — regex-извлечение ссылок с precision 1.00, GraphJudger, LightRAG/EraRAG об инкрементальности). Вывод: фреймворки не внедряем (решают проблемы масштаба, которых у нас нет), паттерны заимствуем; связи — по трём ярусам доверия (regex авто / LLM+критик для retrieval / юрист для логико-управляющих); ноль галлюцинаций достигается конструкцией (enum-констрейнт, abstention-фолбэк), не проверкой.

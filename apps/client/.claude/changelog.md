@@ -65,6 +65,19 @@
 
 > Append new entries at the top (newest first).
 
+### 2026-06-15 (session 23) — alimony-change: юридичний deep-dive (підсудність, індексація, новий шар L0.5)
+**Status:** COMMITTED `4ac802b` · branch `docs/alimony-change-legal-deep-dive`
+**Why:** Сергій помітив неузгодженість тірів (T0/T1/T2 vs T1/T2/T3) і попросив звести канон + дослідити українське законодавство для пілота Tier 2 (alimony-change), щоб переконатись, що нічого не пропущено, та написати ТЗ (вхідні варіації / тест-кейси / очікуваний вихід). Канон Tier 0/1/2/3 підтверджено (`document-tiers-tz.md`). Юридичне дослідження дало 8 знахідок: 2 КРИТИЧНІ (формулювання `child_needs_up` плутає ст.192 з ст.181/185; `cost_of_living_up` для твердої суми — це індексація ст.184, не ст.192), 2 ВИСОКІ (текст «ПРОШУ» — момент дії; підсудність асиметрична за напрямком), 3 СЕРЕДНІ (значення ПМ-2026; процедура за договором ст.189; борг ст.197) + 1 спостереження (відсутнє значення enum `recipient_income_up`).
+**Files:**
+- `specs/features/alimony-change/requirements.md` — §0 (юр.алгоритм): нові пп.8 (`agreement_own_procedure`/ст.189), 9 (`existing_debt`/ст.197), резолюція п.7 (момент дії «ПРОШУ»); §1: розбито enum `child_needs_up` → `_general`/`_extraordinary`; нова §2.0 (таблиця маршрутизації `route()`), §2.4 (тексти абстенцій); нова §3.0 псевдокод `route()`; §3.4 конкретні значення ПМ-2026; §4 новий рядок гарнесу `L0.5 Routing`
+- `specs/features/alimony-change/test-matrix.md` — **NEW** — «ТЗ для друга»: D1–D9 вхідні вимірювання, таблиця `route()` (R1–R5), детерміновані гілки (підсудність/збір/«ПРОШУ»), L3/review-card специфікація, TC1–TC12 тест-кейси, таблиця «pending Оля» (6 пунктів)
+- `specs/features/alimony-change/example.md` — Case A (enum `child_needs_up_general`, текст «ПРОШУ» з моментом дії), Case B (підсудність ст.27 ЦПК, збір 1 331,20 = 0.4×3328)
+- `specs/features/alimony-change/plan.md` — G1: новий пункт L0.5-маршрутизації (pending Оля, до підтвердження = завжди PROCEED); шаблон абстенцій
+- `specs/features/alimony-change/validation.md` — G1/G2: тести підсудності, «ПРОШУ»-момент, L0.5-маршрутизація, citation-coverage для ABSTAIN_*; нові edge-cases
+- `docs/research/document-tiers-tz.md` §6, `docs/research/service-tiers-and-ai-harness.md` §7 — пп.2–4 ✅ RESOLVED (момент дії, ПМ-2026, підсудність); нові пп. для child_needs_up split / cost_of_living_up+fixed / agreement_own_procedure / existing_debt / recipient_income_up — всі «pending Оля»
+**Note:** Новий шар L0.5 (`ABSTAIN_EXTRAORDINARY`/`ABSTAIN_INDEXATION`) і нові питання форми (`agreement_own_procedure`, `existing_debt`) — **проєктна пропозиція, не реалізація**; до підтвердження Олею маршрутизація завжди `PROCEED`.
+**Next step:** Олі на ревью — таблиця 6 пунктів у `test-matrix.md` §6.
+
 ### 2026-06-12 (session 22, продовження) — citation-coverage: regex-екстрактор + golden-страж + закриття дрейфу (#36)
 **Status:** PENDING COMMIT · branch `feature/citation-coverage` · Refs #36
 **Why:** Шаг 0 GraphRAG (ярус 1 — явні посилання на статті законів: regex, авто-приймається, без ревʼю юриста). Карта каталогу (сесія 22) знайшла дрейф між тим, що цитують шаблони документів, і тим, що відстежує CRON law-monitor через `watched_laws` (cited-but-not-watched = слабка точка: зміна закону може пройти непоміченою). Побудовано regex-екстрактор цитат → golden SSoT (`<slug>.citations.json`) + vitest-страж дрейфу шаблон↔golden → CLI `report`/`sync --dry-run` звіряє golden↔`watched_laws`. Знайдено 2 реальних дрейфи (ст.27 ЦПК divorce, ст.174 ЦПК alimony) і 1 false positive (ст.181 СК alimony — екстрактор коректно розгорнув діапазон «180–184» через en-dash, watched_laws вже коректний). Migration 015 закриває обидва дрейфи + проактивно додає ст.113 СК (divorce, `surname_after_divorce` — готуємо watched_laws заздалегідь під правку шаблону ~2026-06-25).

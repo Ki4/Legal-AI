@@ -1,14 +1,13 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-15 (session 23 — тір-канон + alimony-change юр.deep-dive + практичний бриф для друга + issue #37)
+> Updated: 2026-06-15 (session 24 — alimony-change юр.deep-dive + практичний бриф для друга + issue #37)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 23 (2026-06-15) — тір-канон, alimony-change юридичний deep-dive, практичний бриф (.NET) для друга, issue #37
+## 🆕 Session 24 (2026-06-15) — alimony-change юридичний deep-dive, практичний бриф (.NET) для друга, issue #37
 
 ### Головне — стан ЗАРАЗ
-- **Тір-канон Tier 0/1/2/3 підтверджено** (`docs/research/document-tiers-tz.md`) — узгоджено з усіма іншими доками; alimony-change = пілот Tier 2 (гібрид: детермінований скелет + 1 генеративний абзац).
-- **Юридичний deep-dive alimony-change синтезовано в спеку** (`specs/features/alimony-change/{requirements,plan,validation,example}.md` + новий `test-matrix.md`):
+- **Юридичний deep-dive alimony-change синтезовано в спеку** (`specs/features/alimony-change/{requirements,plan,validation,example}.md` + новий `test-matrix.md`), на базі тір-канону із Session 23:
   - ✅ **RESOLVED і вже в спеці**: асиметрична підсудність (`increase`→ст.28 ч.1 ЦПК, `decrease`→ст.27 ЦПК), момент дії «ПРОШУ» (з набрання рішенням законної сили, ППВСУ №3/2006 п.23), ПМ-2026 (3328 / floor збору 1331.20 / 2817 / 1408.50 / 3512 / 1756).
   - 🆕 **Proposed design, pending Оля (~2026-06-25)** — `test-matrix.md` §6, 6 пунктів: новий шар **L0.5 routing** (`route()` → `PROCEED`/`ABSTAIN_EXTRAORDINARY`/`ABSTAIN_INDEXATION`), split enum `child_needs_up_general`/`_extraordinary`, нові поля `agreement_own_procedure` (ст.189) / `existing_debt` (ст.197). До підтвердження — `route()` завжди `PROCEED`, нічого не блокує G1.
 - **`docs/research/tier2-practice-brief-dotnet.md`** — **NEW** — самодостатнє практичне ТЗ (укр.) для друга (AI engineer, практика на .NET): вхідний JSON, база знань L2 (13 статей + посилання zakon.rada.gov.ua), L0.5 `route()`, детермінований скелет з registry-2026, L3/L4 grounding+critics, 2 worked examples (TC1/TC3), TC1-TC12, критерії успіху, «що не задано» + посилання на реальні зразки позовних заяв.
@@ -18,6 +17,30 @@
 ### 🔴 Наступний фокус (НОВА сесія)
 1. **#37, G1** (рекомендована модель: **Sonnet** — Tier 1-подібна реалізація з повністю готової спеки) — детермінований скелет `alimony-change.document.txt` + L0.5 `route()` (завжди `PROCEED`) + abstain-шаблони-плейсхолдери + `form_config` (`disabled`) + parity/golden vitest. **Не блокується відсутністю Олі.**
 2. ⏰ **~2026-06-25 (Оля):** law-monitor CRON schedule + 2 зміни СК/ЦПК (#33) + `test-matrix.md` §6 — 6 пунктів proposed design (#37, поза G1).
+
+---
+
+## Session 23 (2026-06-14/15) — Tier-каталог услуг (ТЗ) + критич. обзор legaltech + консолидация в один main
+
+### Головне — стан ЗАРАЗ
+- **main = єдина гілка.** Усі 4 `claude/*` гілки зведені в main і видалені (Сергієм — git-прокси оточення блокує ref-delete 403). Коміти сесії: `35e9381`, `d54aa88`, `a3ccbf9` (+ журнал). Комітили **прямо в main** свідомо: мета = один main + housekeeping; гілку не створювали, бо видалити її не можу (403). Надалі — branch-always.
+- **Це ТЗ + research, НЕ реалізація.** У проді нічого не змінилось.
+
+### Що зроблено
+- **Канон рівнів:** `docs/research/document-tiers-tz.md` — Document-Tier 0/1/2/3 (≠ SDD-Tier!): Tier 0 детермінований (live: стягнення аліментів, розлучення без дітей), Tier 1 комбінаторний/вибір блоків (0% генерації), Tier 2 гібридний (1 секція генерованої прози + харнесс), Tier 3 триаж/ескалація (військові спори). Межі: 0/1→2 = поява генерованої прози; 2→3 = вихід не документ.
+- **Критичний огляд legaltech** (веб): Stanford (RAG не лікує — Lexis 17%/Westlaw 33%), DoNotPay/FTC ($193k overpromise), HotDocs/Docassemble (без LLM), Harvey/CoCounsel (юрист у петлі + citation grounding + Shepardization, ~0.2%) → 7 покращень I1–I7 (eval-гейт, runtime good-law, citations користувачу, augment→automate, product-guardrail, outcome-петля, critic-1 первинний).
+- **Перша Tier 2-послуга — ТЗ:** `specs/features/alimony-change/` (plan/requirements/validation/example). «Зміна розміру аліментів (↑/↓)»: Input/Output, юр. алгоритм (ст.192/182/183/184/191 СК; ст.28/176/175 ЦПК; ст.4/5 ЗСЗ), детерм. гілка суд. збору (↑ звільнення / ↓ платить — exception_if), харнесс L0–L5, приклад з 🟢/🟡/🔴.
+- **Deep-dive харнесса:** `docs/research/service-tiers-and-ai-harness.md`. **README.md (EN)** в корінь. **IMPROVEMENTS #53–#68** (security/CI аудит, +5).
+
+### Ключові рішення
+- **Tier 2 стадійно (augment → automate):** v0 = Опція B (юрист пише обґрунтування, revenue-share, gold-датасет); v1/v2 = Опція C (AI + критики + abstention) лише після зеленого eval. Abstention = «не гірше за валідний Tier-0». Повна AI-генерація (D) відхилена.
+- **Найнебезпечніше — не вигадані статті (enum-констрейнт прибиває), а вигадані оцінки** (ловить groundedness-критик, 🟡).
+
+### Наступний фокус (виконано в Session 24)
+1. alimony-change: юридичний deep-dive → спека ✅. Реалізація (G1) — поза скоупом, окреме issue #37.
+2. Далі: GraphRAG крок 1 (`law_relations`), фаза 2 типографіки (#50), VPS. #36 вже в main.
+3. Open questions Ользі: поріг ст.192, момент дії ст.191, ПМ працездатних 2026 — RESOLVED у Session 24.
+4. ⏰ ~2026-06-25 (Ольга) — law-monitor schedule + ревʼю змін законів.
 
 ---
 

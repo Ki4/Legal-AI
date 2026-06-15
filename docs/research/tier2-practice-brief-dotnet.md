@@ -454,3 +454,14 @@ review-card.
 
 Успіхів! Якщо щось в умові незрозуміле або здається недо-специфікованим — це нормально для Tier 2:
 частина твого завдання — помітити такі місця і явно вирішити, як їх закрити.
+
+---
+
+## Додатково: реальні зразки позовних заяв (для порівняння структури)
+
+Для довідки — як виглядає такий документ "у житті" (шапка/описова частина/«ПРОШУ»/додатки), щоб
+порівняти зі структурою з §7:
+
+- [Позовна заява про зміну розміру аліментів (зразок)](https://semeynoepravo.kiev.ua/uk/document/pozovna-zayava-pro-zminu-rozmiru-alimentiv/)
+- [Позовна заява про зменшення розміру аліментів — зразок (Fastdoc)](https://fastdoc.com.ua/ua/doc/view/106_pozovna-zayava-pro-zmenshennya-rozmiru-alimentiv-zrazok-shablon/)
+- [Позовна заява про зміну розміру аліментів (зменшення)](https://advokat-family.com.ua/dokumenty/pozovna-zayava-pro-zminu-rozmiru-alimentiv-zmenshennya/)

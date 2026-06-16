@@ -92,6 +92,7 @@
 | **#68** | [🟢 Hardening-набір (search_path, console gate, telegram escape, vercel, FK)](#68-hardening-набір-search_path-console-gate-telegram-escape-vercel-fk) |
 | **#69** | [L4b LLM critic — підключити в n8n (prompt готовий, нода відсутня)](#69-l4b-llm-critic-підключити-в-n8n-prompt-готовий-нода-відсутня) |
 | **#70** | [Google Docs 🟡 batch-коментарі на RED/AMBER spans (batchUpdate)](#70-google-docs-batch-коментарі-на-redamber-spans-batchupdate) |
+| **#71** | [🟠 Model-Agnostic екосистема — уникнення vendor lock-in](#71-model-agnostic-екосистема-уникнення-vendor-lock-in) |
 
 > **✅ ID-колізії розведено (session 14):** другі входження перенумеровано — «RLS policies» → **#44**, «Skill для changelog» → **#45**. Перші входження #12 («Admin Dashboard») і #20 («Service Builder процес») лишились без змін.
 > **#1** відсутній історично (нумерація почалась з #2) — лишаємо як є; нові записи беруть наступний вільний номер.
@@ -952,6 +953,69 @@ CREATE TABLE invites (
 - `vercel.json` catch-all `/(.*)` → звузити до `/((?!api|static).*)` (= #14).
 - Немає FK-констрейнтів (`cases.service_id`, `service_slugs`) — integrity, не security; усвідомлений trade-off.
 - **Пріоритет:** 🟢 low / nice-to-have
+
+### 71. 🟠 Model-Agnostic екосистема — уникнення vendor lock-in
+
+**Контекст:** ШІ-моделі — це регульована державою технологія (інцидент з Fable 5 довів це наглядно).
+Відноситись до них треба як до будь-якого іншого зовнішнього сервісу в інфраструктурі: він може
+зникнути, подорожчати, потрапити під санкції або бути відключений регулятором у будь-яку хвилину.
+
+**Чотири паттерни захисту:**
+
+**1. Уніфікований API (роутер/абстракція)**
+Замість прямих запитів до Anthropic/Groq — бібліотека або власний proxy-шар, що приховує
+конкретного провайдера за стабільним інтерфейсом. Варіанти: **LiteLLM** (OpenAI-сумісний API для
+100+ моделей), **OpenRouter** (hosted proxy), самописний n8n-роутер (HTTP Request → вибір URL за
+конфігом). Код ніколи не знає, куди йде запит — тільки роутер знає.
+```
+Code / n8n → LiteLLM proxy → Claude Fable 5
+                           ↘ GPT-4o (fallback)
+                           ↘ Groq llama (fallback)
+```
+
+**2. Fallback-ланцюжок (динамічне переключення)**
+У конфігурації системи прописується пріоритет. При 503/429/403 або недоступності моделі —
+автоматичне переключення без участі людини:
+```javascript
+// Приклад конфігу Global Config (n8n)
+{
+  "model_primary": "claude-fable-5",
+  "model_fallback_1": "gpt-4o",
+  "model_fallback_2": "llama-3.3-70b-versatile"   // Groq (безкоштовний)
+}
+```
+n8n Code-нода або LiteLLM обробляє retry/fallback прозоро для бізнес-логіки.
+
+**3. Назва моделі — тільки в конфізі, ніколи в коді**
+`model_generation: 'llama-3.3-70b-versatile'` вже живе в Global Config-ноді (DECISIONS.md:
+«Model Debt → конфіг-нода»). Це правильно. Наступний крок — не дублювати назву ніде в:
+`n8n/prompts/`, скриптах, тестових фікстурах. Якщо модель зникла — адмін змінює **один рядок**
+у Global Config → 5 секунд, нульовий деплой.
+
+**4. Open-source резерв (self-hosted)**
+Для критично важливих завдань — open-source модель на власному сервері (Llama 3.3, Mistral,
+Qwen), яку не можуть відключити зовні:
+```
+VPS (Hetzner CX52, ~€18/міс) + Ollama → llama3.3:70b-q4
+← fallback для hybrid reasoning при недоступності Groq/Anthropic
+```
+Для нашого кейсу (1 запит / хвилину на пілоті) — достатньо Groq free-tier. Self-hosted
+актуальний при > 1000 doc/місяць або якщо Groq потрапить під регуляторний удар по Україні.
+
+**Що зробити в нашому проекті:**
+
+| Крок | Пріоритет | Файл |
+|------|-----------|------|
+| LiteLLM або OpenRouter замість прямих HTTP до Groq | 🟠 середній | `n8n/workflows/current/form-submit.json` (L3 Reasoning нода) |
+| Fallback chain в Global Config (primary / fallback_1 / fallback_2) | 🟠 середній | Global Config нода |
+| `model_*` поля в n8n Global Config, ніде більше | ✅ вже частково є | — |
+| Self-hosted Ollama як cold reserve | 🟢 низький (пізніше) | VPS + Ollama |
+
+- **Чому зараз не критично:** Groq free-tier стабільний, пілот ще не запущений, послуга `disabled`.
+  Але архітектуру закладати треба **до** першого платного клієнта — переробляти під навантаженням дорожче.
+- **Пріоритет:** 🟠 зробити до прод-флипу alimony-change (`disabled → active`)
+- **Файли:** `n8n/workflows/current/form-submit.json` (L3 Reasoning нода URL + credential),
+  `n8n/templates/prepare-reasoning.js` (модель у `_groq_body.model` — вже читається з аргументів)
 
 ---
 

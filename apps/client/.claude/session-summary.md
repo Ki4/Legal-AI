@@ -1,22 +1,29 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-15 (session 24 — alimony-change юр.deep-dive + практичний бриф для друга + issue #37)
+> Updated: 2026-06-16 (session 24 cont. — alimony-change G1 реалізація, commit 9a2cfab)
 > Прочитай эту секцию первой — она самая свежая.
 
 ---
 
-## 🆕 Session 24 (2026-06-15) — alimony-change юридичний deep-dive, практичний бриф (.NET) для друга, issue #37
+## 🆕 Session 24 (cont., 2026-06-16) — alimony-change G1: повна реалізація (#37)
 
 ### Головне — стан ЗАРАЗ
-- **Юридичний deep-dive alimony-change синтезовано в спеку** (`specs/features/alimony-change/{requirements,plan,validation,example}.md` + новий `test-matrix.md`), на базі тір-канону із Session 23:
-  - ✅ **RESOLVED і вже в спеці**: асиметрична підсудність (`increase`→ст.28 ч.1 ЦПК, `decrease`→ст.27 ЦПК), момент дії «ПРОШУ» (з набрання рішенням законної сили, ППВСУ №3/2006 п.23), ПМ-2026 (3328 / floor збору 1331.20 / 2817 / 1408.50 / 3512 / 1756).
-  - 🆕 **Proposed design, pending Оля (~2026-06-25)** — `test-matrix.md` §6, 6 пунктів: новий шар **L0.5 routing** (`route()` → `PROCEED`/`ABSTAIN_EXTRAORDINARY`/`ABSTAIN_INDEXATION`), split enum `child_needs_up_general`/`_extraordinary`, нові поля `agreement_own_procedure` (ст.189) / `existing_debt` (ст.197). До підтвердження — `route()` завжди `PROCEED`, нічого не блокує G1.
-- **`docs/research/tier2-practice-brief-dotnet.md`** — **NEW** — самодостатнє практичне ТЗ (укр.) для друга (AI engineer, практика на .NET): вхідний JSON, база знань L2 (13 статей + посилання zakon.rada.gov.ua), L0.5 `route()`, детермінований скелет з registry-2026, L3/L4 grounding+critics, 2 worked examples (TC1/TC3), TC1-TC12, критерії успіху, «що не задано» + посилання на реальні зразки позовних заяв.
-- **Issue #37 створено** — alimony-change Tier 2 pilot, чекліст G1-G5 (з `plan.md`), «вне скоупу» = ті самі 6 пунктів pending Олі.
-- Усе на гілці `docs/alimony-change-legal-deep-dive` → змержено в `main`.
+- **G1 DONE + COMMITTED** — `9a2cfab` на гілці `feature/alimony-change-g1`, 826/826 vitest green.
+- **Issue #37 G1 ✅ відтиканий**, коментар з підсумком на GitHub.
+- **Гілка НЕ змержена в main** — мерж після G2 або після ревью (залежно від рішення в наступній сесії).
 
-### 🔴 Наступний фокус (НОВА сесія)
-1. **#37, G1** (рекомендована модель: **Sonnet** — Tier 1-подібна реалізація з повністю готової спеки) — детермінований скелет `alimony-change.document.txt` + L0.5 `route()` (завжди `PROCEED`) + abstain-шаблони-плейсхолдери + `form_config` (`disabled`) + parity/golden vitest. **Не блокується відсутністю Олі.**
-2. ⏰ **~2026-06-25 (Оля):** law-monitor CRON schedule + 2 зміни СК/ЦПК (#33) + `test-matrix.md` §6 — 6 пунктів proposed design (#37, поза G1).
+### Що зроблено в G1
+- `n8n/templates/route-alimony-change.js` — L0.5 `route()` (завжди `PROCEED` до Олі) + тести
+- `n8n/templates/services/alimony-change.document.txt` — 147-рядковий DSL-шаблон: юрисдикція (ст.28/27 ЦПК), court-fee floor vs 1% (ст.176/ЗСЗ), ст.197 борг, `{{#each children}}` floor по віковому бракету, `ai.reasoning` з generic-fallback ст.182–184
+- `apps/client/src/data/alimonyChangeFormConfig.ts` — FormConfig 4 таби, ~38 полів, `show_if`, hint для `prior_court` (родовий відмінок)
+- `test-data/alimony-change/` — 3 golden-сценарії (TC1 збільш/%, TC2 зменш/fixed non-floor, TC9 зменш/fixed floor+existing_debt) + byte-exact expected outputs
+- `n8n/templates/__tests__/alimony-change-template-parity.test.js` — 132 тести (96 структурна матриця + 29 гілочних перемикачів із юридичними assertions + 3 golden-луп)
+- `render-document.js` — REGISTRY (ПМ-2026: 3328/2817/3512), `pmFloor`/`courtFee` computed layer + unit тести
+- `supabase/migrations/016_alimony_change_service.sql` — реєстрація (status=`disabled`, generation_mode=`template`, watched_laws)
+- **Bug fixed:** `{{ai.reasoning}}` всередині `{{! comment }}` ламав нежадібний TAG_RE-токенізатор
+
+### 🔴 Наступний фокус (НОВА сесія — G2)
+1. **#37, G2 — граф норм** (рекомендована модель: **Sonnet**): seed `law_chunks` (СК 182–184/191/192/197, ЦПК 27/28/174/175/176, ЗСЗ 4/5) + migration `law_relations` + ребра (`192→182 requires`, `192→183/184 clarifies`, збір за напрямком, ціна→ст.176). Не блокується Олею — чистий dev-work.
+2. ⏰ **~2026-06-25 (Оля):** law-monitor CRON schedule + 2 зміни СК/ЦПК (#33) + `test-matrix.md` §6 (6 proposed-design пунктів для L0.5) + прод-флип `disabled→active`.
 
 ---
 

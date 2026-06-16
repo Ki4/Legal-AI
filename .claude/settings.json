@@ -23,6 +23,8 @@
       "PowerShell(gh issue close *)",
       "PowerShell(npx vitest *)",
       "PowerShell(git add *)",
+      "Bash(git commit *)",
+      "PowerShell(git commit *)",
       "Edit(apps/client/.claude/session-summary.md)",
       "Edit(apps/client/.claude/changelog.md)",
       "Write(apps/client/.claude/session-summary.md)",

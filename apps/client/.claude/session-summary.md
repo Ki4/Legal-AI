@@ -1,6 +1,44 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-16 (session 26 — model-agnostic G1 #40 DONE, PR#41 merged, задеплоєно)
+> Updated: 2026-06-16 (session 27 — typography phase 2 #50 DONE, PR#43 merged, задеплоєно)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 27 (2026-06-16) — typography phase 2: {{!style:}} → Google Docs styling (#50)
+
+### Головне — стан ЗАРАЗ
+- **main чистий** ✅ — PR#43 merged, задеплоєно у live n8n
+- **Issue #42 CLOSED** ✅ — typography phase 2 повністю реалізована
+- **928 vitest тестів ✅** (+25: 9 renderDocumentWithStyles + 16 buildTypographyRequests)
+- **Документи тепер форматовані** — «ПОЗОВНА ЗАЯВА» по центру жирним, keep-with-next/keep-together активні
+- **IMPROVEMENTS #72** — архітектурна нотатка multi-template (кілька шаблонів на послугу)
+- **Ольги ще немає** (~2026-06-25) — blocked: CRON schedule, alimony-change flip, law changes review
+
+### Що зроблено
+- `render-document.js` — `classifyTag` розрізняє `'style'` від `'comment'`; `renderNodesInto()` shared builder; `renderDocumentWithStyles()` → `{text, styleHints: {paraIdx: keywords[]}}`
+- `apply-typography.js` — NEW — `buildTypographyRequests(styleHints, docBody)` → Google Docs batchUpdate requests (center, right, bold, keep-with-next, keep-together, page-break-before, indent)
+- `sync-typography-nodes.mjs` — NEW — ідемпотентний патчер: додає Get Document + Build Typography Request + Apply Typography між Replace Placeholder і Share Document
+- `sync-build-document-node.mjs` — template/hybrid paths → `renderDocumentWithStyles`, повертає `_style_hints`; legacy JS path → `{}` (no-op)
+- `docs/architecture/IMPROVEMENTS.md` — #72 (multi-template architecture note)
+
+### Live-верифікація (divorce scenario-2)
+- 4 styled paragraphs у `_style_hints` → 6 batchUpdate requests → Google Docs API ✅
+- Workflow: 37 нодів (було 34), ланцюжок Get Document → Build Typography Request → Apply Typography ✅
+
+### 🔴 Перед VPS (записано в IMPROVEMENTS #71)
+- Додати `GROQ_API_KEY=gsk_...` в `.env.local` і VPS env — для майбутнього Code node fallback
+
+### 🔴 Наступний фокус (~2026-06-25, Ольга)
+1. Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml` (2 рядки)
+2. Вирішити 2 зміни законів: СК `2026-05-25`, ЦПК `2026-04-24`
+3. Sign-off `exception_if` edges у `law_relations` (`verified_by` = email юриста)
+4. Прод-флип `alimony-change` `disabled → active`
+5. Перевірити якість форматування документів у Google Docs (після typography)
+
+### Без Ольги (доступно)
+- VPS-деплой (Hetzner) — прибрати ngrok-залежність
+- Issue #40 G2 (Code node fallback) — після перших реальних запитів
+- #51 Admin-UI редактор шаблону (залежить від ролей)
 
 ---
 

@@ -12,6 +12,19 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-16 (session 27) — typography phase 2: {{!style:}} → Google Docs styling (#50)
+**Status:** COMMITTED · `main` (`06019a7`) · PR#43 merged · задеплоєно
+**Why:** Документи генерувались як plain text без жодного форматування — «ПОЗОВНА ЗАЯВА» йшла звичайним текстом. Директиви `{{!style:}}` вже були в усіх шаблонах (зарезервовано в doc-engine #34), але рендерер їх ігнорував. Тепер: `renderDocumentWithStyles()` відстежує styleHints → 3 нові ноди в workflow → Google Docs batchUpdate застосовує реальне форматування. +IMPROVEMENTS #72 (multi-template architecture note).
+**Files:**
+- `n8n/templates/render-document.js` — `classifyTag` розрізняє `style`/`comment`; `renderNodesInto()` shared builder; `renderDocumentWithStyles()` → `{text, styleHints}`
+- `n8n/templates/apply-typography.js` — **NEW** — `buildTypographyRequests(styleHints, docBody)` → Google Docs batchUpdate requests
+- `n8n/templates/__tests__/apply-typography.test.js` — **NEW** — 16 тестів
+- `n8n/templates/__tests__/render-document.test.js` — +9 тестів для `renderDocumentWithStyles`
+- `scripts/sync-typography-nodes.mjs` — **NEW** — ідемпотентний патчер (Get Document + Build Typography Request + Apply Typography)
+- `scripts/sync-build-document-node.mjs` — template/hybrid → `renderDocumentWithStyles` + `_style_hints`
+- `n8n/workflows/current/form-submit.json` — 34→37 нодів
+- `docs/architecture/IMPROVEMENTS.md` — #72 (multi-template)
+
 ### 2026-06-16 (session 26) — model-agnostic: GROQ_MODEL у Global Config (#40)
 **Status:** COMMITTED · `main` (`988373c`) · PR#41 merged · задеплоєно
 **Why:** `model: 'llama-3.3-70b-versatile'` був захардкоджений у `prepare-reasoning.js:150` — невидимий для n8n конфігу. Тепер модель = 1 поле у Global Config; зміна провайдера/моделі без редагування коду. Groq key залишається як n8n credential (достатньо для пілоту); `GROQ_API_KEY` placeholder у Global Config — для майбутнього Code node fallback перед VPS.

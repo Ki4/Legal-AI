@@ -313,7 +313,7 @@
 - `docs/architecture/IMPROVEMENTS.md` — #41 (needs_law_review дублює status), #42 (law_deps у JSONB), #43 (read-path kill-switch у боті неповний)
 
 ### 2026-06-08 (session 11) — Decisions doc (RAG/GraphRAG) + portfolio-value + untrack local settings
-**Commit:** (this session)
+**Commit:** `209a8d1`
 **Why:** зафіксувати рішення RAG/GraphRAG/Hybrid у DECISIONS.md; зберегти portfolio-value як стратегічний «why»-док; прибрати `.claude/settings.local.json` з git (персональний файл — шум між машинами/сесіями).
 **Files:**
 - `docs/architecture/DECISIONS.md` — розділ «RAG vs GraphRAG vs Hybrid Template»

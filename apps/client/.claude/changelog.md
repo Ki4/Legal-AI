@@ -12,6 +12,17 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-16 (session 26) — model-agnostic: GROQ_MODEL у Global Config (#40)
+**Status:** COMMITTED · `main` (`988373c`) · PR#41 merged · задеплоєно
+**Why:** `model: 'llama-3.3-70b-versatile'` був захардкоджений у `prepare-reasoning.js:150` — невидимий для n8n конфігу. Тепер модель = 1 поле у Global Config; зміна провайдера/моделі без редагування коду. Groq key залишається як n8n credential (достатньо для пілоту); `GROQ_API_KEY` placeholder у Global Config — для майбутнього Code node fallback перед VPS.
+**Files:**
+- `n8n/templates/prepare-reasoning.js` — optional `modelName` param
+- `scripts/sync-hybrid-nodes.mjs` — entry point reads GROQ_MODEL from Global Config
+- `n8n/workflows/current/form-submit.json` — Global Config: GROQ_MODEL + GROQ_MODEL_FALLBACK + GROQ_API_KEY
+- `scripts/deploy-workflow.mjs` — KEY_MAP: YOUR_GROQ_API_KEY → GROQ_API_KEY
+- `docs/architecture/DECISIONS.md` — нова секція «Model-agnostic AI harness»
+- `docs/architecture/IMPROVEMENTS.md` — #71 оновлено
+
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 

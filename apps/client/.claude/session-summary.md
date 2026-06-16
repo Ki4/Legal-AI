@@ -1,6 +1,40 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-16 (session 25 final — #37 CLOSED, PR#38+#39 merged, main чистий)
+> Updated: 2026-06-16 (session 26 — model-agnostic G1 #40 DONE, PR#41 merged, задеплоєно)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 26 (2026-06-16) — model-agnostic harness: GROQ_MODEL у Global Config (#40)
+
+### Головне — стан ЗАРАЗ
+- **main чистий** ✅ — PR#41 merged, задеплоєно у live n8n
+- **Issue #40 G1 DONE** ✅ — GROQ_MODEL вийшов з hardcode у Global Config
+- **903 vitest тестів ✅** (+1 тест для modelName параметра)
+- **form-submit задеплоєно** — Global Config оновлено: GROQ_MODEL + GROQ_MODEL_FALLBACK + GROQ_API_KEY placeholder
+- **Ольги ще немає** (~2026-06-25) — blocked: CRON schedule, alimony-change flip, law changes review
+
+### Що зроблено
+- `prepare-reasoning.js` — `modelName` опційний параметр (default залишається як fallback)
+- `sync-hybrid-nodes.mjs` — entry point читає `GROQ_MODEL` з Global Config
+- `form-submit.json` — Global Config: `GROQ_MODEL`, `GROQ_MODEL_FALLBACK`, `GROQ_API_KEY`
+- `deploy-workflow.mjs` — KEY_MAP: `YOUR_GROQ_API_KEY → GROQ_API_KEY`
+- `DECISIONS.md` — нова секція «Model-agnostic AI harness»
+- `IMPROVEMENTS.md` — #71 оновлено: G1 ✅, перед VPS нотатка
+
+### 🔴 Перед VPS (записано в IMPROVEMENTS #71)
+- Додати `GROQ_API_KEY=gsk_...` в `.env.local` і VPS env — для майбутнього Code node fallback
+
+### 🔴 Наступний фокус (~2026-06-25, Ольга)
+1. Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml` (2 рядки)
+2. Вирішити 2 зміни законів: СК `2026-05-25`, ЦПК `2026-04-24`
+3. Sign-off `exception_if` edges у `law_relations` (`verified_by` = email юриста)
+4. Прод-флип `alimony-change` `disabled → active`
+5. Додати `GROQ_API_KEY` в `.env.local` + VPS env (перед деплоєм)
+
+### Без Ольги (доступно)
+- #50 Фаза 2 типографіки ({{!style:}} директиви → styled Google Docs batchUpdate)
+- VPS-деплой (Hetzner) — прибрати ngrok-залежність
+- Issue #40 G2 (Code node fallback) — після перших реальних запитів
 
 ---
 

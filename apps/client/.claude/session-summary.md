@@ -1,29 +1,105 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-16 (session 24 cont. — alimony-change G1 реалізація, commit 9a2cfab)
-> Прочитай эту секцию первой — она самая свежая.
+> Updated: 2026-06-16 (session 25 — alimony-change G4 done, issue #37)
+> Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 24 (cont., 2026-06-16) — alimony-change G1: повна реалізація (#37)
+## 🆕 Session 25 (2026-06-16) — alimony-change G4: handoff + n8n integration (#37)
 
 ### Головне — стан ЗАРАЗ
-- **G1 DONE + COMMITTED** — `9a2cfab` на гілці `feature/alimony-change-g1`, 826/826 vitest green.
-- **Issue #37 G1 ✅ відтиканий**, коментар з підсумком на GitHub.
-- **Гілка НЕ змержена в main** — мерж після G2 або після ревью (залежно від рішення в наступній сесії).
+- **G1 DONE** — `9a2cfab` на `feature/alimony-change-g1`
+- **G2 DONE** — `8de4e4f` на `feature/alimony-change-g2`
+- **G3 DONE** — `0ee2d9b`+`ca776a9` на `feature/alimony-change-g3`
+- **G4 DONE** — uncommitted на `feature/alimony-change-g3` (всі 10 файлів)
+- **Issue #37:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (uncommitted), G5 відкрита
+- **902 vitest тестів ✅** (60 нових G4: 20 prepare-reasoning + 40 build-hybrid-context)
+- **form-submit.json патчений**, деплой потребує `docker-compose up n8n` → `node scripts/deploy-workflow.mjs form-submit`
+- **Міграція 019 написана**, потребує `supabase db push`
 
-### Що зроблено в G1
-- `n8n/templates/route-alimony-change.js` — L0.5 `route()` (завжди `PROCEED` до Олі) + тести
-- `n8n/templates/services/alimony-change.document.txt` — 147-рядковий DSL-шаблон: юрисдикція (ст.28/27 ЦПК), court-fee floor vs 1% (ст.176/ЗСЗ), ст.197 борг, `{{#each children}}` floor по віковому бракету, `ai.reasoning` з generic-fallback ст.182–184
-- `apps/client/src/data/alimonyChangeFormConfig.ts` — FormConfig 4 таби, ~38 полів, `show_if`, hint для `prior_court` (родовий відмінок)
-- `test-data/alimony-change/` — 3 golden-сценарії (TC1 збільш/%, TC2 зменш/fixed non-floor, TC9 зменш/fixed floor+existing_debt) + byte-exact expected outputs
-- `n8n/templates/__tests__/alimony-change-template-parity.test.js` — 132 тести (96 структурна матриця + 29 гілочних перемикачів із юридичними assertions + 3 golden-луп)
-- `render-document.js` — REGISTRY (ПМ-2026: 3328/2817/3512), `pmFloor`/`courtFee` computed layer + unit тести
-- `supabase/migrations/016_alimony_change_service.sql` — реєстрація (status=`disabled`, generation_mode=`template`, watched_laws)
-- **Bug fixed:** `{{ai.reasoning}}` всередині `{{! comment }}` ламав нежадібний TAG_RE-токенізатор
+### Що зроблено в G4
+- **`n8n/templates/prepare-reasoning.js`** — `prepareReasoning(answers, l2Rows, promptTemplate)`: 
+  - L2 rows → `buildArticleId()` (law_code `2947-14` → `ст.N СК`), `formatNormEntry()`
+  - fills prompt template `{{DIRECTION/CHANGED_FACTS_JSON/L2_NORMS/L2_ARTICLE_IDS/...}}`
+  - returns `{ _groq_body, _l2_article_ids, _l2_norms_text, _answers_snapshot }`
+  - fallback: якщо l2Rows пусті → stub `ст.192 СК + ст.182 СК`
+- **`n8n/templates/build-hybrid-context.js`** — L4 Critics + review-card:
+  - `parseL3Response(l3Response)` — strip ```json fences, parse, validate `reasoning_text`
+  - `buildCourtFeeSummary(answers)` — §3.4: increase→exempt(п.3 ч.1 ст.5 ЗСЗ); decrease+fixed→max(price×0.01, 0.4×3328); percent→manual
+  - `buildQuestionsForLawyer(answers, groundedness, abstained)` — 4 тригери: agreement_procedure, existing_debt, reasoning_abstained, amber_spans
+  - `buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundednessImpl)` — L4c: parseError||has_red → abstain, `_ai_reasoning=''`; builds review-card
+- **`supabase/migrations/019_generation_mode_hybrid.sql`** — widened CHECK + UPDATE alimony-change→'hybrid'
+- **`scripts/sync-hybrid-nodes.mjs`** — патчить form-submit.json: 6 нових нодів + зсув 8 downstream +1200px + з'єднання (ідемпотентний)
+- **`scripts/sync-build-document-node.mjs`** — MODIFIED: додана гілка `hybrid` у dispatch (читає `$json._ai_reasoning` → `ai.reasoning`; `_review_card` у return)
+- **`n8n/workflows/current/form-submit.json`** — 6 нових нодів: Is Hybrid? [1120,1580] → {L2 Get Norms [1360,1820]→…→L4 Critics [2080,1820], Skip Hybrid [1120,1340]} → Build Document [2320,1580]
 
-### 🔴 Наступний фокус (НОВА сесія — G2)
-1. **#37, G2 — граф норм** (рекомендована модель: **Sonnet**): seed `law_chunks` (СК 182–184/191/192/197, ЦПК 27/28/174/175/176, ЗСЗ 4/5) + migration `law_relations` + ребра (`192→182 requires`, `192→183/184 clarifies`, збір за напрямком, ціна→ст.176). Не блокується Олею — чистий dev-work.
-2. ⏰ **~2026-06-25 (Оля):** law-monitor CRON schedule + 2 зміни СК/ЦПК (#33) + `test-matrix.md` §6 (6 proposed-design пунктів для L0.5) + прод-флип `disabled→active`.
+### Pending actions після G4
+1. `docker-compose up n8n` → `node scripts/deploy-workflow.mjs form-submit`
+2. `supabase db push` (міграція 019)
+3. Commit все (uncommitted на `feature/alimony-change-g3`)
+
+### 🔴 Наступний фокус — G5 (документація + закриття #37)
+1. Оновити DECISIONS.md: G4 рішення (no Merge node, injectable checkGroundedness, court fee formula)
+2. IMPROVEMENTS.md: L4b LLM critic підключення, Google Docs 🟡 коментарі (deferred)  
+3. Закрити issue #37, змержити feature/alimony-change-g3 → main
+4. ⏰ **~2026-06-25 (Оля):** law-monitor CRON + sign-off + `disabled→active`
+
+---
+
+## Session 24 (cont.2, 2026-06-16) — alimony-change G1+G2+G3: повна реалізація (#37)
+
+### Головне — стан ЗАРАЗ (на кінець session 24)
+- **G1 DONE** — `9a2cfab` на `feature/alimony-change-g1`
+- **G2 DONE** — `8de4e4f` на `feature/alimony-change-g2` (поверх g1)
+- **G3 DONE** — `0ee2d9b`+`ca776a9` на `feature/alimony-change-g3` (поверх g2)
+- **Issue #37:** G1 ✅ G2 ✅ відтикані, G3–G5 відкриті
+- **Міграції 017 + 018 застосовані в Supabase** ✅ (017 — SQL-баг виправлено після скриншоту; 018 — RLS додав сам Сергій, скаптуровано в файл)
+- **707 n8n тестів ✅, 92 vitest ✅** (включаючи 16 нових groundedness-тестів)
+- **Гілки НЕ змержені в main** — мерж після G4+G5
+
+### Що зроблено в G2
+- `supabase/migrations/017_law_relations.sql` — таблиця `law_relations` + 2 RPC:
+  - `upsert_law_chunk` (non-destructive, merges service_slugs, SET search_path, REVOKE PUBLIC)
+  - `upsert_law_relation` (upsert by natural key, SET search_path, REVOKE PUBLIC)
+- `supabase/migrations/018_law_relations_rls.sql` — RLS (public read, no write policy)
+- `scripts/seed-alimony-change-laws.mjs` — seeds 16 статей (СК 141/150/180/182/183/184/191/192, ЦПК 27/28/174/175/176/177, ЗСЗ 4/5) + 8 edges:
+  - `192→182 (requires)`, `192→183 (clarifies)`, `192→184 (clarifies)`
+  - `192→ст.4 ЗСЗ (exception_if: decrease)`, `192→ст.5 ЗСЗ (exception_if: increase)`
+  - `192→ст.176 ЦПК (requires)`, `192→ст.28 ЦПК (exception_if: increase)`, `192→ст.27 ЦПК (exception_if: decrease)`
+- Embeddings=null (заповнюються пізніше через `seed-divorce-laws.ts --force`)
+- **verified_by='auto' на exception_if edges** — Оля має поставити email ~2026-06-25
+
+### Що зроблено в G3
+- `n8n/prompts/alimony-change-reasoning.txt` — Groq JSON-mode prompt: cite only L2_ARTICLE_IDS, no invented numbers/dates/names, 100–200 words Ukrainian official prose
+- `n8n/templates/groundedness.js` — L4a critic (no LLM): citations ∈ L2, amounts/fractions/dates/case_numbers/names ∈ L0 → RED/AMBER spans; `has_red` → abstention trigger
+- `n8n/prompts/alimony-change-critic.txt` — L4b critic (LLM, independent pass): per-sentence GREEN/AMBER/RED; RED for guaranteed-result claims ("суд зобов'язаний")
+- `n8n/templates/__tests__/groundedness.test.js` — 16 тестів (ESM vitest, CJS-loader pattern)
+
+### Що зроблено в G1 (попередня підсесія)
+- `n8n/templates/route-alimony-change.js` — L0.5 `route()` + тести
+- `n8n/templates/services/alimony-change.document.txt` — 147-рядковий DSL-шаблон
+- `apps/client/src/data/alimonyChangeFormConfig.ts` — FormConfig 4 таби, ~38 полів
+- `test-data/alimony-change/` — 3 golden-сценарії
+- `n8n/templates/__tests__/alimony-change-template-parity.test.js` — 132 тести
+- `render-document.js` — REGISTRY (ПМ-2026: 3328/2817/3512)
+- `supabase/migrations/016_alimony_change_service.sql` — реєстрація (disabled)
+
+### 🔴 Наступний фокус — G4 (НОВА сесія, Sonnet)
+1. **#37, G4 — handoff + n8n dispatch:**
+   - `hybrid` mode в Build Document: L1 шаблон + вставлена (або abstained) L3-секція
+   - Граф-запит law_relations → L2 норми → reasoning prompt
+   - review-card JSON (route, direction, court_fee, norms_used, reasoning_section.spans, questions_for_lawyer, abstention)
+   - 🟡 коменти в Google Docs (`batchUpdate`) на RED/AMBER spans
+   - e2e деплой form-submit; послуга лишається `disabled`
+2. G5 — Docs (після G4): DECISIONS.md, IMPROVEMENTS.md, changelog, closes #37
+3. ⏰ **~2026-06-25 (Оля):** law-monitor CRON (#33) + 2 зміни СК/ЦПК + ярус-3 sign-off (verified_by=юрист на exception_if edges) + прод-флип `disabled→active`
+
+### Де запускати тести n8n
+```bash
+# n8n template tests (з папки __tests__, бінарник з apps/client):
+"C:/Users/serge/Legal-AI/apps/client/node_modules/.bin/vitest" run
+# client vitest:
+cd apps/client && npx vitest run
+```
 
 ---
 

@@ -15,8 +15,33 @@
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
+### 2026-06-16 (session 25) — alimony-change G4: handoff + n8n integration (#37)
+**Status:** uncommitted · branch `feature/alimony-change-g3` (буде перейменована/squash перед merge)
+**Why:** G4 розширює Build Document dispatch для `generation_mode='hybrid'`, додає 6 нових нодів у form-submit workflow (Is Hybrid? / Skip Hybrid / L2 Get Norms / Prepare Reasoning / L3 Reasoning / L4 Critics) і збирає review-card для юриста. Логіка детермінована: Groq llama-3.3-70b-versatile → L4a critic (groundedness.js) → abstention (RED→fallback) → `ai.reasoning` → шаблон. Деплой потребує запущеного n8n (localhost:5678 не відповідав).
+**Files:**
+- `n8n/templates/prepare-reasoning.js` — **NEW** — pure fn `prepareReasoning()`: L0 answers + L2 rows → Groq request body + `_l2_article_ids` + `_answers_snapshot`
+- `n8n/templates/build-hybrid-context.js` — **NEW** — pure fns: `parseL3Response`, `buildCourtFeeSummary` (§3.4, PM=3328), `buildQuestionsForLawyer`, `buildHybridContext` (L4c abstention + review-card)
+- `n8n/templates/__tests__/prepare-reasoning.test.js` — **NEW** — 20 тестів (createRequire, без new Function())
+- `n8n/templates/__tests__/build-hybrid-context.test.js` — **NEW** — 40 тестів (vi.fn() mocks, abstention, court fee, questions)
+- `supabase/migrations/019_generation_mode_hybrid.sql` — **NEW** — widened CHECK + UPDATE alimony-change to 'hybrid'
+- `scripts/sync-hybrid-nodes.mjs` — **NEW** — генерує 6 нових n8n нодів, зсуває 8 downstream нодів +1200px, перемикає з'єднання AI Declension → Is Hybrid?; ідемпотентний
+- `scripts/sync-build-document-node.mjs` — MODIFIED — додано гілка `hybrid` у dispatch (читає `$json._ai_reasoning`, `$json._review_card`), `_review_card` у return value
+- `n8n/workflows/current/form-submit.json` — MODIFIED — 6 нових нодів + shifted positions + нові з'єднання (deploys pending n8n start)
+
+### 2026-06-16 (session 24, cont.2) — alimony-change G2+G3: граф норм + critics (#37)
+**Status:** COMMITTED · `feature/alimony-change-g2` (`8de4e4f`) + `feature/alimony-change-g3` (`0ee2d9b`, `ca776a9`) — не змержені в main
+**Why:** G2 будує граф юридичних зв'язків для alimony-change: нова таблиця `law_relations` з двома SECURITY DEFINER RPC (non-destructive upsert_law_chunk + upsert_law_relation), 8 ребрами ст.192→{182,183,184,ст.4/5 ЗСЗ,ст.176/28/27 ЦПК}, RLS (public read only). G3 реалізує критичний рівень (L3/L4): prompt для Groq JSON-mode з enum-обмеженими цитатами, детермінований critic (L4a) для перевірки чисел/дат/ПІБ/справ проти L0, LLM-critic (L4b) для per-sentence статусу GREEN/AMBER/RED + abstention-правило. Знайдено та виправлено: SQL-синтаксис ORDER BY перед FROM у migration 017 (скрін від Сергія) — ORDER BY перенесено після FROM. RLS додав сам Сергій в Supabase → скаптуровано у міграцію 018.
+**Files:**
+- `supabase/migrations/017_law_relations.sql` — **NEW** — таблиця law_relations + upsert_law_chunk + upsert_law_relation (SECURITY DEFINER, SET search_path, REVOKE PUBLIC, GRANT service_role)
+- `supabase/migrations/018_law_relations_rls.sql` — **NEW** — RLS для law_relations (public read, no write policy)
+- `scripts/seed-alimony-change-laws.mjs` — **NEW** — seeds 16 статей (СК/ЦПК/ЗСЗ) + 8 law_relations edges, --dry-run, embeddings=null
+- `n8n/prompts/alimony-change-reasoning.txt` — **NEW** — L3 Groq JSON-mode prompt (cite only L2_ARTICLE_IDS, 100-200 words, Ukrainian legal prose)
+- `n8n/templates/groundedness.js` — **NEW** — L4a critic: citations ∈ L2, amounts/fractions/dates/case_numbers/names ∈ L0 → RED/AMBER spans + has_red flag
+- `n8n/prompts/alimony-change-critic.txt` — **NEW** — L4b LLM critic: per-sentence GREEN/AMBER/RED, "суд зобов'язаний" → RED
+- `n8n/templates/__tests__/groundedness.test.js` — **NEW** — 16 тестів (ESM vitest, CJS-loader pattern)
+
 ### 2026-06-15/16 (session 24, продовження) — alimony-change G1: повна реалізація (#37)
-**Status:** uncommitted · branch `feature/alimony-change-g1`
+**Status:** COMMITTED · branch `feature/alimony-change-g1` (`9a2cfab`, `273d069`)
 **Why:** Пілотна реалізація нового сервісу «Зміна розміру аліментів (↑/↓)» у режимі `generation_mode='template'` (перший сервіс, що не має legacy JS-builder). G1 охоплює: L0.5 routing (route.js), шаблон документа (147 рядків DSL), form_config для UI (TS), 3 golden-сценарії (TC1/TC2/TC9) з очікуваними виводами байт-в-байт, 132 parity-тести (структурна матриця 96 комбо + 29 гілочних перемикачів + 3 golden-луп), citations.json (витягнутий extract-citations.mjs), SQL-міграція 016. Виявлено та виправлено: вкладений `{{ai.reasoning}}` всередині `{{! comment }}` ламав нежадібний TAG_RE-токенізатор → рендер повертав сміттєвий перший рядок.
 **Files:**
 - `n8n/templates/route-alimony-change.js` — **NEW** — L0.5 route() + ROUTE enum + ABSTAIN_MESSAGES; default enabled=false (G1)

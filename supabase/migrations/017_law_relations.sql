@@ -61,6 +61,7 @@ CREATE OR REPLACE FUNCTION upsert_law_chunk(p_chunk jsonb)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_id uuid;
@@ -94,10 +95,11 @@ BEGIN
   ON CONFLICT (law_code, article_num) DO UPDATE SET
     -- Merge service_slugs: union of existing + incoming, deduped, sorted
     service_slugs    = ARRAY(
-      SELECT DISTINCT s ORDER BY s
+      SELECT DISTINCT s
       FROM unnest(law_chunks.service_slugs || ARRAY(
         SELECT jsonb_array_elements_text(p_chunk->'service_slugs')
       )) AS s
+      ORDER BY s
     ),
     -- Update content and date only if incoming version is same or newer
     content          = CASE
@@ -133,6 +135,7 @@ CREATE OR REPLACE FUNCTION upsert_law_relation(p_relation jsonb)
 RETURNS uuid
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_id uuid;
@@ -172,6 +175,17 @@ BEGIN
   RETURN v_id;
 END;
 $$;
+
+-- ─── Permissions ──────────────────────────────────────────────────────────────
+-- SECURITY DEFINER RPCs run as the defining role. Revoke PUBLIC execute so that
+-- only the service_role (used by seeding scripts) can call them directly.
+-- Authenticated/anon roles continue to use the RPCs via service_role key only.
+
+REVOKE EXECUTE ON FUNCTION upsert_law_chunk(jsonb)    FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION upsert_law_relation(jsonb) FROM PUBLIC;
+
+GRANT  EXECUTE ON FUNCTION upsert_law_chunk(jsonb)    TO service_role;
+GRANT  EXECUTE ON FUNCTION upsert_law_relation(jsonb) TO service_role;
 
 -- ─── Verification ─────────────────────────────────────────────────────────────
 -- SELECT count(*) FROM law_relations;                  -- expect 0 before seeding

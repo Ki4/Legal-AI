@@ -154,11 +154,16 @@ describe('prepareReasoning', () => {
     expect(content).toContain('child_needs_up_general')
   })
 
-  it('sets correct Groq model and parameters', () => {
+  it('uses default model when modelName is omitted', () => {
     const { _groq_body } = prepareReasoning(BASE_ANSWERS, BASE_L2_ROWS, STUB_PROMPT)
     expect(_groq_body.model).toBe('llama-3.3-70b-versatile')
     expect(_groq_body.temperature).toBe(0.3)
     expect(_groq_body.response_format).toEqual({ type: 'json_object' })
+  })
+
+  it('uses provided modelName when passed (Global Config override)', () => {
+    const { _groq_body } = prepareReasoning(BASE_ANSWERS, BASE_L2_ROWS, STUB_PROMPT, 'llama-3.1-8b-instant')
+    expect(_groq_body.model).toBe('llama-3.1-8b-instant')
   })
 
   it('passes answers_snapshot through unchanged', () => {

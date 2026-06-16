@@ -87,9 +87,10 @@ const ALIMONY_TYPE_UA = {
  * @param {object}   answers        - L0 form answers (_answers from Validate node)
  * @param {object[]} l2Rows         - law_chunk rows from Supabase (L2 Get Norms)
  * @param {string}   promptTemplate - content of n8n/prompts/alimony-change-reasoning.txt
+ * @param {string}  [modelName]     - Groq model id; defaults to llama-3.3-70b-versatile. Read from Global Config in n8n.
  * @returns {{ _groq_body: object, _l2_article_ids: string[], _l2_norms_text: string, _answers_snapshot: object }}
  */
-function prepareReasoning(answers, l2Rows, promptTemplate) {
+function prepareReasoning(answers, l2Rows, promptTemplate, modelName = 'llama-3.3-70b-versatile') {
   // 1. Direction label
   const direction = answers.change_direction === 'increase' ? 'Збільшення' : 'Зменшення'
 
@@ -145,9 +146,9 @@ function prepareReasoning(answers, l2Rows, promptTemplate) {
     PRIOR_DECISION_DATE:  String(answers.prior_decision_date     || ''),
   })
 
-  // 7. Groq request body (llama-3.3-70b-versatile, JSON mode, temp 0.3)
+  // 7. Groq request body (model from Global Config → caller; JSON mode, temp 0.3)
   const groqBody = {
-    model:           'llama-3.3-70b-versatile',
+    model:           modelName,
     temperature:     0.3,
     response_format: { type: 'json_object' },
     messages:        [{ role: 'user', content: filledPrompt }],

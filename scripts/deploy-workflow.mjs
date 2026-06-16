@@ -58,6 +58,7 @@ function loadEnv(path) {
 const KEY_MAP = {
   YOUR_SUPABASE_SERVICE_ROLE_KEY: 'SUPABASE_SERVICE_KEY',
   YOUR_ENCRYPTION_KEY_64_HEX: 'ENCRYPTION_KEY',
+  YOUR_GROQ_API_KEY: 'GROQ_API_KEY',  // #71 model-agnostic: Groq key now readable by Code nodes
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

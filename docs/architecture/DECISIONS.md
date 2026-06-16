@@ -25,6 +25,7 @@
 - [GraphRAG-стек: патерни замість фреймворків + три яруси довіри звʼязків](#graphrag-стек-патерни-замість-фреймворків--три-яруси-довіри-звязків)
 - [Citations as data: regex-екстрактор + golden-страж (GraphRAG крок 0)](#citations-as-data-regex-екстрактор--golden-страж-graphrag-крок-0)
 - [Hybrid pipeline (G4): no Merge node, injectable critic, court fee §3.4, idempotent sync](#hybrid-pipeline-g4-no-merge-node-injectable-critic-court-fee-34-idempotent-sync)
+- [Model-agnostic AI harness: модель у конфізі, не в коді (#71)](#model-agnostic-ai-harness-модель-у-конфізі-не-в-коді-71)
 
 ---
 
@@ -590,3 +591,30 @@ hardcode значення: `PM_ABLE_BODIED_2026 = 3328` (прожитковий 
 
 **Анти-drift:** Code-ноди в `form-submit.json` не редагуються вручну — тільки через скрипт.
 Те ж правило, що і для Build Document (`sync-build-document-node.mjs`).
+
+## Model-agnostic AI harness: модель у конфізі, не в коді (#71)
+
+**Рішення:** Назва моделі зберігається **виключно** в Global Config ноді n8n (`GROQ_MODEL`, `GROQ_MODEL_FALLBACK`). Жодного hardcode в JS-файлах, промптах, тестових фікстурах.
+
+**Контекст:** AI-моделі — регульована технологія: провайдер може зникнути, подорожчати або бути відключений. Ставитись до них треба як до будь-якого зовнішнього сервісу: конфіг змінюється в одному місці, код не змінюється. Інцидент Fable 5 (2026-06) як наочний приклад.
+
+**До (#40 відкрито):**
+- `n8n/templates/prepare-reasoning.js:150` — `model: 'llama-3.3-70b-versatile'` hardcoded
+- Зміна моделі = grep + edit + deploy
+
+**Після:**
+- Global Config: `GROQ_MODEL: 'llama-3.3-70b-versatile'`, `GROQ_MODEL_FALLBACK: 'llama-3.1-8b-instant'`
+- `prepareReasoning(answers, l2Rows, prompt, modelName)` — 4-й параметр, default = fallback
+- Prepare Reasoning entry point: `const modelName = $('Global Config').first().json.GROQ_MODEL || 'llama-3.3-70b-versatile'`
+- Зміна моделі = 1 рядок у n8n Global Config → без деплою коду
+
+**Fallback chain (manual, достатньо для пілоту):**
+При недоступності Groq: відкрити n8n → Global Config → змінити `GROQ_MODEL` → Save. Час: 30 секунд.
+Автоматичний fallback (Code node з fetch + retry) — IMPROVEMENTS #71 наступна ітерація після перших реальних запитів.
+
+**Чому не LiteLLM/OpenRouter зараз:**
+- Потребують зовнішній акаунт + ще одна точка відмови
+- На пілоті (< 100 документів/місяць) Groq free-tier стабільний
+- Архітектуру закладено: коли знадобиться, зміна = одна URL в Global Config
+
+**Файли:** `n8n/templates/prepare-reasoning.js`, `scripts/sync-hybrid-nodes.mjs`, `n8n/workflows/current/form-submit.json` (Global Config + Prepare Reasoning Code node), `scripts/deploy-workflow.mjs` (KEY_MAP: `YOUR_GROQ_API_KEY`)

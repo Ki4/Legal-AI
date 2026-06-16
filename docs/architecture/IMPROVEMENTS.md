@@ -1004,18 +1004,29 @@ VPS (Hetzner CX52, ~€18/міс) + Ollama → llama3.3:70b-q4
 
 **Що зробити в нашому проекті:**
 
-| Крок | Пріоритет | Файл |
+| Крок | Пріоритет | Стан |
 |------|-----------|------|
-| LiteLLM або OpenRouter замість прямих HTTP до Groq | 🟠 середній | `n8n/workflows/current/form-submit.json` (L3 Reasoning нода) |
-| Fallback chain в Global Config (primary / fallback_1 / fallback_2) | 🟠 середній | Global Config нода |
-| `model_*` поля в n8n Global Config, ніде більше | ✅ вже частково є | — |
-| Self-hosted Ollama як cold reserve | 🟢 низький (пізніше) | VPS + Ollama |
+| `GROQ_MODEL` + `GROQ_MODEL_FALLBACK` в Global Config; `prepareReasoning(modelName)` | 🟠 → ✅ | **DONE** (#40, `2ceed5c`) |
+| Перед VPS-деплоєм: додати `GROQ_API_KEY=gsk_...` в `.env.local` і в env VPS | 🟠 | Чекає VPS |
+| Fallback Code node: L3 Reasoning із `fetch()` + retry на GROQ_MODEL_FALLBACK | 🟡 | Після перших реальних запитів |
+| LiteLLM або OpenRouter замість прямих HTTP до Groq | 🟡 | Після пілоту (потребує зовн. акаунту) |
+| Self-hosted Ollama як cold reserve | 🟢 | Пізніше (VPS CX52, ~€18/міс) |
 
-- **Чому зараз не критично:** Groq free-tier стабільний, пілот ще не запущений, послуга `disabled`.
-  Але архітектуру закладати треба **до** першого платного клієнта — переробляти під навантаженням дорожче.
-- **Пріоритет:** 🟠 зробити до прод-флипу alimony-change (`disabled → active`)
-- **Файли:** `n8n/workflows/current/form-submit.json` (L3 Reasoning нода URL + credential),
-  `n8n/templates/prepare-reasoning.js` (модель у `_groq_body.model` — вже читається з аргументів)
+**Поточна схема (після #40):**
+```
+Global Config → GROQ_MODEL → prepareReasoning() → _groq_body.model → L3 Reasoning HTTP
+                                                                         ↑ credential: Groq HTTP Auth
+```
+Groq API key зберігається як n8n credential `Groq HTTP Auth` (той самий що AI Declension).
+`GROQ_API_KEY` в Global Config — placeholder для майбутнього Code node fallback (поки не використовується).
+
+**Перед VPS:** додати `GROQ_API_KEY=gsk_...` до:
+1. `apps/client/.env.local` (локально — для `deploy-workflow.mjs`)
+2. VPS env vars (`/etc/n8n/.env` або Docker env) — щоб Code node fallback міг читати ключ і не залежав від n8n credential store
+
+- **Пріоритет:** 🟠 → частково виконано. Залишок (Code node fallback) = після перших клієнтів.
+- **Файли:** `n8n/templates/prepare-reasoning.js`, `scripts/sync-hybrid-nodes.mjs`,
+  `n8n/workflows/current/form-submit.json`, `scripts/deploy-workflow.mjs`
 
 ---
 

@@ -58,7 +58,8 @@ const PREPARE_REASONING_CODE = [
   '// n8n entry point:',
   "const answers = $('Validate').item.json._answers || {};",
   "const l2Rows = $('L2 Get Norms').all().map(item => item.json);",
-  'const result = prepareReasoning(answers, l2Rows, REASONING_PROMPT_TEMPLATE);',
+  "const modelName = $('Global Config').first().json.GROQ_MODEL || 'llama-3.3-70b-versatile';",
+  'const result = prepareReasoning(answers, l2Rows, REASONING_PROMPT_TEMPLATE, modelName);',
   'return [{ json: result }];',
 ].join('\n');
 

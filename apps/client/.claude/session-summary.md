@@ -1,20 +1,18 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-16 (session 25 — alimony-change G4 done, issue #37)
+> Updated: 2026-06-16 (session 25 cont. — alimony-change G5 done, issue #37 CLOSED, merge pending)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 25 (2026-06-16) — alimony-change G4: handoff + n8n integration (#37)
+## 🆕 Session 25 (2026-06-16) — alimony-change G4+G5: n8n integration + docs, Closes #37
 
 ### Головне — стан ЗАРАЗ
-- **G1 DONE** — `9a2cfab` на `feature/alimony-change-g1`
-- **G2 DONE** — `8de4e4f` на `feature/alimony-change-g2`
-- **G3 DONE** — `0ee2d9b`+`ca776a9` на `feature/alimony-change-g3`
-- **G4 DONE** — uncommitted на `feature/alimony-change-g3` (всі 10 файлів)
-- **Issue #37:** G1 ✅ G2 ✅ G3 ✅ G4 ✅ (uncommitted), G5 відкрита
+- **G1–G5 ALL DONE** — всі коміти на `feature/alimony-change-g3`
+- **Issue #37 CLOSED** ✅ (gh issue close 37 — всі чекбокси G1–G5 відтикані)
 - **902 vitest тестів ✅** (60 нових G4: 20 prepare-reasoning + 40 build-hybrid-context)
-- **form-submit.json патчений**, деплой потребує `docker-compose up n8n` → `node scripts/deploy-workflow.mjs form-submit`
-- **Міграція 019 написана**, потребує `supabase db push`
+- **form-submit.json задеплоєний** (`node scripts/deploy-workflow.mjs form-submit`) — smoke-тест ✅
+- **Міграція 019 застосована** (`supabase db push`) ✅
+- **Гілка `feature/alimony-change-g3` готова до merge в main** — uncommitted: changelog.md + session-summary.md + DECISIONS.md + IMPROVEMENTS.md (G5 docs)
 
 ### Що зроблено в G4
 - **`n8n/templates/prepare-reasoning.js`** — `prepareReasoning(answers, l2Rows, promptTemplate)`: 
@@ -38,19 +36,18 @@
 - Smoke-тест: divorce + alimony документи прилетіли в Telegram ✅
 - GitHub issue #37: G4 прокоментований (a945b10)
 
-### 🔴 Наступний фокус — G5 (нова сесія, Sonnet)
-1. Оновити `docs/architecture/DECISIONS.md` — G4 рішення:
-   - No Merge node (IF → обидві гілки → Build Document, no deadlock)
-   - `checkGroundedness` як injectable param (testability)
-   - Court fee formula §3.4 (PM=3328, price_of_claim × 0.01, floor = 0.4 × PM)
-   - `sync-hybrid-nodes.mjs` idempotency pattern
-2. Оновити `docs/architecture/IMPROVEMENTS.md` — deferred items:
-   - L4b LLM critic (prompt є, ноду нема)
-   - Google Docs 🟡 batch-коментарі на RED/AMBER spans
-3. Тікнути чеклист G4 в issue #37
-4. Закрити issue #37 (`Closes #37` у PR або `gh issue close 37`)
-5. Змержити `feature/alimony-change-g3` → `main` (PR або fast-forward)
-6. ⏰ **~2026-06-25 (Оля):** law-monitor CRON (#33) + sign-off verified_by + `disabled→active`
+### Що зроблено в G5 (session 25 cont.)
+- `docs/architecture/DECISIONS.md` — новий розділ «Hybrid pipeline (G4)»: no Merge node, injectable checkGroundedness, court fee §3.4 (PM=3328), idempotent sync-hybrid-nodes
+- `docs/architecture/IMPROVEMENTS.md` — #69 (L4b LLM critic wiring) + #70 (Google Docs batch-comments on RED/AMBER spans) в індекс і тіло
+- GitHub issue #37: G3+G4+G5 відтикані, фінальний коментар, `gh issue close 37`
+
+### 🔴 Наступний фокус — merge + ⏰ Оля (~2026-06-25)
+1. **Merge `feature/alimony-change-g3` → `main`** — зробити PR або fast-forward після review
+2. ⏰ **~2026-06-25 (Оля):**
+   - Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml` (2 рядки)
+   - Вирішити 2 зміни законів: СК `2026-05-25`, ЦПК `2026-04-24` → relevant до наших статей?
+   - Sign-off `exception_if` edges у `law_relations` (`verified_by` = юрист)
+   - Прод-флип `alimony-change` `disabled → active`
 
 ---
 

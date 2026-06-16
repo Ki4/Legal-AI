@@ -15,8 +15,17 @@
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
+### 2026-06-16 (session 25, cont.) — alimony-change G5: docs + close #37 + merge (#37)
+**Status:** uncommitted · branch `feature/alimony-change-g3`
+**Why:** G5 фіналізує Tier 2-пілот: архітектурні рішення G4 задокументовані в DECISIONS.md,
+два відкладені поліпшення (#69 L4b, #70 Google Docs spans) зафіксовані в IMPROVEMENTS.md.
+Issue #37 закрито. Сесія 25 завершена, гілка готова до merge.
+**Files:**
+- `docs/architecture/DECISIONS.md` — новий розділ «Hybrid pipeline (G4)» (no Merge node / injectable checkGroundedness / court fee §3.4 / idempotent sync-hybrid-nodes)
+- `docs/architecture/IMPROVEMENTS.md` — #69 (L4b LLM critic) + #70 (Google Docs batch-comments) додані в індекс і тіло
+
 ### 2026-06-16 (session 25) — alimony-change G4: handoff + n8n integration (#37)
-**Status:** uncommitted · branch `feature/alimony-change-g3` (буде перейменована/squash перед merge)
+**Status:** committed · branch `feature/alimony-change-g3` · `a945b10`, `a397866`
 **Why:** G4 розширює Build Document dispatch для `generation_mode='hybrid'`, додає 6 нових нодів у form-submit workflow (Is Hybrid? / Skip Hybrid / L2 Get Norms / Prepare Reasoning / L3 Reasoning / L4 Critics) і збирає review-card для юриста. Логіка детермінована: Groq llama-3.3-70b-versatile → L4a critic (groundedness.js) → abstention (RED→fallback) → `ai.reasoning` → шаблон. Деплой потребує запущеного n8n (localhost:5678 не відповідав).
 **Files:**
 - `n8n/templates/prepare-reasoning.js` — **NEW** — pure fn `prepareReasoning()`: L0 answers + L2 rows → Groq request body + `_l2_article_ids` + `_answers_snapshot`

@@ -1,18 +1,41 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-16 (session 25 cont. — alimony-change G5 done, issue #37 CLOSED, merge pending)
+> Updated: 2026-06-16 (session 25 final — #37 CLOSED, PR#38+#39 merged, main чистий)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 25 (2026-06-16) — alimony-change G4+G5: n8n integration + docs, Closes #37
+## 🆕 Session 25 (2026-06-16) — alimony-change G1–G5 DONE + IMPROVEMENTS #71, main чистий
 
 ### Головне — стан ЗАРАЗ
-- **G1–G5 ALL DONE** — всі коміти на `feature/alimony-change-g3`
-- **Issue #37 CLOSED** ✅ (gh issue close 37 — всі чекбокси G1–G5 відтикані)
+- **main чистий** ✅ — PR#38 (alimony-change G1–G5) + PR#39 (IMPROVEMENTS #71) змержені
+- **Issue #37 CLOSED** ✅ — всі чекбокси G1–G5 відтикані
 - **902 vitest тестів ✅** (60 нових G4: 20 prepare-reasoning + 40 build-hybrid-context)
-- **form-submit.json задеплоєний** (`node scripts/deploy-workflow.mjs form-submit`) — smoke-тест ✅
-- **Міграція 019 застосована** (`supabase db push`) ✅
-- **Гілка `feature/alimony-change-g3` готова до merge в main** — uncommitted: changelog.md + session-summary.md + DECISIONS.md + IMPROVEMENTS.md (G5 docs)
+- **form-submit.json задеплоєний** — 6 нових нодів, smoke-тест ✅ (divorce + alimony в Telegram)
+- **Міграції 016–019 застосовані** в Supabase ✅
+- **alimony-change `status='disabled'`** — послуга готова, флип після Ольги (~2026-06-25)
+- **IMPROVEMENTS.md #71** — Model-Agnostic Ecosystem (LiteLLM/fallback chain / model в конфізі / Ollama), пріоритет 🟠
+
+### Що зроблено в сесії 25
+
+#### G4 (hybrid pipeline)
+- **`n8n/templates/prepare-reasoning.js`** — `prepareReasoning(answers, l2Rows, promptTemplate)`: L2 rows → `buildArticleId()`, `formatNormEntry()`, fills prompt → `{ _groq_body, _l2_article_ids, _l2_norms_text, _answers_snapshot }`; fallback при порожніх L2
+- **`n8n/templates/build-hybrid-context.js`** — `parseL3Response`, `buildCourtFeeSummary` (§3.4, PM=3328), `buildQuestionsForLawyer` (4 triggers), `buildHybridContext` (L4c abstention + review-card)
+- **`supabase/migrations/019_generation_mode_hybrid.sql`** — widened CHECK + UPDATE alimony-change→'hybrid'
+- **`scripts/sync-hybrid-nodes.mjs`** — ідемпотентний патчер: 6 нових нодів + зсув 8 downstream +1200px
+- **`scripts/sync-build-document-node.mjs`** — гілка `hybrid` у dispatch
+- **`n8n/workflows/current/form-submit.json`** — Is Hybrid? → {L2→Prepare→L3→L4 | Skip} → Build Document
+
+#### G5 (docs) + extras
+- `docs/architecture/DECISIONS.md` — розділ «Hybrid pipeline (G4)»: no Merge node / injectable checkGroundedness / court fee §3.4 / idempotent sync
+- `docs/architecture/IMPROVEMENTS.md` — #69 (L4b wiring) + #70 (Google Docs spans) + #71 (Model-Agnostic)
+- `.claude/settings.json` — `Edit/Write` для session-summary + changelog (без підтвердження)
+
+### 🔴 Наступний фокус (~2026-06-25, Ольга)
+1. Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml` (2 рядки)
+2. Вирішити 2 зміни законів: СК `2026-05-25`, ЦПК `2026-04-24` → relevant до наших статей?
+3. Sign-off `exception_if` edges у `law_relations` (`verified_by` = email юриста)
+4. Прод-флип `alimony-change` `disabled → active`
+5. 🟠 LiteLLM/fallback wiring (IMPROVEMENTS #71) — до флипу
 
 ### Що зроблено в G4
 - **`n8n/templates/prepare-reasoning.js`** — `prepareReasoning(answers, l2Rows, promptTemplate)`: 

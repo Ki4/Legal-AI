@@ -15,8 +15,14 @@
 > Optional scratch area (simplified session 16) — git tracks uncommitted state, so this is usually empty.
 > The session-15 entries below are already committed + merged (kept as the why-log; hashes noted).
 
+### 2026-06-16 (session 25, final) — IMPROVEMENTS #71: model-agnostic ecosystem
+**Status:** COMMITTED · `main` (`b7d2d70`) · PR#39 merged
+**Why:** Зафіксовано 4 паттерни захисту від vendor lock-in (LiteLLM router / fallback chain / model в конфізі / Ollama self-hosted). Контекст: Fable 5 інцидент доводить, що ШІ-моделі — регульована інфраструктура, яку можуть відключити в будь-яку хвилину.
+**Files:**
+- `docs/architecture/IMPROVEMENTS.md` — #71 в індекс + тіло (4 паттерни, таблиця кроків, пріоритет 🟠)
+
 ### 2026-06-16 (session 25, cont.) — alimony-change G5: docs + close #37 + merge (#37)
-**Status:** uncommitted · branch `feature/alimony-change-g3`
+**Status:** COMMITTED · `main` (`2cedcf8`, `ae3ac80`) · PR#38 merged
 **Why:** G5 фіналізує Tier 2-пілот: архітектурні рішення G4 задокументовані в DECISIONS.md,
 два відкладені поліпшення (#69 L4b, #70 Google Docs spans) зафіксовані в IMPROVEMENTS.md.
 Issue #37 закрито. Сесія 25 завершена, гілка готова до merge.

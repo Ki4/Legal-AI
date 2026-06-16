@@ -32,16 +32,25 @@
 - **`scripts/sync-build-document-node.mjs`** — MODIFIED: додана гілка `hybrid` у dispatch (читає `$json._ai_reasoning` → `ai.reasoning`; `_review_card` у return)
 - **`n8n/workflows/current/form-submit.json`** — 6 нових нодів: Is Hybrid? [1120,1580] → {L2 Get Norms [1360,1820]→…→L4 Critics [2080,1820], Skip Hybrid [1120,1340]} → Build Document [2320,1580]
 
-### Pending actions після G4
-1. `docker-compose up n8n` → `node scripts/deploy-workflow.mjs form-submit`
-2. `supabase db push` (міграція 019)
-3. Commit все (uncommitted на `feature/alimony-change-g3`)
+### G4 верифікований ✅ (2026-06-16)
+- `node scripts/deploy-workflow.mjs form-submit` — задеплоїлось, +6 нодів, credentials збережені
+- `supabase db push` (міграція 019) — вже застосована раніше
+- Smoke-тест: divorce + alimony документи прилетіли в Telegram ✅
+- GitHub issue #37: G4 прокоментований (a945b10)
 
-### 🔴 Наступний фокус — G5 (документація + закриття #37)
-1. Оновити DECISIONS.md: G4 рішення (no Merge node, injectable checkGroundedness, court fee formula)
-2. IMPROVEMENTS.md: L4b LLM critic підключення, Google Docs 🟡 коментарі (deferred)  
-3. Закрити issue #37, змержити feature/alimony-change-g3 → main
-4. ⏰ **~2026-06-25 (Оля):** law-monitor CRON + sign-off + `disabled→active`
+### 🔴 Наступний фокус — G5 (нова сесія, Sonnet)
+1. Оновити `docs/architecture/DECISIONS.md` — G4 рішення:
+   - No Merge node (IF → обидві гілки → Build Document, no deadlock)
+   - `checkGroundedness` як injectable param (testability)
+   - Court fee formula §3.4 (PM=3328, price_of_claim × 0.01, floor = 0.4 × PM)
+   - `sync-hybrid-nodes.mjs` idempotency pattern
+2. Оновити `docs/architecture/IMPROVEMENTS.md` — deferred items:
+   - L4b LLM critic (prompt є, ноду нема)
+   - Google Docs 🟡 batch-коментарі на RED/AMBER spans
+3. Тікнути чеклист G4 в issue #37
+4. Закрити issue #37 (`Closes #37` у PR або `gh issue close 37`)
+5. Змержити `feature/alimony-change-g3` → `main` (PR або fast-forward)
+6. ⏰ **~2026-06-25 (Оля):** law-monitor CRON (#33) + sign-off verified_by + `disabled→active`
 
 ---
 

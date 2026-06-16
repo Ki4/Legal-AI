@@ -375,6 +375,17 @@ const MONTHS = [
   'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня',
 ];
 
+/**
+ * Registry — slow-changing legal constants (прожитковий мінімум, 2026).
+ * SSoT for amounts that drift yearly; template/helpers read this, never hardcode
+ * (alimony-change §3.3/§3.4, research 2026-06-15, ярус-3 sign-off pending Olga).
+ */
+const REGISTRY = {
+  pm_able_bodied_2026: 3328,
+  pm_child_under6_2026: 2817,
+  pm_child_6to18_2026: 3512,
+};
+
 const HELPERS = {
   /** ISO date → "20 червня 2015" */
   formatDate(iso) {
@@ -423,6 +434,16 @@ const HELPERS = {
     const s = truthy(v) ? String(v) : FALLBACK;
     return s.endsWith('.') ? s : s + '.';
   },
+  /** Ukrainian money formatting: 1331.2 → "1 331,20", 24000 → "24 000", 1756 → "1 756". */
+  formatMoney(n) {
+    if (n === null || n === undefined || n === '') return FALLBACK;
+    const num = Number(n);
+    if (isNaN(num)) return FALLBACK;
+    const rounded = Math.round(num * 100) / 100;
+    const [intPart, fracPart] = rounded.toFixed(Number.isInteger(rounded) ? 0 : 2).split('.');
+    const withSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return fracPart ? `${withSep},${fracPart}` : withSep;
+  },
 };
 
 // ─── Context builder (computed layer shared by all services) ─────────────────
@@ -446,6 +467,31 @@ function normalizeCert(certInfo) {
     return 'свідоцтвом ' + certInfo.slice('свідоцтво '.length);
   }
   return certInfo;
+}
+
+/** "6000" / "6 000" / "6000,50" → number, or null if empty/unparseable. */
+function parseMoney(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(String(v).replace(/\s/g, '').replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
+/** "DD.MM.YYYY" (parseChildrenDetails format) → age in full years as of `now`, or null. */
+function ageFromBirthDate(birthDate, now = new Date()) {
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(String(birthDate || '').trim());
+  if (!m) return null;
+  const [, d, mo, y] = m;
+  const bd = new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d)));
+  let age = now.getUTCFullYear() - bd.getUTCFullYear();
+  const monthDiff = now.getUTCMonth() - bd.getUTCMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getUTCDate() < bd.getUTCDate())) age--;
+  return age;
+}
+
+/** 50% ПМ для дитини відповідного віку (alimony-change §3.3), or null if age unknown. */
+function pmFloorForAge(age) {
+  if (age === null || age === undefined) return null;
+  return (age < 6 ? REGISTRY.pm_child_under6_2026 : REGISTRY.pm_child_6to18_2026) / 2;
 }
 
 /**
@@ -494,7 +540,24 @@ function buildContext(answers, ai) {
     a.defendant_middle_name || a.spouse_middle_name,
   );
 
-  const children = parseChildrenDetails(a.children_details);
+  const children = parseChildrenDetails(a.children_details).map((c) => ({
+    ...c,
+    pmFloor: pmFloorForAge(ageFromBirthDate(c.birthDate)),
+  }));
+
+  // alimony-change (§3.3/§3.4): monthly_delta known only when both amounts are
+  // fixed sums; price_of_claim/court_fee derive from it, registry-floored.
+  const priorAmount = parseMoney(a.prior_alimony_value);
+  const requestedAmount = parseMoney(a.requested_alimony_value);
+  const monthlyDelta = (a.prior_alimony_type === 'fixed' && a.requested_alimony_type === 'fixed'
+    && priorAmount !== null && requestedAmount !== null)
+    ? Math.abs(requestedAmount - priorAmount)
+    : null;
+  const priceOfClaim = monthlyDelta !== null ? monthlyDelta * 12 : null;
+  const onePercentOfClaim = priceOfClaim !== null ? Math.round(priceOfClaim * 0.01 * 100) / 100 : null;
+  const courtFeeFloor = REGISTRY.pm_able_bodied_2026 * 0.4;
+  const courtFee = priceOfClaim !== null ? Math.max(onePercentOfClaim, courtFeeFloor) : null;
+  const courtFeeIsFloor = onePercentOfClaim !== null ? onePercentOfClaim <= courtFeeFloor : false;
 
   const aiSafe = {
     plaintiff_instrumental: aiIn.plaintiff_instrumental || plaintiffName,
@@ -504,6 +567,10 @@ function buildContext(answers, ai) {
     marriage_place_locative: aiIn.marriage_place_locative || a.marriage_place || FALLBACK,
     children_genitive: aiIn.children_genitive
       || (children.length ? children.map((c) => `${c.name}, ${c.birthDate} р.н.`).join('; ') : FALLBACK),
+    // alimony-change L3 (G3+): case-specific обґрунтування зміни обставин.
+    // Empty in G1 (no LLM) → {{#if ai.reasoning}} falls through to the
+    // template's generic ст.182 fallback paragraph.
+    reasoning: aiIn.reasoning || '',
   };
 
   return {
@@ -516,6 +583,10 @@ function buildContext(answers, ai) {
     has_children: children.length > 0,
     n_children: children.length || 1,
     first_child_gender: children.length ? children[0].gender : 'male',
+    monthly_delta: monthlyDelta,
+    price_of_claim: priceOfClaim,
+    court_fee: courtFee,
+    court_fee_is_floor: courtFeeIsFloor,
     ai: aiSafe,
     // escape hatches for templates whose legacy semantics differ from the
     // computed layer: raw form answers (computed keys shadow e.g. has_children)
@@ -540,5 +611,9 @@ if (typeof module !== 'undefined' && module.exports) {
     detectGender,
     parseChildrenDetails,
     normalizeCert,
+    REGISTRY,
+    parseMoney,
+    ageFromBirthDate,
+    pmFloorForAge,
   };
 }

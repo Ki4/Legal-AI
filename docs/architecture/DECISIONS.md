@@ -24,6 +24,7 @@
 - [Doc-engine: декларативний шаблон документа замість JS-білдера](#doc-engine-декларативний-шаблон-документа-замість-js-білдера)
 - [GraphRAG-стек: патерни замість фреймворків + три яруси довіри звʼязків](#graphrag-стек-патерни-замість-фреймворків--три-яруси-довіри-звязків)
 - [Citations as data: regex-екстрактор + golden-страж (GraphRAG крок 0)](#citations-as-data-regex-екстрактор--golden-страж-graphrag-крок-0)
+- [Hybrid pipeline (G4): no Merge node, injectable critic, court fee §3.4, idempotent sync](#hybrid-pipeline-g4-no-merge-node-injectable-critic-court-fee-34-idempotent-sync)
 
 ---
 
@@ -525,3 +526,67 @@ CRON вже моніторить її. Побічний ефект регекс-
 
 Крок 1 (досев `law_chunks` чанк=стаття + migration `law_relations` + ярус 2/3 з §3 дослідження) —
 окрема сесія; голдени з цього кроку дають точний список статей-кандидатів на чанкування.
+
+---
+
+## Hybrid pipeline (G4): no Merge node, injectable critic, court fee §3.4, idempotent sync
+
+**Реалізовано в feature/alimony-change-g3 (#37 G4, session 25).** Шість нових нодів у `form-submit.json`
+(Is Hybrid? → {L2 Get Norms → Prepare Reasoning → L3 Reasoning → L4 Critics} | Skip Hybrid → Build Document)
+із трьома нетривіальними рішеннями і однією конвенцією нумерації.
+
+### Немає Merge-ноди — обидві гілки IF ведуть прямо в Build Document
+
+**Проблема:** n8n Merge-нода чекає вхід з ОБОХ гілок. Якщо IF завжди відсилає items тільки в ОДНУ гілку,
+Merge зависає вічно (deadlock — нода, що не отримала вхід, ніколи не «закриє» merge).
+
+**Рішення:** true-гілка (Is Hybrid? → L4 Critics) і false-гілка (Skip Hybrid) обидві підключаються
+**безпосередньо** до Build Document. Оскільки IF відправляє items у рівно одну гілку за виконання,
+Build Document завжди отримує рівно один вхід — Merge не потрібний. Протестовано на реальних executions:
+divorce (false-гілка) і alimony-change (true-гілка) обидва пройшли без затримок.
+
+**Правило на майбутнє:** Merge-нода виправдана лише коли обидві гілки IF гарантовано запускаються
+(наприклад, parallel-fan-out без умов). При умовній маршрутизації — пряме з'єднання обох гілок
+до наступної ноди.
+
+### `checkGroundedness` — injectable параметр (dependency injection для тестованості)
+
+`buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundednessImpl)` приймає реалізацію
+L4a-критика як 4-й аргумент замість виклику `checkGroundedness()` напряму. Це дозволяє:
+- юніт-тестувати `buildHybridContext` без справжніх `law_chunks` — достатньо `vi.fn()` mock;
+- при виклику в n8n-ноді передати справжню реалізацію з `groundedness.js` (інлайниться скриптом).
+
+**Патерн:** pure function + explicit dependency — стандартна техніка у functional-стилі.
+В n8n Code-ноді, де код інлайниться і немає модульної системи, DI через параметр — єдиний
+практичний спосіб зберегти логіку тестованою без `new Function()` або глобалів.
+
+### Court fee §3.4: формула зменшення з підлогою (ПМ-2026 = 3328 грн)
+
+Судовий збір при зменшенні аліментів — єдина числова формула в системі, що вимагає рішення про
+hardcode значення: `PM_ABLE_BODIED_2026 = 3328` (прожитковий мінімум для працездатних осіб, 2026).
+
+**Логіка по гілках:**
+- **Збільшення:** збір не сплачується (п.3 ч.1 ст.5 ЗУ «Про судовий збір» — позивач звільнений як
+  особа, що діє в інтересах дитини).
+- **Зменшення + фіксована сума:** `price_of_claim = |requested − prior| × 12`;
+  `fee = max(price_of_claim × 0.01, 0.4 × PM_ABLE_BODIED_2026)` = `max(price × 0.01, 1331.20 грн)`.
+- **Зменшення + % від доходу:** формулу обчислити неможливо без реального доходу відповідача —
+  `buildCourtFeeSummary` повертає `type: 'manual'`, і review-card містить рядок «потрібний розрахунок».
+
+**Чому hardcode, а не БД:** значення ПМ змінюється раз на рік державним бюджетом (CRON-монітор
+відловить зміну ЗСЗ → флип alimony-change до `needs_review`). Оновлення = одна константа + тест,
+не міграція. Зберігати в `services.metadata` JSONB — зайва складність для одного числа на рік.
+
+### `sync-hybrid-nodes.mjs` — idempotency pattern для n8n-патчів
+
+Скрипт `scripts/sync-hybrid-nodes.mjs` перевіряє, чи нода `Is Hybrid?` вже існує у workflow JSON:
+- **Перший запуск:** додає 6 нових нодів, зсуває 8 downstream-нодів на +1200px, переключає
+  з'єднання `AI Declension → Build Document` на `AI Declension → Is Hybrid?` + нові гілки.
+- **Повторний запуск:** оновлює лише `jsCode` трьох Code-нодів (Prepare Reasoning, L4 Critics,
+  Skip Hybrid) — позиції і з'єднання не чіпаються.
+
+**Чому важливо:** deploy скрипт виконується після кожного оновлення `prepare-reasoning.js` або
+`build-hybrid-context.js`. Без idempotency повторний запуск двічі зсунув би ноди або додав дублікати.
+
+**Анти-drift:** Code-ноди в `form-submit.json` не редагуються вручну — тільки через скрипт.
+Те ж правило, що і для Build Document (`sync-build-document-node.mjs`).

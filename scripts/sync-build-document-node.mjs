@@ -49,12 +49,20 @@ const svc = $('Get Service').first().json || {};
 `;
 
 const FOOTER = `
-// 5. Dispatch by generation_mode (doc-engine, #34)
+// 5. Dispatch by generation_mode (doc-engine, #34; hybrid added #37)
+// 'hybrid'   → template engine + AI reasoning injected via ai.reasoning
 // 'template' → shared render engine + services.document_template (lawyer-editable)
 // anything else → legacy hardcoded js builder for this slug
 let document;
+let reviewCard = null;
 try {
-  if (svc.generation_mode === 'template' && svc.document_template) {
+  if (svc.generation_mode === 'hybrid' && svc.document_template) {
+    console.log('[Build] path=hybrid, service', serviceSlug);
+    const hybridCtx = $json || {};
+    if (hybridCtx._ai_reasoning) { ai.reasoning = hybridCtx._ai_reasoning; }
+    reviewCard = hybridCtx._review_card || null;
+    document = renderDocument(svc.document_template, buildContext(answers, ai));
+  } else if (svc.generation_mode === 'template' && svc.document_template) {
     console.log('[Build] path=template (engine), service', serviceSlug);
     document = renderDocument(svc.document_template, buildContext(answers, ai));
   } else {
@@ -72,7 +80,7 @@ try {
 }
 console.log('[Build] Generated', document.length, 'chars for', serviceSlug);
 
-return [{ json: { _content: document, _case_id: caseId } }];
+return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard } }];
 `;
 
 const jsCode = [

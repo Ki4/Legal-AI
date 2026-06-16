@@ -15,7 +15,10 @@ const engine = (() => {
   return m.exports
 })()
 
-const { renderDocument, buildContext, HELPERS, FALLBACK, truthy, detectGender, parseChildrenDetails, normalizeCert } = engine
+const {
+  renderDocument, buildContext, HELPERS, FALLBACK, truthy, detectGender, parseChildrenDetails, normalizeCert,
+  REGISTRY, parseMoney, ageFromBirthDate, pmFloorForAge,
+} = engine
 
 const r = (tpl, ctx = {}) => renderDocument(tpl, ctx)
 
@@ -316,6 +319,21 @@ describe('HELPERS', () => {
     expect(HELPERS.ensurePeriod(undefined)).toBe(`${FALLBACK}.`)
     expect(HELPERS.ensurePeriod(false)).toBe(`${FALLBACK}.`)
   })
+
+  it('formatMoney: thousands separator, 2 decimals only when fractional', () => {
+    expect(HELPERS.formatMoney(1331.2)).toBe('1 331,20')
+    expect(HELPERS.formatMoney(24000)).toBe('24 000')
+    expect(HELPERS.formatMoney(1756)).toBe('1 756')
+    expect(HELPERS.formatMoney(1408.5)).toBe('1 408,50')
+    expect(HELPERS.formatMoney(0)).toBe('0')
+  })
+
+  it('formatMoney: empty/non-numeric → fallback', () => {
+    expect(HELPERS.formatMoney(null)).toBe(FALLBACK)
+    expect(HELPERS.formatMoney(undefined)).toBe(FALLBACK)
+    expect(HELPERS.formatMoney('')).toBe(FALLBACK)
+    expect(HELPERS.formatMoney('garbage')).toBe(FALLBACK)
+  })
 })
 
 // ─── buildContext (computed layer) ───────────────────────────────────────────
@@ -466,5 +484,81 @@ describe('internals', () => {
   it('parseChildrenDetails skips blank lines and lines without a name', () => {
     expect(parseChildrenDetails('\n\nІванов Олег, 15.05.2018\n\n')).toHaveLength(1)
     expect(parseChildrenDetails(null)).toEqual([])
+  })
+
+  it('parseMoney: handles spaces and commas, null on empty/garbage', () => {
+    expect(parseMoney('6000')).toBe(6000)
+    expect(parseMoney('6 000')).toBe(6000)
+    expect(parseMoney('6000,50')).toBe(6000.5)
+    expect(parseMoney('')).toBeNull()
+    expect(parseMoney(null)).toBeNull()
+    expect(parseMoney(undefined)).toBeNull()
+    expect(parseMoney('garbage')).toBeNull()
+  })
+
+  it('ageFromBirthDate: full years as of reference date', () => {
+    const now = new Date(Date.UTC(2026, 5, 15)) // 2026-06-15
+    expect(ageFromBirthDate('15.05.2020', now)).toBe(6) // birthday already passed this year
+    expect(ageFromBirthDate('15.07.2020', now)).toBe(5) // birthday not yet reached
+    expect(ageFromBirthDate('15.06.2020', now)).toBe(6) // birthday is today
+    expect(ageFromBirthDate('garbage', now)).toBeNull()
+    expect(ageFromBirthDate('', now)).toBeNull()
+  })
+
+  it('pmFloorForAge: 50% of registry value by age bracket (alimony-change §3.3)', () => {
+    expect(pmFloorForAge(5)).toBe(REGISTRY.pm_child_under6_2026 / 2)
+    expect(pmFloorForAge(6)).toBe(REGISTRY.pm_child_6to18_2026 / 2)
+    expect(pmFloorForAge(17)).toBe(REGISTRY.pm_child_6to18_2026 / 2)
+    expect(pmFloorForAge(null)).toBeNull()
+    expect(pmFloorForAge(undefined)).toBeNull()
+  })
+})
+
+// ─── alimony-change computed fields (REGISTRY-backed) ────────────────────────
+
+describe('buildContext: alimony-change computed fields', () => {
+  it('monthly_delta/price_of_claim/court_fee: fixed→fixed, floor applies (example.md Case B)', () => {
+    const c = buildContext({
+      prior_alimony_type: 'fixed', requested_alimony_type: 'fixed',
+      prior_alimony_value: '6000', requested_alimony_value: '4000',
+    }, {})
+    expect(c.monthly_delta).toBe(2000)
+    expect(c.price_of_claim).toBe(24000)
+    expect(c.court_fee).toBeCloseTo(REGISTRY.pm_able_bodied_2026 * 0.4, 2) // 1331.20 floor
+    expect(c.court_fee_is_floor).toBe(true)
+  })
+
+  it('court_fee: 1% exceeds floor on a large delta', () => {
+    const c = buildContext({
+      prior_alimony_type: 'fixed', requested_alimony_type: 'fixed',
+      prior_alimony_value: '5000', requested_alimony_value: '20000',
+    }, {})
+    expect(c.monthly_delta).toBe(15000)
+    expect(c.price_of_claim).toBe(180000)
+    expect(c.court_fee).toBeCloseTo(1800, 2) // 1% of 180000 > floor
+    expect(c.court_fee_is_floor).toBe(false)
+  })
+
+  it('monthly_delta is null when either side is percent-based (requirements §7)', () => {
+    const c = buildContext({
+      prior_alimony_type: 'percent', requested_alimony_type: 'fixed',
+      requested_alimony_value: '4000',
+    }, {})
+    expect(c.monthly_delta).toBeNull()
+    expect(c.price_of_claim).toBeNull()
+    expect(c.court_fee).toBeNull()
+    expect(c.court_fee_is_floor).toBe(false)
+  })
+
+  it('each child gets a pmFloor based on age at render time', () => {
+    const youngYear = new Date().getUTCFullYear() - 2 // < 6
+    const olderYear = new Date().getUTCFullYear() - 10 // 6..18
+    const c = buildContext({
+      children_details:
+        `Дитина Молодша, 01.01.${youngYear}, свідоцтво № 1 від 02.01.${youngYear}\n` +
+        `Дитина Старша, 01.01.${olderYear}, свідоцтво № 2 від 02.01.${olderYear}`,
+    }, {})
+    expect(c.children[0].pmFloor).toBe(REGISTRY.pm_child_under6_2026 / 2)
+    expect(c.children[1].pmFloor).toBe(REGISTRY.pm_child_6to18_2026 / 2)
   })
 })

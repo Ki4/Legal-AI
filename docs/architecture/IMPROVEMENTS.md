@@ -90,6 +90,8 @@
 | **#66** | [🟡 Парольна політика адмінки + audit-лог дій](#66-парольна-політика-адмінки--audit-лог-дій) |
 | **#67** | [🟡 Чернетки форм з PII у localStorage без TTL](#67-чернетки-форм-з-pii-у-localstorage-без-ttl) |
 | **#68** | [🟢 Hardening-набір (search_path, console gate, telegram escape, vercel, FK)](#68-hardening-набір-search_path-console-gate-telegram-escape-vercel-fk) |
+| **#69** | [L4b LLM critic — підключити в n8n (prompt готовий, нода відсутня)](#69-l4b-llm-critic-підключити-в-n8n-prompt-готовий-нода-відсутня) |
+| **#70** | [Google Docs 🟡 batch-коментарі на RED/AMBER spans (batchUpdate)](#70-google-docs-batch-коментарі-на-redamber-spans-batchupdate) |
 
 > **✅ ID-колізії розведено (session 14):** другі входження перенумеровано — «RLS policies» → **#44**, «Skill для changelog» → **#45**. Перші входження #12 («Admin Dashboard») і #20 («Service Builder процес») лишились без змін.
 > **#1** відсутній історично (нумерація почалась з #2) — лишаємо як є; нові записи беруть наступний вільний номер.
@@ -913,6 +915,35 @@ CREATE TABLE invites (
 - **Зараз:** `form-utils.ts` зберігає `draft_<slug>` (ПІБ, адреси, ІПН) у плейнтексті без TTL → ризик на спільних пристроях.
 - **Фікс:** TTL (7 днів) + кнопка «очистити» + попередження про локальне зберігання.
 - **Пріоритет:** 🟡 medium · **Файл:** `apps/client/src/lib/form-utils.ts`
+
+### 69. L4b LLM critic — підключити в n8n (prompt готовий, нода відсутня)
+- **Зараз:** `n8n/prompts/alimony-change-critic.txt` написаний і покритий тестами (L4b —
+  незалежний LLM-прохід, per-sentence GREEN/AMBER/RED, RED для guaranteed-result claims типу
+  «суд зобов'язаний»). Але в `form-submit.json` ноди для L4b немає — критик у pipeline не бере участі.
+- **Що додати:** HTTP Request нода «L4b LLM Critic» між L3 Reasoning і L4 Critics (послідовно або
+  паралельно), з `alimony-change-critic.txt` як системним промптом і окремим Groq-credential.
+  `build-hybrid-context.js` вже готовий прийняти `l4bResult` у `buildHybridContext()`.
+- **Чому відкладено (G4 scope):** другий незалежний LLM-виклик на кожен документ подвоює latency
+  і ускладнює тестування до того, як L4a (детермінований) довів свою цінність на реальних кейсах.
+  Рішення: запустити alimony-change з L4a, зібрати abstention-статистику, потім увімкнути L4b.
+- **Пріоритет:** 🟡 після першого продуктивного місяця alimony-change · **Файли:**
+  `n8n/workflows/current/form-submit.json`, `n8n/templates/build-hybrid-context.js`,
+  `scripts/sync-hybrid-nodes.mjs`
+
+### 70. Google Docs 🟡 batch-коментарі на RED/AMBER spans (batchUpdate)
+- **Зараз:** `_review_card._spans` (поле `{ text, status, issue }`) та `_has_red`/`_abstained`
+  повертаються в Build Document, але жовта/червона підсвітка в Google Doc не реалізована.
+  Юрист бачить review-card у Telegram-повідомленні, але не в самому документі.
+- **Що додати:** у post-processing після `Replace Placeholder` — `batchUpdate` виклик Google Docs API:
+  для кожного span з `status='AMBER'` або `status='RED'` — `createNamedRange` + `createComment`
+  з текстом `issue` (наприклад «вигадане число, не підтверджене L0»). Метод: text-search за `text`
+  (Documents API не має positional insert без snapshot — шукати через `findReplace` offset або
+  `namedRange` після `Get Document`).
+- **Чому відкладено (G4 scope):** Google Docs API для коментарів вимагає Revision ID + складної
+  позиційної логіки; abstention (L4c) вже вирішує найгірший кейс (RED → не вставляємо reasoning
+  взагалі). Batch-коментарі корисні тільки при AMBER.
+- **Пріоритет:** 🟡 · **Файли:** `n8n/workflows/current/form-submit.json` (нова нода після Replace
+  Placeholder), `n8n/templates/build-hybrid-context.js` (spans вже формуються)
 
 ### 68. 🟢 Hardening-набір (дрібне, defense-in-depth)
 - `delete_expired_cases()` без `SET search_path='public'` (решта 7 функцій полагоджені в mig 006) — добити міграцією.

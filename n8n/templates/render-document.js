@@ -52,7 +52,8 @@ function tokenize(template) {
 }
 
 function classifyTag(content) {
-  if (content.startsWith('!')) return 'comment'; // includes {{!style: ...}} directives
+  if (content.startsWith('!style:')) return 'style';
+  if (content.startsWith('!')) return 'comment';
   if (content.startsWith('#if ')) return 'if';
   if (content === 'else') return 'else';
   if (content.startsWith('else if ')) return 'elseif';
@@ -70,6 +71,7 @@ function classifyTag(content) {
 function applyStandalone(tokens) {
   const standalone = tokens.map((t, i) => {
     if (t.type !== 'tag' || classifyTag(t.content) === 'interp') return false;
+    // 'style' directives are standalone (same rule as other block tags)
     const prev = tokens[i - 1];
     const next = tokens[i + 1];
     const prevOk = !prev || (prev.type === 'text' && /(^|\n)[ \t]*$/.test(prev.value));
@@ -201,6 +203,11 @@ function parseTemplate(template) {
       if (stopKinds.includes(kind)) return nodes;
       pos++;
       if (kind === 'comment') continue;
+      if (kind === 'style') {
+        const styles = t.content.slice(7).trim().split(/\s+/).filter(Boolean);
+        nodes.push({ type: 'style', styles, line: t.line });
+        continue;
+      }
       if (kind === 'interp') { nodes.push(parseInterp(t)); continue; }
 
       if (kind === 'if') {
@@ -320,25 +327,32 @@ function formatValue(v, raw) {
   return String(v);
 }
 
-function renderNodes(nodes, scopes) {
-  let out = '';
+/**
+ * Shared builder used by both renderDocument and renderDocumentWithStyles.
+ * sb = { text: string, styleEvents: Array<{charOffset, styles}> }
+ * styleEvents is only populated when sb is shared (renderDocumentWithStyles).
+ */
+function renderNodesInto(nodes, scopes, sb) {
   for (const n of nodes) {
     switch (n.type) {
       case 'text':
-        out += n.value;
+        sb.text += n.value;
+        break;
+      case 'style':
+        sb.styleEvents.push({ charOffset: sb.text.length, styles: n.styles });
         break;
       case 'interp':
-        out += formatValue(resolvePath(n.path, scopes), n.raw);
+        sb.text += formatValue(resolvePath(n.path, scopes), n.raw);
         break;
       case 'helper': {
         const args = n.args.map((a) => evalValue(a, scopes));
         const r = HELPERS[n.name](...args);
-        out += r === null || r === undefined ? '' : String(r);
+        sb.text += r === null || r === undefined ? '' : String(r);
         break;
       }
       case 'if':
         for (const b of n.branches) {
-          if (b.expr === null || evalExpr(b.expr, scopes)) { out += renderNodes(b.body, scopes); break; }
+          if (b.expr === null || evalExpr(b.expr, scopes)) { renderNodesInto(b.body, scopes, sb); break; }
         }
         break;
       case 'each': {
@@ -349,7 +363,7 @@ function renderNodes(nodes, scopes) {
               item,
               meta: { '@index': i, '@index1': i + 1, '@first': i === 0, '@last': i === arr.length - 1 },
             });
-            out += renderNodes(n.body, scopes);
+            renderNodesInto(n.body, scopes, sb);
             scopes.pop();
           });
         }
@@ -359,13 +373,34 @@ function renderNodes(nodes, scopes) {
         throw new Error(`Unknown node type "${n.type}"`);
     }
   }
-  return out;
 }
 
 /** Main entry: template string + context → document string. */
 function renderDocument(template, context) {
   const ast = parseTemplate(template);
-  return renderNodes(ast, [{ item: context, meta: null }]);
+  const sb = { text: '', styleEvents: [] };
+  renderNodesInto(ast, [{ item: context, meta: null }], sb);
+  return sb.text;
+}
+
+/**
+ * Like renderDocument but also returns styleHints:
+ *   { text: string, styleHints: { [paraIdx]: string[] } }
+ * paraIdx is the 0-based paragraph index in the output text (split by '\n').
+ * A {{!style: center bold}} before a line means that line's paragraph has those styles.
+ * Used by the typography phase-2 pipeline to build Google Docs batchUpdate requests.
+ */
+function renderDocumentWithStyles(template, context) {
+  const ast = parseTemplate(template);
+  const sb = { text: '', styleEvents: [] };
+  renderNodesInto(ast, [{ item: context, meta: null }], sb);
+
+  const styleHints = {};
+  for (const { charOffset, styles } of sb.styleEvents) {
+    const paraIdx = sb.text.slice(0, charOffset).split('\n').length - 1;
+    styleHints[paraIdx] = styles;
+  }
+  return { text: sb.text, styleHints };
 }
 
 // ─── Helpers (legally-critical logic — written & tested ONCE, shared) ────────
@@ -601,6 +636,7 @@ function buildContext(answers, ai) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     renderDocument,
+    renderDocumentWithStyles,
     parseTemplate,
     buildContext,
     HELPERS,

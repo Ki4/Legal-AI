@@ -16,11 +16,12 @@ const engine = (() => {
 })()
 
 const {
-  renderDocument, buildContext, HELPERS, FALLBACK, truthy, detectGender, parseChildrenDetails, normalizeCert,
-  REGISTRY, parseMoney, ageFromBirthDate, pmFloorForAge,
+  renderDocument, renderDocumentWithStyles, buildContext, HELPERS, FALLBACK, truthy, detectGender,
+  parseChildrenDetails, normalizeCert, REGISTRY, parseMoney, ageFromBirthDate, pmFloorForAge,
 } = engine
 
 const r = (tpl, ctx = {}) => renderDocument(tpl, ctx)
+const rs = (tpl, ctx = {}) => renderDocumentWithStyles(tpl, ctx)
 
 // ─── Engine source: no eval ──────────────────────────────────────────────────
 
@@ -560,5 +561,68 @@ describe('buildContext: alimony-change computed fields', () => {
     }, {})
     expect(c.children[0].pmFloor).toBe(REGISTRY.pm_child_under6_2026 / 2)
     expect(c.children[1].pmFloor).toBe(REGISTRY.pm_child_6to18_2026 / 2)
+  })
+})
+
+// ─── renderDocumentWithStyles (typography phase 2) ───────────────────────────
+
+describe('renderDocumentWithStyles', () => {
+  it('returns same text as renderDocument', () => {
+    const tpl = 'hello {{name}}'
+    expect(rs(tpl, { name: 'World' }).text).toBe(r(tpl, { name: 'World' }))
+  })
+
+  it('returns empty styleHints when no style directives', () => {
+    const { styleHints } = rs('line one\nline two')
+    expect(styleHints).toEqual({})
+  })
+
+  it('maps style directive to the next paragraph index', () => {
+    const tpl = 'line 0\n{{!style: center bold}}\nline 1\nline 2'
+    const { text, styleHints } = rs(tpl)
+    expect(text).toBe('line 0\nline 1\nline 2')
+    // "line 1" is paragraph index 1 in the output
+    expect(styleHints[1]).toEqual(['center', 'bold'])
+    expect(Object.keys(styleHints)).toHaveLength(1)
+  })
+
+  it('handles style at start of document (paraIdx 0)', () => {
+    const tpl = '{{!style: center}}\nTITLE\nrest'
+    const { text, styleHints } = rs(tpl)
+    expect(text).toBe('TITLE\nrest')
+    expect(styleHints[0]).toEqual(['center'])
+  })
+
+  it('handles multiple style directives', () => {
+    const tpl = '{{!style: center bold}}\nHEADING\nbody\n{{!style: keep-together}}\nfooter'
+    const { text, styleHints } = rs(tpl)
+    expect(text).toBe('HEADING\nbody\nfooter')
+    expect(styleHints[0]).toEqual(['center', 'bold'])
+    expect(styleHints[2]).toEqual(['keep-together'])
+  })
+
+  it('style inside {{#if}} active branch is tracked', () => {
+    const tpl = '{{#if show}}\n{{!style: bold}}\ninner\n{{/if}}\nafter'
+    const { text, styleHints } = rs(tpl, { show: true })
+    expect(text).toBe('inner\nafter')
+    expect(styleHints[0]).toEqual(['bold'])
+  })
+
+  it('style inside {{#if}} inactive branch is not tracked', () => {
+    const tpl = '{{#if show}}\n{{!style: bold}}\ninner\n{{/if}}\nafter'
+    const { styleHints } = rs(tpl, { show: false })
+    expect(styleHints).toEqual({})
+  })
+
+  it('keep-with-next and keep-together are parsed', () => {
+    const tpl = '{{!style: keep-with-next keep-together}}\nline'
+    const { styleHints } = rs(tpl)
+    expect(styleHints[0]).toEqual(['keep-with-next', 'keep-together'])
+  })
+
+  it('does not alter text output (style tag is standalone, produces no output)', () => {
+    const tpl = 'before\n{{!style: center}}\nafter'
+    expect(rs(tpl).text).toBe('before\nafter')
+    expect(r(tpl)).toBe('before\nafter')
   })
 })

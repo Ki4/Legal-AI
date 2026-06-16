@@ -49,11 +49,12 @@ const svc = $('Get Service').first().json || {};
 `;
 
 const FOOTER = `
-// 5. Dispatch by generation_mode (doc-engine, #34; hybrid added #37)
-// 'hybrid'   → template engine + AI reasoning injected via ai.reasoning
-// 'template' → shared render engine + services.document_template (lawyer-editable)
-// anything else → legacy hardcoded js builder for this slug
+// 5. Dispatch by generation_mode (doc-engine, #34; hybrid added #37; style hints #50)
+// 'hybrid'   → template engine + AI reasoning; returns _style_hints for typography
+// 'template' → shared render engine; returns _style_hints for typography
+// anything else → legacy hardcoded js builder (no style hints)
 let document;
+let styleHints = {};
 let reviewCard = null;
 try {
   if (svc.generation_mode === 'hybrid' && svc.document_template) {
@@ -61,10 +62,14 @@ try {
     const hybridCtx = $json || {};
     if (hybridCtx._ai_reasoning) { ai.reasoning = hybridCtx._ai_reasoning; }
     reviewCard = hybridCtx._review_card || null;
-    document = renderDocument(svc.document_template, buildContext(answers, ai));
+    const rendered = renderDocumentWithStyles(svc.document_template, buildContext(answers, ai));
+    document = rendered.text;
+    styleHints = rendered.styleHints;
   } else if (svc.generation_mode === 'template' && svc.document_template) {
     console.log('[Build] path=template (engine), service', serviceSlug);
-    document = renderDocument(svc.document_template, buildContext(answers, ai));
+    const rendered = renderDocumentWithStyles(svc.document_template, buildContext(answers, ai));
+    document = rendered.text;
+    styleHints = rendered.styleHints;
   } else {
     console.log('[Build] path=js (legacy builder), service', serviceSlug);
     const builders = { divorce: buildDivorceDocument, alimony: buildAlimonyDocument };
@@ -78,9 +83,9 @@ try {
 } catch (e) {
   throw new Error('Document generation failed for ' + serviceSlug + ' (case ' + caseId + '): ' + e.message);
 }
-console.log('[Build] Generated', document.length, 'chars for', serviceSlug);
+console.log('[Build] Generated', document.length, 'chars,', Object.keys(styleHints).length, 'styled paragraphs for', serviceSlug);
 
-return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard } }];
+return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard, _style_hints: styleHints } }];
 `;
 
 const jsCode = [

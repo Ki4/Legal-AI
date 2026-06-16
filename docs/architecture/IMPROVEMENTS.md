@@ -74,6 +74,7 @@
 | **#50** | [Doc-engine фаза 2: типографіка Google Docs з `{{!style:}}` директив](#50-doc-engine-фаза-2-типографіка-google-docs-з-style-директив) |
 | **#51** | [Admin-UI редактор шаблону документа для юриста](#51-admin-ui-редактор-шаблону-документа-для-юриста) |
 | **#52** | [Винести legacy JS-білдери з ноди Build Document](#52-винести-legacy-js-білдери-з-ноди-build-document) |
+| **#72** | [Multi-template: кілька шаблонів на одну послугу](#72-multi-template-кілька-шаблонів-на-одну-послугу) |
 | **#53** | [CI-пайплайн (GitHub Actions): lint + test + test:docs + eval на кожен PR](#53-ci-пайплайн-github-actions-lint--test--testdocs--eval-на-кожен-pr) |
 | **#54** | [Eval-набір для LLM-склонення (ground truth + поріг у CI)](#54-eval-набір-для-llm-склонення-ground-truth--поріг-у-ci) |
 | **#55** | [Полагодити wiring npm-скриптів (scripts → repo-root) + дубль test-data](#55-полагодити-wiring-npm-скриптів-scripts--repo-root--дубль-test-data) |
@@ -596,6 +597,14 @@ CREATE TABLE invites (
 - **Залежність:** довіра до DSL після divorce-порту; ролі admin/lawyer (`project_admin_lawyer_roles`).
 - **Пріоритет:** 🔵 стратегічно (завершує петлю «юрист додає послугу сам»)
 - **Актуальність:** коли Ольга повернеться і почне реально редагувати шаблони.
+
+### 72. Multi-template: кілька шаблонів на одну послугу
+- **Зараз:** `services.document_template` — одна колонка TEXT на послугу. Dispatch у Build Document вибирає єдиний шаблон.
+- **Навіщо кілька:** варіант для суду загальної юрисдикції vs апеляційний суд; «спрощена» і «повна» версія позову; A/B-тест формулювань; сезонні зміни (новий ПМ щорічно без правки коду).
+- **Архітектурний вектор:** таблиця `service_templates` (`slug`, `name`, `document_template`, `is_default`, `conditions JSONB`). Умова вибору — поле `conditions`: `{"court_type": "appeal"}` або `{"direction": "increase"}` — dispatches в Build Document читає `answers` і вибирає найточніший варіант, fallback — `is_default=true`. DSL шаблону не змінюється; dispatch — ідемпотентна функція `selectTemplate(templates, answers)`.
+- **Поточний стан:** `services.document_template` + `sync-build-document-node.mjs` — основа готова; розширення = нова таблиця + 1 helper-функція + UI в #51.
+- **Пріоритет:** 🔵 при нагоді (потрібно лише коли кількість варіантів стає реальною потребою)
+- **Тригер:** юрист просить два варіанти тексту для однієї послуги або виникає потреба в A/B-тесті.
 
 ### 52. Винести legacy JS-білдери з ноди Build Document
 - **Зараз (після divorce-порту #35, 2026-06-11):** обидві послуги live на `generation_mode='template'`, але нода Build Document досі несе ~32K+27K символів legacy-білдерів (divorce + alimony) — потрібні лише як шлях миттєвого rollback (флип колонки на `'js'` через `scripts/set-generation-mode.mjs`).

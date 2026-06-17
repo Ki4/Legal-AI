@@ -168,7 +168,7 @@ legal-twa/
 │   └── App.tsx                   ← TWA entry point
 │
 ├── scripts/
-│   └── update-form-configs.ts    ← заповнити services.form_config в Supabase
+│   └── update-form-configs.mjs   ← заповнити services.form_config в Supabase
 │
 ├── n8n-workflows/                ← JSON експорти n8n workflows
 ├── supabase-migrations.sql       ← SQL для нових таблиць/колонок

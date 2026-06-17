@@ -44,6 +44,25 @@ function getFirstDayOfWeek(year: number, month: number) {
   return (new Date(year, month - 1, 1).getDay() + 6) % 7
 }
 
+// Strips non-digits and re-inserts dots as the user types: "01011990" → "01.01.1990"
+export function maskDateInput(raw: string): string {
+  const digits = raw.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`
+}
+
+// Validates a complete "ДД.ММ.РРРР" string against real calendar bounds; returns ISO or null
+export function parseDisplay(text: string, maxYear: number): string | null {
+  const m = text.match(/^(\d{2})\.(\d{2})\.(\d{4})$/)
+  if (!m) return null
+  const d = Number(m[1]), mo = Number(m[2]), y = Number(m[3])
+  if (mo < 1 || mo > 12) return null
+  if (y < 1900 || y > maxYear) return null
+  if (d < 1 || d > getDaysInMonth(y, mo)) return null
+  return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+}
+
 interface CalPos { top: number; left: number; width: number; above: boolean }
 
 const YEARS_PER_PAGE = 12  // 3 cols × 4 rows
@@ -61,8 +80,35 @@ export function DatePickerField({ id, value, onChange, placeholder = 'ДД.ММ.
     Math.floor((parsed?.y ?? today.getFullYear()) / YEARS_PER_PAGE) * YEARS_PER_PAGE
   )
   const [pos, setPos] = useState<CalPos>({ top: 0, left: 0, width: 320, above: false })
+  const [manualText, setManualText] = useState(formatDisplay(value))
+  const [error, setError] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
   const calRef = useRef<HTMLDivElement>(null)
+
+  // Keep the text input in sync when value changes externally (calendar pick, clear, parent reset)
+  useEffect(() => {
+    setManualText(formatDisplay(value))
+    setError(false)
+  }, [value])
+
+  function handleManualInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const masked = maskDateInput(e.target.value)
+    setManualText(masked)
+    setError(false)
+    if (masked.length === 10) {
+      const iso = parseDisplay(masked, today.getFullYear() + 1)
+      if (iso) onChange(iso)
+      else setError(true)
+    }
+  }
+
+  function handleManualBlur() {
+    if (manualText === '') {
+      if (value) onChange('')
+      return
+    }
+    if (manualText.length < 10) setError(true)
+  }
 
   const calcPos = useCallback(() => {
     if (!wrapRef.current) return
@@ -351,20 +397,33 @@ export function DatePickerField({ id, value, onChange, placeholder = 'ДД.ММ.
   return (
     <div ref={wrapRef} className="mt-1">
       <div
-        className={`form-input flex items-center justify-between cursor-pointer select-none ${
+        className={`form-input flex items-center gap-2 ${
           open ? 'border-primary-500 ring-2 ring-primary-100' : ''
-        }`}
-        onClick={openPicker}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && openPicker()}
-        id={id}
+        } ${error ? 'border-red-400 ring-2 ring-red-100' : ''}`}
       >
-        <span className={value ? 'text-gray-800' : 'text-gray-400'}>
-          {value ? formatDisplay(value) : placeholder}
-        </span>
-        <Calendar size={16} className={`flex-shrink-0 ${open ? 'text-primary-500' : 'text-gray-400'}`} />
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          maxLength={10}
+          placeholder={placeholder}
+          value={manualText}
+          onChange={handleManualInput}
+          onBlur={handleManualBlur}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          className="flex-1 min-w-0 bg-transparent outline-none text-gray-800 placeholder:text-gray-400"
+        />
+        <button
+          type="button"
+          onClick={openPicker}
+          aria-label="Відкрити календар"
+          className="flex-shrink-0"
+        >
+          <Calendar size={16} className={open ? 'text-primary-500' : 'text-gray-400'} />
+        </button>
       </div>
+      {error && <p className="mt-1 text-xs text-red-500">Некоректна дата</p>}
       {createPortal(calendar, document.body)}
     </div>
   )

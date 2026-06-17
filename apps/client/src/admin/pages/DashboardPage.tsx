@@ -27,10 +27,16 @@ interface AbstentionStats {
   abstained: number
 }
 
+interface ChecklistStats {
+  total: number
+  failed: number
+}
+
 export function DashboardPage() {
   const [services, setServices]          = useState<Service[]>([])
   const [loading, setLoading]            = useState(true)
   const [abstentionStats, setAbstention] = useState<AbstentionStats | null>(null)
+  const [checklistStats, setChecklist]   = useState<ChecklistStats | null>(null)
   const { user } = useAuth()
   const navigate = useNavigate()
 
@@ -61,6 +67,19 @@ export function DashboardPage() {
           abstained: data.filter((r) => r.abstained === true).length,
         })
       })
+
+    supabase
+      .from('cases')
+      .select('checklist_failed')
+      .not('checklist_failed', 'is', null)
+      .gte('created_at', thirtyDaysAgo)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return
+        setChecklist({
+          total:  data.length,
+          failed: data.filter((r) => r.checklist_failed === true).length,
+        })
+      })
   }, [user])
 
   async function changeStatus(svc: Service, next: ServiceStatus) {
@@ -83,6 +102,12 @@ export function DashboardPage() {
   const abstentionRate = abstentionStats
     ? abstentionStats.total > 0
       ? Math.round(abstentionStats.abstained / abstentionStats.total * 100)
+      : 0
+    : null
+
+  const checklistFailRate = checklistStats
+    ? checklistStats.total > 0
+      ? Math.round(checklistStats.failed / checklistStats.total * 100)
       : 0
     : null
 
@@ -118,6 +143,21 @@ export function DashboardPage() {
                 {abstentionRate}%
               </span>
               {' '}({abstentionStats!.abstained}/{abstentionStats!.total} AI-кейсів за 30 днів)
+            </span>
+          </div>
+        )}
+
+        {/* Checklist failures (required-clause validator, #39 — any case with a checklist configured) */}
+        {checklistFailRate !== null && (
+          <div className="mb-5 px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl
+                          flex items-center gap-2 text-xs text-slate-400">
+            <span className={checklistStats!.failed > 0 ? 'text-amber-400' : 'text-slate-500'}>●</span>
+            <span>
+              Документи з неповним чеклістом:{' '}
+              <span className={`font-semibold ${checklistStats!.failed > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
+                {checklistFailRate}%
+              </span>
+              {' '}({checklistStats!.failed}/{checklistStats!.total} документів за 30 днів)
             </span>
           </div>
         )}

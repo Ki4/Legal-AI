@@ -4,6 +4,7 @@
  *
  * Anti-drift: the node's jsCode is GENERATED from single sources of truth —
  *   n8n/templates/render-document.js          (shared engine, unit-tested)
+ *   n8n/templates/validate-checklist.js       (required-clause checklist, #39)
  *   n8n/templates/divorce-document.js         (legacy js builder)
  *   n8n/templates/alimony-document.js         (legacy js builder)
  * plus the dispatch header/footer defined here. Never edit the node inline;
@@ -57,6 +58,7 @@ let document;
 let styleHints = {};
 let reviewCard = null;
 let abstained = null; // null = non-hybrid; true/false = hybrid result (#73)
+let checklistResult = null; // null = no checklist configured; else {ok, missing, satisfied} (#39)
 try {
   if (svc.generation_mode === 'hybrid' && svc.document_template) {
     console.log('[Build] path=hybrid, service', serviceSlug);
@@ -64,14 +66,22 @@ try {
     if (hybridCtx._ai_reasoning) { ai.reasoning = hybridCtx._ai_reasoning; }
     reviewCard = hybridCtx._review_card || null;
     abstained = hybridCtx._abstained === true ? true : false;
-    const rendered = renderDocumentWithStyles(svc.document_template, buildContext(answers, ai));
+    const ctx = buildContext(answers, ai);
+    const rendered = renderDocumentWithStyles(svc.document_template, ctx);
     document = rendered.text;
     styleHints = rendered.styleHints;
+    if (svc.required_checklist && svc.required_checklist.items && svc.required_checklist.items.length) {
+      checklistResult = validateChecklist(document, ctx, svc.required_checklist);
+    }
   } else if (svc.generation_mode === 'template' && svc.document_template) {
     console.log('[Build] path=template (engine), service', serviceSlug);
-    const rendered = renderDocumentWithStyles(svc.document_template, buildContext(answers, ai));
+    const ctx = buildContext(answers, ai);
+    const rendered = renderDocumentWithStyles(svc.document_template, ctx);
     document = rendered.text;
     styleHints = rendered.styleHints;
+    if (svc.required_checklist && svc.required_checklist.items && svc.required_checklist.items.length) {
+      checklistResult = validateChecklist(document, ctx, svc.required_checklist);
+    }
   } else {
     console.log('[Build] path=js (legacy builder), service', serviceSlug);
     const builders = { divorce: buildDivorceDocument, alimony: buildAlimonyDocument };
@@ -85,15 +95,20 @@ try {
 } catch (e) {
   throw new Error('Document generation failed for ' + serviceSlug + ' (case ' + caseId + '): ' + e.message);
 }
+if (checklistResult && !checklistResult.ok) {
+  console.log('[Build] ⚠️ checklist incomplete:', checklistResult.missing.map((m) => m.id).join(', '));
+}
 console.log('[Build] Generated', document.length, 'chars,', Object.keys(styleHints).length, 'styled paragraphs for', serviceSlug);
 
-return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard, _style_hints: styleHints, _abstained: abstained } }];
+return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard, _style_hints: styleHints, _abstained: abstained, _checklist_result: checklistResult } }];
 `;
 
 const jsCode = [
   HEADER,
   '// 3. Shared render engine (mirror: n8n/templates/render-document.js)',
   read('n8n/templates/render-document.js'),
+  '// 3b. Checklist validator (mirror: n8n/templates/validate-checklist.js) (#39)',
+  read('n8n/templates/validate-checklist.js'),
   '// 4a. Legacy builder (mirror: n8n/templates/divorce-document.js)',
   read('n8n/templates/divorce-document.js'),
   '// 4b. Legacy builder (mirror: n8n/templates/alimony-document.js)',

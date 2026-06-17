@@ -1,0 +1,35 @@
+{
+  "slug": "divorce",
+  "items": [
+    {
+      "id": "dissolution_grounds",
+      "description": "Підстава розірвання шлюбу (ст. 110, 112 СК)",
+      "appliesIf": "true",
+      "mustMatchAny": ["ст\\.\\s?110"]
+    },
+    {
+      "id": "territorial_jurisdiction",
+      "description": "Підсудність — позов за місцем проживання відповідача (ст. 27 ЦПК)",
+      "appliesIf": "true",
+      "mustMatchAny": ["ст\\.\\s?27\\s?ЦПК"]
+    },
+    {
+      "id": "children_custody_or_deferred",
+      "description": "Місце проживання дітей вирішене в цьому позові або явно винесене в окреме провадження (якщо є діти)",
+      "appliesIf": "answers.has_children",
+      "mustMatchAny": ["Визначити місце проживання", "окремому провадженні"]
+    },
+    {
+      "id": "court_fee_disclosure",
+      "description": "Розкриття судового збору (сплачено або підстава звільнення)",
+      "appliesIf": "true",
+      "mustMatchAny": ["судов(ого|ий) збор"]
+    },
+    {
+      "id": "signature_block",
+      "description": "Блок підпису позивача",
+      "appliesIf": "true",
+      "mustMatchAny": ["\\(підпис\\)"]
+    }
+  ]
+}

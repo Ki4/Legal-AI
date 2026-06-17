@@ -1,0 +1,29 @@
+{
+  "slug": "alimony",
+  "items": [
+    {
+      "id": "alimony_obligation_basis",
+      "description": "Обов'язок батьків утримувати дитину (ст. 180 СК)",
+      "appliesIf": "true",
+      "mustMatchAny": ["ст\\.\\s?180"]
+    },
+    {
+      "id": "alimony_amount_clause",
+      "description": "Пункт ПРОШУ СУД зі стягненням аліментів (фіксована сума або частка доходу)",
+      "appliesIf": "true",
+      "mustMatchAny": ["Стягнути з"]
+    },
+    {
+      "id": "court_fee_disclosure",
+      "description": "Розкриття судового збору (звільнення на підставі ЗСЗ)",
+      "appliesIf": "true",
+      "mustMatchAny": ["судов(ого|ий) збор"]
+    },
+    {
+      "id": "signature_block",
+      "description": "Блок підпису позивача",
+      "appliesIf": "true",
+      "mustMatchAny": ["\\(підпис\\)"]
+    }
+  ]
+}

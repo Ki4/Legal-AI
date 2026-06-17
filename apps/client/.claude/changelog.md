@@ -12,6 +12,26 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-17 (session 30, cont.) — checklist-validator: required-clause check (issue #4 / IMPROVEMENTS #39)
+**Status:** COMMITTED · branch `feature/checklist-validator`
+**Why:** Issue #4 (🔴 critical, open since the bulk-import in session 11) asked for an automatic check that generated documents contain every legally-mandatory element — missing one means a legally incorrect lawsuit. Hit an explicit Tier-2 trigger in SDD-GUIDE.md ("affects legal correctness — error = invalid lawsuit"), so got a real spec (`specs/features/checklist-validator/`). The issue's original proposal (LLM regenerates the whole document on failure) was stale — divorce/alimony have rendered through the deterministic doc-engine template since session 20, no LLM in that path at all. Replaced with a pure deterministic regex-presence check on the rendered text, reusing render-document.js's own `{{#if}}` condition parser for applicability (`appliesIf`) instead of inventing a second condition language.
+**Files:**
+- `n8n/templates/render-document.js` — export `evalExpr` (additive, 1 line)
+- `n8n/templates/validate-checklist.js` — **NEW** — `validateChecklist`, `evalCondition` (pure, no LLM)
+- `n8n/templates/__tests__/validate-checklist.test.js` — **NEW** — 15 tests (unit + integration against real divorce/alimony templates, incl. the "custody decided vs. deferred to separate proceedings" case that justified `mustMatchAny` over a single fixed string)
+- `n8n/templates/services/divorce.checklist.json` — **NEW** — 5 items
+- `n8n/templates/services/alimony.checklist.json` — **NEW** — 4 items
+- `scripts/sync-build-document-node.mjs` — footer calls `validateChecklist` when `svc.required_checklist` is non-empty; `_checklist_result` added to return JSON (no new node)
+- `scripts/sync-checklist-field.mjs` — **NEW** — idempotent patcher, adds `checklist_failed` field to the existing "Update Case Abstention" node (no new Supabase node)
+- `scripts/upload-document-checklist.mjs` — **NEW** — mirrors `upload-document-template.mjs`
+- `supabase/migrations/021_checklist_validation.sql` — **NEW** — `services.required_checklist` JSONB + `cases.checklist_failed` BOOLEAN
+- `apps/client/src/admin/pages/DashboardPage.tsx` — second badge, mirrors the abstention-rate badge pattern (session 29)
+- `specs/features/checklist-validator/{plan,requirements,validation}.md` — **NEW** — Tier-2 spec triplet
+- `docs/architecture/DECISIONS.md` — new section on why deterministic + why the condition language is reused
+- `specs/roadmap.md` — new line under Технічний борг
+**Tests:** root vitest 972/972 ✅ (was 957, +15) · client vitest 92/92 ✅ · tsc clean
+**Not done in this session:** live deploy. n8n wasn't running and Supabase CLI wasn't linked locally, so migration 021 isn't applied and the workflow JSON change isn't pushed to live n8n yet — same as migration 020 currently. Next session: `supabase db push` + `node scripts/deploy-workflow.mjs form-submit` + `node scripts/upload-document-checklist.mjs divorce` / `alimony`.
+
 ### 2026-06-17 (session 30) — PR#45 merged + stale-issue cleanup (#7, #14, #25)
 **Status:** COMMITTED · branch `chore/stale-issue-cleanup`
 **Why:** Session-start review found 3 open GitHub issues whose underlying problem was already solved by earlier work, just via a different approach than originally described — same root cause as session 28's stale-issue hygiene (bulk-imported IMPROVEMENTS in session 11, never re-checked against later sessions). Closed each with a comment pointing to what actually solved it, and corrected `roadmap.md` checkboxes that contradicted already-shipped work.

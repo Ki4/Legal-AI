@@ -58,7 +58,7 @@
 
 > Канон рівнів документів Tier 0/1/2/3 + критичний огляд legaltech: `docs/research/document-tiers-tz.md`. Deep-dive харнесса: `docs/research/service-tiers-and-ai-harness.md`.
 
-- [ ] **Зміна розміру аліментів (↑/↓)** — пілот режиму `hybrid`, ТЗ готове: `specs/features/alimony-change/` (plan/requirements/validation + `example.md`) 🟡
+- [x] **Зміна розміру аліментів (↑/↓)** — пілот режиму `hybrid` реалізовано (G1–G5, issue #37 closed, sessions 24/25/29). `status='disabled'` — продакшн-флип чекає Ольгу (~2026-06-25). ТЗ: `specs/features/alimony-change/` 🟡
 - [ ] Розлучення з дітьми (опіка, місце проживання) 🟡
 - [ ] Поділ майна 🔵 (друга Tier 2-ітерація — «вибухова комбінаторика», після обкатки харнесса)
 - [ ] Аліменти на повнолітніх 🔵
@@ -88,10 +88,10 @@
 
 ## Технічний борг (виправити при нагоді)
 
-- [ ] Delivery pipeline: n8n v7 hardening — error trigger + ensure-profile wiring + guard-ноди + try/catch. Items 3–7 у `docs/architecture/workflow-improvements.md` (НЕ внедрено) 🟡
+- [x] Delivery pipeline: n8n v7 hardening — error trigger + guard-ноди + try/catch + structured error response (items 4–7, session 15, Refs #30, deployed+verified live). Залишився лише пункт 3 (Ensure Profile auto-create) — deprioritized, Task #1, не потрібен для PoC 🟢
 - [x] Document generation: зробити сервіс-агностичним — **doc-engine** (фіча #34, session 20): декларативний шаблон-DSL у `services.document_template` + спільний движок `render-document.js` + dispatch по `generation_mode`. Пілот alimony live на шаблоні (117 parity-тестів байт-у-байт). Хвости:
   - [x] Портувати divorce на шаблон — **зроблено** (фіча #35, session 21): 263 parity-тести байт-у-байт, live e2e + rollback-флип перевірені; обидві послуги на `generation_mode='template'`. Сервіс-специфічні словники (REASONS_MAP, EXEMPT_REASONS) і динамічна нумерація «ПРОШУ» живуть у самому шаблоні. Винос legacy-білдерів з ноди → IMPROVEMENTS #52
-  - [ ] Фаза 2: типографіка Google Docs з `{{!style:}}` директив (IMPROVEMENTS #50 — «красиві відступи») 🟡
+  - [x] Фаза 2: типографіка Google Docs з `{{!style:}}` директив (IMPROVEMENTS #50, session 27, PR#43 merged + задеплоєно) 🟡
   - [ ] Admin-UI редактор шаблону для юриста (IMPROVEMENTS #51) 🔵
 - [ ] RLS: посилити row-level security 🟡
 - [x] Тести для n8n Code nodes — 79 тестів (validate, shared utils, divorce document), commit b3c9013

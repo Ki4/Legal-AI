@@ -12,6 +12,17 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-17 (session 30) — PR#45 merged + stale-issue cleanup (#7, #14, #25)
+**Status:** COMMITTED · branch `chore/stale-issue-cleanup`
+**Why:** Session-start review found 3 open GitHub issues whose underlying problem was already solved by earlier work, just via a different approach than originally described — same root cause as session 28's stale-issue hygiene (bulk-imported IMPROVEMENTS in session 11, never re-checked against later sessions). Closed each with a comment pointing to what actually solved it, and corrected `roadmap.md` checkboxes that contradicted already-shipped work.
+**Issues closed:**
+- **#7** "[#2б] Агент-критик після генерації документу" → solved by L4a `groundedness.js` + L4b LLM critic (`prepare-l4b.js`) + abstention, sessions 24/25/29
+- **#14** "[#38] Faithfulness Gate — валідатор галюцинацій" → same L4a/L4b critic mechanism
+- **#25** "Технічний борг: delivery pipeline error recovery" → items 4–7 of `workflow-improvements.md` shipped + deployed in session 15 (Refs #30); only deprioritized item 3 (Ensure Profile auto-create, Task #1) remains, not needed for PoC
+**Files:**
+- `specs/roadmap.md` — 3 stale checkboxes corrected: alimony-change hybrid pilot (done, G1–G5, disabled pending Olga), typography phase 2 (done, session 27), n8n v7 hardening (done, session 15, only Task #1 remains)
+**PR#45:** merged to `main` (`97598fe`, fast-forward), branch deleted.
+
 ### 2026-06-17 (session 29) — IMPROVEMENTS #74 + #69 + #73 (hybrid pipeline hardening)
 **Status:** COMMITTED · `feature/hybrid-integration-test` (`6e4c6f0`, `b39d13e`, `81ffcd0`) · PR#45 open
 **Why:** Три IMPROVEMENTS реалізовані за одну сесію: (#74) integration test pinning повного ланцюжка без реального Groq; (#69) L4b LLM Critic підключений у n8n через новий sync-скрипт; (#73) end-to-end трекінг частоти abstention — DB колонка + n8n PATCH нода + dashboard badge. Тепер hybrid pipeline повністю verified у тестах і моніторингу.

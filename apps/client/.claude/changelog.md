@@ -12,6 +12,15 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-17 (session 33) — Admin toast on save/load error (#18)
+**Status:** MERGED · PR#53 (`dd1d93f`) · branch `fix/admin-save-toast` deleted after merge · issue #18 left OPEN (mobile + live-render not verified this session — low remaining token budget)
+**Why:** Second small backlog item this session. Save/load errors in `ServiceEditPage.tsx` failed silently (`setSaving(false)` with no feedback) — a lawyer could lose edits without knowing.
+**What happened:** Added a minimal own `Toast` component (`apps/client/src/admin/components/Toast.tsx` — fixed bottom-center, auto-dismiss 4s, no new dependency) and wired it into save-success, save-error, and load-error paths. `publishService` from the issue's "also check" list doesn't exist separately — publishing is just `handleSave` with a status field, already covered.
+**Files:**
+- `apps/client/src/admin/components/Toast.tsx` — **NEW**
+- `apps/client/src/admin/pages/ServiceEditPage.tsx` — toast wiring on save/load
+**Tests:** `tsc -b` clean. **Not done:** live browser render (no admin test login in this env) and mobile-overlap check — Sergey to verify manually.
+
 ### 2026-06-17 (session 33) — DatePickerField: manual ДД.ММ.РРРР input (#27)
 **Status:** MERGED · PR#52 (`ea881d4`) · branch `fix/datepicker-manual-input` deleted after merge · issue #27 closed automatically (`Closes #27`)
 **Why:** Small UX fix picked from the backlog (IMPROVEMENTS #10а / issue #27): selecting a birth year far in the past (e.g. 1985) required clicking through many 12-year calendar pages — a real pain point since most clients enter a birth date 30+ years back. Implemented Option A from the issue: a masked text input next to the calendar button, so the date can be typed directly.

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AdminLayout } from '../components/AdminLayout'
 import { FormBuilder } from '../components/FormBuilder'
+import { Toast } from '../components/Toast'
 import { DynamicLegalFormBuilder } from '../../components/DynamicLegalFormBuilder'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -57,6 +58,12 @@ export function ServiceEditPage() {
   const [isDirty, setIsDirty]       = useState(false)
   const [previewModal, setPreviewModal] = useState(false)
   const [previewAnswerKey, setPreviewAnswerKey] = useState(0)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+
+  function showToast(type: 'success' | 'error', message: string) {
+    setToast({ type, message })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   // Unsaved changes warning
   useEffect(() => {
@@ -77,7 +84,11 @@ export function ServiceEditPage() {
       .select('*')
       .eq('id', id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          showToast('error', `Помилка завантаження: ${error.message}`)
+          return
+        }
         if (!data) return
         setConfig((data.form_config as FormConfig) ?? DEFAULT_CONFIG)
         setAiPrompt(data.ai_prompt ?? DEFAULT_PROMPT)
@@ -123,7 +134,10 @@ export function ServiceEditPage() {
       setSaved(true)
       setIsDirty(false)
       setTimeout(() => setSaved(false), 2000)
+      showToast('success', 'Збережено ✓')
       if (isNew) navigate('/services')
+    } else {
+      showToast('error', `Помилка збереження: ${error.message}`)
     }
   }
 
@@ -408,6 +422,7 @@ export function ServiceEditPage() {
           </div>
         </div>
       )}
+      {toast && <Toast type={toast.type} message={toast.message} />}
     </AdminLayout>
   )
 }

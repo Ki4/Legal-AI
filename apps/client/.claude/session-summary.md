@@ -7,7 +7,7 @@
 ## 🆕 Session 32 (2026-06-17) — divorce-with-children G1-G3 (#28): графік побачень ст.157 СК, live deploy
 
 ### Головне — стан ЗАРАЗ
-- **Гілка `docs/divorce-with-children-spec`** — почалась як спека, переросла у повну реалізацію цієї ж сесії. **НЕ закомічено** (чекає явного дозволу Сергія).
+- **PR#50 змерджено в main** (`58ef2d2`), гілку `docs/divorce-with-children-spec` видалено на GitHub після merge. **Issue #28 автоматично закрито** (`Closes #28`).
 - **Roadmap v2.3 «Розлучення з дітьми» → ✅** (звужений скоуп після планування — деталі нижче).
 - **Скоуп звужено під час планування:** оригінальний issue #28 (bulk-import, session 11) називав 3 залежності (#19 GraphRAG, #17 hybrid-шаблони, стабільна alimony) — усі вже закриті інфраструктурою alimony-change (sessions 20-29). «Опіка» в укр. праві для живих батьків = не окремий інститут, а право участі у вихованні (ст.157 СК). Реальна дельта: опція `children_live_with='court'` + графік побачень — обидва чисто детерміновані (підтверджено з Сергієм: без hybrid/AI-обґрунтування).
 - **981 root vitest ✅ (було 972, +9) · 92 client vitest ✅ · tsc clean.** Існуючі 263 parity-тести divorce — без жодної зміни.
@@ -25,7 +25,7 @@
 - Live: `upload-document-template.mjs divorce` + `update-form-configs.mjs` + новий smoke-сценарій `test-webhook.mjs 5`.
 
 ### 🔴 Наступний крок
-1. Якщо Сергій підтверджує — закомітити гілку, `gh issue close 28`, можливо merge в main.
+1. (нема нагальних завдань — divorce-with-children #28 повністю завершено: змерджено, задеплоєно живо, issue закрито)
 2. **Непов'язана знахідка:** `Copy Template` падає на Google OAuth (`invalid/expired/revoked`) — той самий клас інциденту, що в session 15 (Testing-режим консенту протухає за 7 днів). Потребує переавторизації (через ngrok-origin) — за Сергієм, не блокує цю фічу.
 3. **~2026-06-25 (Ольга):** CRON schedule, law changes review, sign-off exception_if, flip alimony-change — нічого з цього списку не торкались.
 

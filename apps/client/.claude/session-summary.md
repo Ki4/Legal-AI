@@ -1,10 +1,37 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-17 (session 31 — live deploy completed: checklist-validator + hybrid hardening, 2 production bugs found+fixed)
+> Updated: 2026-06-17 (session 32 — divorce-with-children G1-G3 (#28): "суд визначить" + графік побачень, live-deployed)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 31 (2026-06-17) — live deploy: checklist-validator + hybrid hardening, 2 production bugs found+fixed
+## 🆕 Session 32 (2026-06-17) — divorce-with-children G1-G3 (#28): графік побачень ст.157 СК, live deploy
+
+### Головне — стан ЗАРАЗ
+- **Гілка `docs/divorce-with-children-spec`** — почалась як спека, переросла у повну реалізацію цієї ж сесії. **НЕ закомічено** (чекає явного дозволу Сергія).
+- **Roadmap v2.3 «Розлучення з дітьми» → ✅** (звужений скоуп після планування — деталі нижче).
+- **Скоуп звужено під час планування:** оригінальний issue #28 (bulk-import, session 11) називав 3 залежності (#19 GraphRAG, #17 hybrid-шаблони, стабільна alimony) — усі вже закриті інфраструктурою alimony-change (sessions 20-29). «Опіка» в укр. праві для живих батьків = не окремий інститут, а право участі у вихованні (ст.157 СК). Реальна дельта: опція `children_live_with='court'` + графік побачень — обидва чисто детерміновані (підтверджено з Сергієм: без hybrid/AI-обґрунтування).
+- **981 root vitest ✅ (було 972, +9) · 92 client vitest ✅ · tsc clean.** Існуючі 263 parity-тести divorce — без жодної зміни.
+- **Live перевірено:** шаблон + form_config залиті в Supabase; smoke-тест через реальний n8n execution (`test-webhook.mjs 5`) — `Build Document` відрендерив новий абзац+пункт коректно, `_checklist_result.ok===true`.
+
+### Що зроблено
+- Tier-2 спека `specs/features/divorce-with-children/{plan,requirements,validation}.md` (за зразком alimony-change, але вужча — без hybrid).
+- `divorceFormConfig.ts` — `children_live_with`+`court`; нові `visitation_dispute`/`visitation_schedule_text`.
+- `divorce.document.txt` — гілка `court`, абзац участі у вихованні, новий пункт «ПРОШУ».
+- **Найризикованіша частина:** новий пункт нумерації вставлено ОСТАННІМ (а не одразу після місця проживання, де логічно належить) — щоб НЕ переписувати 3 вже протестовані combinatorial if-ланцюжки (residence/alimony/property/debt). Формула для нового пункту (рахує всі 4 існуючі) верифікована програмно на 16 булевих комбінаціях перед вставкою в шаблон. Деталі — DECISIONS.md.
+- **2 реальні баги знайдено й виправлено:**
+  1. `children_live_with='court'` лишав «...з ________.» — нісенітниця (суд не може визначити «з ________»). Виправлено: для `court` пункт 5 закінчується без «з ...».
+  2. `scripts/update-form-configs.ts` — биті import-шляхи з епохи до монорепо-рефакторингу + залежність на `@supabase/supabase-js`, недоступну з кореня репо. Переписано на спільний `lib/supabase-rest.mjs`, перейменовано → `.mjs`.
+- Citation-coverage guard (session 22) автоматично відловив нову цитату ст.157 СК — заголовок статті перевірено через веб-пошук (3 незалежних джерела), migration 022 застосована живо.
+- Live: `upload-document-template.mjs divorce` + `update-form-configs.mjs` + новий smoke-сценарій `test-webhook.mjs 5`.
+
+### 🔴 Наступний крок
+1. Якщо Сергій підтверджує — закомітити гілку, `gh issue close 28`, можливо merge в main.
+2. **Непов'язана знахідка:** `Copy Template` падає на Google OAuth (`invalid/expired/revoked`) — той самий клас інциденту, що в session 15 (Testing-режим консенту протухає за 7 днів). Потребує переавторизації (через ngrok-origin) — за Сергієм, не блокує цю фічу.
+3. **~2026-06-25 (Ольга):** CRON schedule, law changes review, sign-off exception_if, flip alimony-change — нічого з цього списку не торкались.
+
+---
+
+## Session 31 (2026-06-17) — live deploy: checklist-validator + hybrid hardening, 2 production bugs found+fixed
 
 ### Головне — стан ЗАРАЗ
 - **Виконано автономно** — Sergey відійшов і дав явний дозвіл діяти без підтвердження кожної команди, з погодженими наперед стоп-умовами (регрес тестів / live-only конфлікт нод / провал smoke-test) та виключеннями (alimony-change флип, CRON schedule, пункти Ольги ~2026-06-25 — не торкались)

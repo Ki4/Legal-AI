@@ -82,6 +82,8 @@
 Діти проживають з відповідачем.
 {{else if children_live_with == 'both'}}
 Діти проживають частково з кожним із батьків.
+{{else if children_live_with == 'court'}}
+Місце проживання дітей сторонами не визначено та підлягає встановленню судом.
 {{/if}}
 
 {{else}}
@@ -112,6 +114,15 @@
 
 {{else}}
 Спір щодо місця проживання та виховання дітей відсутній.
+
+{{/if}}
+{{/if}}
+{{#if answers.has_children and children_live_with != 'both' and children_live_with != 'court'}}
+{{#if visitation_dispute == 'none' and visitation_schedule_text}}
+Відповідно до ст.157 Сімейного кодексу України сторони узгодили графік участі у вихованні та спілкуванні з дитиною того з батьків, хто проживає окремо: {{ensurePeriod visitation_schedule_text}}
+
+{{else if visitation_dispute == 'separate'}}
+Спір щодо порядку участі у вихованні дитини та графіка побачень того з батьків, хто проживає окремо, буде вирішуватися в окремому провадженні.
 
 {{/if}}
 {{/if}}
@@ -189,11 +200,12 @@
 4. Судові витрати по сплаті судового збору покласти на відповідача.
 {{/if}}
 
-{{! Пункти 5+ необов'язкові, тому їх номери обчислюються if-ланцюжками:       }}
-{{! діти (5) → аліменти (5/6) → майно (5..7) → борги (5..8). Якщо міняєш      }}
-{{! умову появи пункту — онови й номери в усіх пунктах нижче.                 }}
+{{! Пункти 5+ необов'язкові, тому їх номери обчислюються if-ланцюжками:               }}
+{{! діти (5) → аліменти (5/6) → майно (5..7) → борги (5..8) → графік побачень (5..9,   }}
+{{! #28, завжди ОСТАННІЙ — рахує лише наявність пунктів 5-8, не зсуває їхні номери).   }}
+{{! Якщо міняєш умову появи одного з пунктів 5-8 — онови номери 6-9 у пунктах нижче.   }}
 {{#if answers.has_children and children_dispute != 'separate'}}
-5. Визначити місце проживання {{#if ai_raw.children_genitive}}{{ai_raw.children_genitive}}{{else if children.0}}{{#if n_children == 1}}{{children.0.raw}} р.н.{{else}}{{#each children}}{{@index1}}) {{raw}} р.н.{{#if not @last}}; {{/if}}{{/each}}{{/if}}{{else}}________{{/if}} з {{#if children_live_with == 'plaintiff'}}позивачем{{else if children_live_with == 'defendant'}}відповідачем{{else}}________{{/if}}.
+5. Визначити місце проживання {{#if ai_raw.children_genitive}}{{ai_raw.children_genitive}}{{else if children.0}}{{#if n_children == 1}}{{children.0.raw}} р.н.{{else}}{{#each children}}{{@index1}}) {{raw}} р.н.{{#if not @last}}; {{/if}}{{/each}}{{/if}}{{else}}________{{/if}}{{#if children_live_with == 'plaintiff'}} з позивачем.{{else if children_live_with == 'defendant'}} з відповідачем.{{else if children_live_with == 'court'}}{{else}} з ________.{{/if}}
 
 {{/if}}
 {{#if alimony_claim}}
@@ -206,6 +218,10 @@
 {{/if}}
 {{#if debt_claim}}
 {{#if answers.has_children and children_dispute != 'separate' and alimony_claim and has_joint_property and property_dispute != 'separate'}}8{{else if answers.has_children and children_dispute != 'separate' and alimony_claim or answers.has_children and children_dispute != 'separate' and has_joint_property and property_dispute != 'separate' or alimony_claim and has_joint_property and property_dispute != 'separate'}}7{{else if answers.has_children and children_dispute != 'separate' or alimony_claim or has_joint_property and property_dispute != 'separate'}}6{{else}}5{{/if}}. Розподілити між сторонами спільні боргові зобов'язання: {{ensurePeriod debt_details}}
+
+{{/if}}
+{{#if answers.has_children and children_live_with != 'both' and children_live_with != 'court' and visitation_dispute == 'none' and visitation_schedule_text}}
+{{#if answers.has_children and children_dispute != 'separate' and alimony_claim and has_joint_property and property_dispute != 'separate' and debt_claim}}9{{else if answers.has_children and children_dispute != 'separate' and alimony_claim and has_joint_property and property_dispute != 'separate' or answers.has_children and children_dispute != 'separate' and alimony_claim and debt_claim or answers.has_children and children_dispute != 'separate' and has_joint_property and property_dispute != 'separate' and debt_claim or alimony_claim and has_joint_property and property_dispute != 'separate' and debt_claim}}8{{else if answers.has_children and children_dispute != 'separate' and alimony_claim or answers.has_children and children_dispute != 'separate' and has_joint_property and property_dispute != 'separate' or answers.has_children and children_dispute != 'separate' and debt_claim or alimony_claim and has_joint_property and property_dispute != 'separate' or alimony_claim and debt_claim or has_joint_property and property_dispute != 'separate' and debt_claim}}7{{else if answers.has_children and children_dispute != 'separate' or alimony_claim or has_joint_property and property_dispute != 'separate' or debt_claim}}6{{else}}5{{/if}}. Визначити графік участі у вихованні та спілкуванні з дитиною того з батьків, хто проживає окремо, відповідно до ст.157 Сімейного кодексу України: {{ensurePeriod visitation_schedule_text}}
 
 {{/if}}
 {{!style: keep-with-next}}

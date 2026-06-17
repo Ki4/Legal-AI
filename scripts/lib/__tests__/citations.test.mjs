@@ -125,11 +125,11 @@ describe('extractArticlesByLaw', () => {
     ]);
   });
 
-  it('matches the real divorce template: SK={65,105,110,112}, ЦПК={27,175,187,274}, ЗСЗ={4,5}', () => {
+  it('matches the real divorce template: SK={65,105,110,112,157}, ЦПК={27,175,187,274}, ЗСЗ={4,5}', () => {
     const text = readFileSync(resolve(TEMPLATES_DIR, 'divorce.document.txt'), 'utf8');
     const byLaw = extractArticlesByLaw(text);
 
-    expect(byLaw.find((l) => l.url === SK_URL).articles).toEqual(['65', '105', '110', '112']);
+    expect(byLaw.find((l) => l.url === SK_URL).articles).toEqual(['65', '105', '110', '112', '157']);
     expect(byLaw.find((l) => l.url === CPK_URL).articles).toEqual(['27', '175', '187', '274']);
     expect(byLaw.find((l) => l.url === ZSZ_URL).articles).toEqual(['4', '5']);
   });

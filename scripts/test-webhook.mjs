@@ -2,7 +2,7 @@
 // =============================================================
 // Test: send mock form data to n8n webhook (UTF-8 safe)
 // Usage: node scripts/test-webhook.mjs [scenario]
-//   1 = simple, 2 = children+alimony, 3 = complex, 4 = minimal
+//   1 = simple, 2 = children+alimony, 3 = complex, 4 = minimal, 5 = visitation schedule (#28)
 // =============================================================
 
 // Local n8n (active workflow). Use webhook-test/... when testing via n8n UI Execute button.
@@ -204,6 +204,64 @@ const scenarios = {
       },
     },
   },
+  5: {
+    name: 'Children + alimony + agreed visitation schedule (#28, ст.157 СК)',
+    data: {
+      service_slug: 'divorce',
+      user_id: '236581343',
+      answers: {
+        last_name: 'Коваленко',
+        first_name: 'Марія',
+        middle_name: 'Олександрівна',
+        birth_date: '1985-11-08',
+        registered_address: 'м. Одеса, вул. Дерибасівська, 5, кв. 12',
+        same_actual_address: false,
+        actual_address: 'м. Одеса, вул. Рішельєвська, 3, кв. 8',
+        tax_number: '2756789012',
+        has_no_ipn: false,
+        plaintiff_phone: '+380931234567',
+        plaintiff_email: 'kovalenko.maria@ukr.net',
+        plaintiff_official_email: 'absent',
+        surname_after_divorce: 'keep',
+        spouse_last_name: 'Коваленко',
+        spouse_first_name: 'Віктор',
+        spouse_middle_name: 'Петрович',
+        spouse_birth_date: '1983-02-14',
+        spouse_registered_address: 'м. Одеса, вул. Пушкінська, 20, кв. 8',
+        spouse_actual_address_known: 'same',
+        spouse_tax_number: '2667890123',
+        spouse_has_no_ipn: false,
+        spouse_phone: '+380951234567',
+        spouse_email: 'kovalenko.viktor@ukr.net',
+        spouse_official_email: 'unknown',
+        marriage_date: '2010-09-10',
+        marriage_place: 'Приморський відділ РАЦС Одеського міського управління юстиції',
+        marriage_act_number: '312',
+        marriage_cert_series: 'І-ОД № 456789',
+        marriage_cert_date: '2010-09-10',
+        spouse_consents: false,
+        has_children: true,
+        children_details: 'Коваленко Олена Вікторівна, 15.05.2012\nКоваленко Максим Вікторович, 22.08.2015',
+        children_live_with: 'plaintiff',
+        children_dispute: 'none',
+        visitation_dispute: 'none',
+        visitation_schedule_text: 'кожні вихідні з пʼятниці по неділю; половина літніх канікул',
+        alimony_claim: true,
+        alimony_amount: 'percent',
+        divorce_reasons: ['no_understanding', 'different_views', 'no_financial_support'],
+        joint_household: 'no',
+        has_joint_property: false,
+        debt_claim: false,
+        simplified_proceedings: 'yes',
+        court_fee_exempt: 'no',
+        court_costs_on: 'defendant',
+        pretrial_settlement: 'none',
+        evidence_preservation: 'none',
+        originals_location: 'plaintiff',
+        no_other_lawsuits: true,
+      },
+    },
+  },
 }
 
 // ─── Alimony scenarios ────────────────────────────────────────────────────────
@@ -294,7 +352,7 @@ const alimonyScenarios = {
 const arg = process.argv[2] || '4'
 const scenario = scenarios[parseInt(arg)] || alimonyScenarios[arg]
 if (!scenario) {
-  console.log('Usage: node scripts/test-webhook.mjs [1|2|3|4|a1|a2]')
+  console.log('Usage: node scripts/test-webhook.mjs [1|2|3|4|5|a1|a2]')
   process.exit(1)
 }
 const num = arg

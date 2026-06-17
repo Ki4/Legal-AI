@@ -12,7 +12,32 @@
 
 ## 📋 Pending commits (uncommitted work)
 
-_none_
+### 2026-06-17 (session 32) — divorce-with-children G1-G3 (#28): "суд визначить" + графік побачень (ст.157 СК)
+**Status:** UNCOMMITTED · branch `docs/divorce-with-children-spec` (started as spec-only, grew into full Tier-2 implementation this session)
+**Why:** Roadmap v2.3 next item after the checklist-validator cycle closed. Scoped down from the original issue #28 during planning: the existing `divorce` service already handled basic has-children residence/dispute/alimony; "опіка" in Ukrainian family law (for children with living parents) isn't a separate guardianship institute, it's the right to participate in upbringing / contact (ст.157 СК). All 3 dependencies the original issue listed (#19 GraphRAG table, #17 hybrid templates, stable alimony service) turned out to already be satisfied by infrastructure built for alimony-change (sessions 20-29). Net-new scope: a `court`-decides option for `children_live_with`, and an agreed/disputed visitation-schedule clause — both fully deterministic, no hybrid/LLM pipeline (confirmed with Sergey before implementation).
+**What happened:**
+1. Wrote Tier-2 spec triplet (`specs/features/divorce-with-children/{plan,requirements,validation}.md`), mirroring alimony-change's format but scoped to the deterministic delta.
+2. Added 2 new form fields + 1 new option to `divorceFormConfig.ts`; added the `court` branch + visitation paragraph + a new "ПРОШУ" numbered item to `divorce.document.txt`.
+3. **Highest-risk part:** the existing numbering chain for optional ПРОШУ items (5-8) is a hand-written if/else-if combinatorial chain (no variables/arithmetic in the template DSL). Inserting a new item in the middle would have required rewriting all 3 downstream formulas (verified by generation that the debt formula at 4 dependencies balloons to a ~1200-char single line). Placed the new item LAST instead — zero changes to the existing tested formulas, only one new isolated (programmatically verified across all 16 boolean combinations before pasting into the template) formula.
+4. Found and fixed a real bug via the new tests: the `court` branch initially left a dangling "...р.н.." double period and "з ________" placeholder nonsense (asking the court to decide residence "with ________" makes no sense). Fixed the template's with-clause branching.
+5. Citation-coverage drift guard (session 22's mechanism) caught the new ст.157 СК citation automatically — regenerated the golden, verified the title via web search (3 independent legal-reference mirrors agree: "Вирішення батьками питань щодо виховання дитини"), and wrote migration 022 to add it to `divorce.watched_laws` (applied live via REST).
+6. Live deploy: uploaded the updated template (`upload-document-template.mjs`) and form_config (`update-form-configs.mjs`) to Supabase. Smoke-tested via a new `test-webhook.mjs` scenario 5 against the real local n8n — confirmed via the n8n REST executions API that `Build Document` rendered the new clause correctly (numbered item 7 in that scenario: residence=5, alimony=6, visitation=7) and `_checklist_result.ok===true`.
+7. **Unrelated pre-existing bug found & fixed along the way:** `scripts/update-form-configs.ts` had broken relative import paths left over from before the monorepo restructure (`../src/data/...` instead of `../apps/client/src/data/...`), and depended on `@supabase/supabase-js` which isn't resolvable from a repo-root script (only lives in `apps/client/node_modules`, and Node resolves `node_modules` upward from the importing file, not cwd). Rewrote it to use the shared dependency-free `scripts/lib/supabase-rest.mjs` client (matching the convention every other root script already uses) and renamed `.ts` → `.mjs`.
+**Files:**
+- `specs/features/divorce-with-children/{plan,requirements,validation}.md` — **NEW** — Tier-2 spec triplet
+- `apps/client/src/data/divorceFormConfig.ts` — `children_live_with` +`court` option; `visitation_dispute` + `visitation_schedule_text` fields
+- `n8n/templates/services/divorce.document.txt` — court branch, visitation paragraph, new last ПРОШУ item, with-clause bugfix
+- `n8n/templates/services/divorce.citations.json` — regenerated golden (+ст.157)
+- `n8n/templates/__tests__/divorce-children-visitation.test.js` — **NEW** — 9 tests, direct engine-output assertions
+- `scripts/lib/__tests__/citations.test.mjs` — updated pinned divorce citation set
+- `supabase/migrations/022_divorce_visitation_citation.sql` — **NEW** — applied live
+- `scripts/update-form-configs.ts` → `scripts/update-form-configs.mjs` — **rewritten** (broken pre-existing script, fixed as a side effect of needing it)
+- `scripts/test-webhook.mjs` — new scenario 5 (visitation schedule smoke test)
+- `docs/architecture/DECISIONS.md` — new section on the numbering-chain placement decision
+- `specs/roadmap.md` — v2.3 line ticked ✅
+**Tests:** root vitest 981/981 ✅ (was 972, +9) · client vitest 92/92 ✅ · tsc clean. Original 263 divorce parity tests pass **unmodified**.
+**Live-verified:** real n8n execution, `Build Document` correct; unrelated pre-existing infra issue surfaced (`Copy Template` failing on expired Google OAuth grant — same class of incident as session 15, needs Sergey to re-authorize; not a regression from this work).
+**Not done:** `gh issue close 28` (deferred to merge), commit (awaiting explicit go-ahead per session protocol).
 
 ### 2026-06-17 (session 31) — live deploy completed: checklist-validator + hybrid hardening + 2 production bugs found & fixed
 **Status:** COMMITTED · branch `fix/checklist-deploy-and-abstention-filter` → merged to main

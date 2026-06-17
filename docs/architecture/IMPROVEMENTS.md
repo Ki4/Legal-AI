@@ -94,6 +94,8 @@
 | **#69** | [L4b LLM critic — підключити в n8n (prompt готовий, нода відсутня)](#69-l4b-llm-critic-підключити-в-n8n-prompt-готовий-нода-відсутня) |
 | **#70** | [Google Docs 🟡 batch-коментарі на RED/AMBER spans (batchUpdate)](#70-google-docs-batch-коментарі-на-redamber-spans-batchupdate) |
 | **#71** | [🟠 Model-Agnostic екосистема — уникнення vendor lock-in](#71-model-agnostic-екосистема-уникнення-vendor-lock-in) |
+| **#73** | [🟡 Моніторинг частоти abstention (hybrid quality signal)](#73-моніторинг-частоти-abstention-hybrid-quality-signal) |
+| **#74** | [🟡 E2e integration тест для hybrid pipeline](#74-e2e-integration-тест-для-hybrid-pipeline) |
 
 > **✅ ID-колізії розведено (session 14):** другі входження перенумеровано — «RLS policies» → **#44**, «Skill для changelog» → **#45**. Перші входження #12 («Admin Dashboard») і #20 («Service Builder процес») лишились без змін.
 > **#1** відсутній історично (нумерація почалась з #2) — лишаємо як є; нові записи беруть наступний вільний номер.
@@ -1036,6 +1038,48 @@ Groq API key зберігається як n8n credential `Groq HTTP Auth` (то
 - **Пріоритет:** 🟠 → частково виконано. Залишок (Code node fallback) = після перших клієнтів.
 - **Файли:** `n8n/templates/prepare-reasoning.js`, `scripts/sync-hybrid-nodes.mjs`,
   `n8n/workflows/current/form-submit.json`, `scripts/deploy-workflow.mjs`
+
+---
+
+### 73. 🟡 Моніторинг частоти abstention (hybrid quality signal)
+
+- **Зараз:** `build-hybrid-context.js` виставляє `_abstained: true|false` в Build Document і передає
+  його в review card Ользі. Але це поле ніде не зберігається в БД і не агрегується — неможливо
+  відповісти на питання «скільки разів за тиждень AI утримався?»
+- **Навіщо вимірювати:** частота abstention — єдиний операційний сигнал якості hybrid харнесу:
+  - Висока (>30%) → L3 регулярно галюцинує або L4a занадто суворий; треба правити prompt або межі
+  - Нульова → або вхідні дані завжди «чисті», або L4a занадто м'який — потрібен audit
+  - Не вимірюємо → не можемо поліпшити; і не знаємо чи взагалі критик приносить користь
+- **Що додати (мінімальний варіант):** нова колонка `abstained BOOLEAN DEFAULT NULL` у таблиці `cases`
+  (`NULL` = template/js режим; `false` = hybrid proceed; `true` = hybrid abstained).
+  `sync-build-document-node.mjs` записує значення при `generation_mode='hybrid'`.
+  В `DashboardPage` — рядок «Abstention rate: X% (last 30 days)» поряд з лічильником кейсів.
+- **Залежність:** потрібна активна alimony-change (flip → active) і хоча б 10–20 реальних кейсів.
+- **Пріоритет:** 🟡 після перших реальних запитів · **Файли:** нова міграція `supabase/migrations/`,
+  `scripts/sync-build-document-node.mjs`, `apps/client/src/admin/pages/DashboardPage.tsx`
+
+---
+
+### 74. 🟡 E2e integration тест для hybrid pipeline
+
+- **Зараз:** 928 unit-тестів покривають кожен компонент ізольовано. Але немає жодного автоматизованого
+  тесту для повного ланцюжка: `prepareReasoning` → fixture L3 response → `buildHybridContext`
+  (L4a critic + abstention) → `renderDocumentWithStyles`. Єдина перевірка = ручний smoke test
+  у session 25 (один прогін на реальному n8n).
+- **Ризик:** `sync-hybrid-nodes.mjs` і `sync-build-document-node.mjs` генерують n8n-ноду з коду
+  дзеркал. Помилка в синхронізації (наприклад, зміна імені поля `_review_card`) не буде помічена
+  жодним unit-тестом — лише під час реального запиту клієнта.
+- **Що додати:** `n8n/templates/__tests__/hybrid-pipeline-integration.test.js` — не e2e з реальним
+  Groq, а integration fixture:
+  1. Взяти `scenario-1.mjs` (TC1) як `answers`
+  2. Задати `l2ArticleIds` = golden список (ст.192/182/183 СК)
+  3. Задати fixture `l3Response` = валідний + один з RED spans
+  4. Запустити `buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundedness)`
+  5. Перевірити: `review_card.abstained === true`, `ai_reasoning === ''`, `_content` містить
+     fallback-абзац (рядки 91–92 шаблону)
+  6. Окремий кейс: без RED spans → `abstained === false`, `ai_reasoning` не порожній
+- **Пріоритет:** 🟡 перед flip alimony-change → active · **Файли:**
+  `n8n/templates/__tests__/hybrid-pipeline-integration.test.js` (новий)
 
 ---
 

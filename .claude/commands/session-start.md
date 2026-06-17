@@ -18,7 +18,13 @@ Load project context at the beginning of a new session.
    - Uncommitted changes: `git status --short`
    - Unmerged branches: `git branch --no-merged main 2>/dev/null | head -5`
 
-4. Report a concise briefing:
+4. Check open GitHub issues:
+   - Run: `gh issue list --state open --limit 30 --json number,title,updatedAt`
+   - Flag any issue not updated in >30 days as **⚠️ possibly stale**
+   - Flag any issue whose problem was solved in a newer issue/PR (even via different approach)
+   - Do NOT close them automatically — list them in the briefing for Sergey to confirm
+
+5. Report a concise briefing:
 
 ```
 ## Session Briefing
@@ -31,6 +37,8 @@ Load project context at the beginning of a new session.
 
 **Uncommitted changes:**
 <git status output if any>
+
+**Open issues:** <N total> — active: <list #N title> | ⚠️ stale?: <list #N title>
 
 **Next roadmap item:** <next unchecked item from roadmap.md>
 

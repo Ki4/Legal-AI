@@ -68,6 +68,8 @@ GitHub Issues = status board for units of work. The repo docs stay the source of
 - **Claude manages issue status via `gh` CLI** (durable authorization — no need to ask each time): open the issue on feature start, tick the checklist + comment progress per session, close it on merge to `main`.
 - **Linking:** every commit/PR for a feature references its issue — `Refs #N` for progress, `Closes #N` on the merge commit/PR so GitHub auto-closes it.
 - **No content duplication:** WHAT/HOW lives in `specs/`, WHY in `changelog.md`, backlog in `IMPROVEMENTS.md`. Issues track only state + links.
+- **Stale issue rule:** when a problem is solved — even via a different approach than the issue describes — close ALL open issues that describe the same problem. Add a comment: what solved it + ref to the closing issue/PR. Run `gh issue list --state open` at session-start and flag suspicious ones (open >30 days, or their IMPROVEMENTS# is now implemented).
+- **IMPROVEMENTS ≠ GitHub Issues:** IMPROVEMENTS.md is an ideas backlog (never "closed"). GitHub Issues are work units (open → in progress → closed on merge). Don't bulk-import IMPROVEMENTS items as issues — create an issue only when you're about to start the work.
 - Requires `gh` installed + authed: `winget install GitHub.cli` → `gh auth login` (one-time).
 
 ## n8n local development

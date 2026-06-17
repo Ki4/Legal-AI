@@ -56,12 +56,14 @@ const FOOTER = `
 let document;
 let styleHints = {};
 let reviewCard = null;
+let abstained = null; // null = non-hybrid; true/false = hybrid result (#73)
 try {
   if (svc.generation_mode === 'hybrid' && svc.document_template) {
     console.log('[Build] path=hybrid, service', serviceSlug);
     const hybridCtx = $json || {};
     if (hybridCtx._ai_reasoning) { ai.reasoning = hybridCtx._ai_reasoning; }
     reviewCard = hybridCtx._review_card || null;
+    abstained = hybridCtx._abstained === true ? true : false;
     const rendered = renderDocumentWithStyles(svc.document_template, buildContext(answers, ai));
     document = rendered.text;
     styleHints = rendered.styleHints;
@@ -85,7 +87,7 @@ try {
 }
 console.log('[Build] Generated', document.length, 'chars,', Object.keys(styleHints).length, 'styled paragraphs for', serviceSlug);
 
-return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard, _style_hints: styleHints } }];
+return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard, _style_hints: styleHints, _abstained: abstained } }];
 `;
 
 const jsCode = [

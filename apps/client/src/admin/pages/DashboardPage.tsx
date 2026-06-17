@@ -22,14 +22,21 @@ interface Service {
   form_config: { steps?: unknown[]; tabs?: unknown[] } | null
 }
 
+interface AbstentionStats {
+  total: number
+  abstained: number
+}
+
 export function DashboardPage() {
-  const [services, setServices] = useState<Service[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [services, setServices]          = useState<Service[]>([])
+  const [loading, setLoading]            = useState(true)
+  const [abstentionStats, setAbstention] = useState<AbstentionStats | null>(null)
   const { user } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
     if (!supabase || !user) return
+
     supabase
       .from('services')
       .select('id, slug, title, description, icon, price, status, form_config')
@@ -39,6 +46,20 @@ export function DashboardPage() {
         const rows = (data ?? []).map((r) => ({ ...r, status: toServiceStatus(r.status) })) as Service[]
         setServices(rows)
         setLoading(false)
+      })
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+    supabase
+      .from('cases')
+      .select('abstained')
+      .not('abstained', 'is', null)
+      .gte('created_at', thirtyDaysAgo)
+      .then(({ data }) => {
+        if (!data || data.length === 0) return
+        setAbstention({
+          total:     data.length,
+          abstained: data.filter((r) => r.abstained === true).length,
+        })
       })
   }, [user])
 
@@ -58,6 +79,12 @@ export function DashboardPage() {
     await supabase.from('services').delete().eq('id', id)
     setServices((prev) => prev.filter((s) => s.id !== id))
   }
+
+  const abstentionRate = abstentionStats
+    ? abstentionStats.total > 0
+      ? Math.round(abstentionStats.abstained / abstentionStats.total * 100)
+      : 0
+    : null
 
   return (
     <AdminLayout>
@@ -79,6 +106,21 @@ export function DashboardPage() {
             <span className="hidden sm:inline">Нова послуга</span>
           </button>
         </div>
+
+        {/* Abstention rate (hybrid AI cases only, last 30 days) */}
+        {abstentionRate !== null && (
+          <div className="mb-5 px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl
+                          flex items-center gap-2 text-xs text-slate-400">
+            <span className={abstentionRate > 20 ? 'text-amber-400' : 'text-slate-500'}>●</span>
+            <span>
+              Abstention rate:{' '}
+              <span className={`font-semibold ${abstentionRate > 20 ? 'text-amber-400' : 'text-slate-300'}`}>
+                {abstentionRate}%
+              </span>
+              {' '}({abstentionStats!.abstained}/{abstentionStats!.total} AI-кейсів за 30 днів)
+            </span>
+          </div>
+        )}
 
         {/* Loading */}
         {loading && (

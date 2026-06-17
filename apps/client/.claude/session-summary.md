@@ -1,6 +1,67 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-16 (session 27 — typography phase 2 #50 DONE, PR#43 merged, задеплоєно)
+> Updated: 2026-06-17 (session 29 — IMPROVEMENTS #74, #69, #73 done; PR#45 ready to merge)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 29 (2026-06-17) — #74 integration test + #69 L4b wiring + #73 abstention monitoring
+
+### Головне — стан ЗАРАЗ
+- **Гілка `feature/hybrid-integration-test`** — 3 коміти попереду main, PR#45 відкрито й оновлено
+- **957 vitest тестів ✅** (було 928, +29: 8 integration + 21 prepare-l4b)
+- **40 нодів у workflow** (було 37: +Prepare L4b, +L4b LLM Critic, +Update Case Abstention)
+- **GitHub Issues #2, #6 закрито** (стейл); **Issue #46 CLOSED** (IMPROVEMENTS #73 done)
+- **PR#45** оновлено: includes #74 + #69 + #73
+
+### Що зроблено
+
+#### IMPROVEMENTS #74 — e2e integration test (6e4c6f0)
+- `n8n/templates/__tests__/hybrid-pipeline-integration.test.js` — **NEW** — 8 тестів: fixture L3 → buildHybridContext (real checkGroundedness) → renderDocumentWithStyles, без реального Groq
+
+#### IMPROVEMENTS #69 — L4b LLM Critic wired (b39d13e)
+- `n8n/templates/prepare-l4b.js` — **NEW** — `prepareL4b()`: L3 reasoning → Groq request body
+- `n8n/templates/build-hybrid-context.js` — `parseL4bResponse()` + 5th param; L4b RED → abstain; AMBER → review_card
+- `n8n/templates/__tests__/prepare-l4b.test.js` — **NEW** — 21 тест
+- `scripts/sync-l4b-nodes.mjs` — **NEW** — ідемпотентний патчер: Prepare L4b + L4b LLM Critic + updated L4 Critics entry
+
+#### IMPROVEMENTS #73 — Abstention rate monitoring (81ffcd0)
+- `supabase/migrations/020_abstention_tracking.sql` — `cases.abstained BOOLEAN DEFAULT NULL` + index
+- `scripts/sync-build-document-node.mjs` — FOOTER: `abstained` у return value (null/true/false)
+- `scripts/sync-abstention-node.mjs` — **NEW** — `Update Case Abstention` Supabase PATCH нода
+- `apps/client/src/admin/pages/DashboardPage.tsx` — «Abstention rate: X%» badge (amber при >20%)
+
+### 🔴 Наступний крок
+1. **Злити PR#45** → main (diff перевірено, 957 тестів зелені)
+2. **Після злиття:** `supabase db push` (migration 020) + deploy workflow (коли n8n запущений)
+3. **~2026-06-25 (Ольга):** CRON schedule, law changes, sign-off exception_if, flip alimony-change
+
+---
+
+## 🆕 Session 28 (2026-06-17) — harness-visual + process hygiene (stale issues)
+
+### Головне — стан ЗАРАЗ
+- **main чистий** ✅ — `2e6c7db` pushed
+- **Ольги ще немає** (~2026-06-25) — blocked: CRON schedule, alimony-change flip, law changes review
+- **928 vitest тестів ✅** (без змін)
+- **GitHub Issues:** #17 і #9 закрито (стейл, вирішено інакше в s20/s26)
+
+### Що зроблено
+- `apps/client/.claude/harness-visual.md` — **NEW** локальний файл-візуалізація: bird's eye стека, n8n flow (ключові кроки), AI harness L0–L5 з ABSTAIN path, таблиця послуг, law lifecycle, задачі з залежностями, карта файлів, тести + пробіли. Не комітити.
+- `docs/architecture/IMPROVEMENTS.md` — **#73** (моніторинг частоти abstention) + **#74** (e2e integration тест hybrid pipeline)
+- `.claude/commands/session-start.md` — новий крок 4: `gh issue list --state open`, флаг стейл-issue (>30д або вирішено інакше), вивід у брифінгу як `⚠️ stale?`
+- `CLAUDE.md` — 2 нових правила в Issue tracking: **stale issue rule** (закривати при вирішенні будь-яким способом) + **IMPROVEMENTS ≠ GitHub Issues** (не bulk-import)
+
+### 🔴 Наступний фокус (~2026-06-25, Ольга)
+1. Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml` (2 рядки)
+2. Вирішити 2 зміни законів: СК `2026-05-25`, ЦПК `2026-04-24`
+3. Sign-off `exception_if` edges у `law_relations` (`verified_by` = email юриста)
+4. Прод-флип `alimony-change` `disabled → active`
+5. Перевірити якість форматування документів у Google Docs (після typography)
+
+### Без Ольги (наступні кандидати — розробка, не запуск)
+- **#74** E2e integration тест hybrid pipeline — перед flip alimony-change
+- **#69** L4b LLM critic — підключити ноду в n8n (prompt готовий)
+- **#73** Abstention rate monitoring — після flip + перших кейсів
 
 ---
 

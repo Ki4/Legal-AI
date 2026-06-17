@@ -41,6 +41,30 @@ function parseL3Response(l3Response) {
   }
 }
 
+// ─── Parse L4b LLM Critic response ───────────────────────────────────────────
+
+/**
+ * Extract { overall, sentences, summary } from the raw Groq HTTP response for L4b.
+ * Returns null on any parse failure or if l4bResponse is not provided —
+ * callers treat null as "L4b not available", which does NOT trigger abstention.
+ */
+function parseL4bResponse(l4bResponse) {
+  if (!l4bResponse) return null
+  try {
+    const raw = l4bResponse?.choices?.[0]?.message?.content || ''
+    const cleaned = raw.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+    if (!Array.isArray(parsed.sentences)) return null
+    return {
+      overall:   String(parsed.overall || 'GREEN').toUpperCase(),
+      sentences: parsed.sentences,
+      summary:   parsed.summary || '',
+    }
+  } catch (_) {
+    return null
+  }
+}
+
 // ─── Court fee (§3.4) ─────────────────────────────────────────────────────────
 
 /**
@@ -100,8 +124,9 @@ function buildCourtFeeSummary(answers) {
 
 /**
  * Build the questions_for_lawyer array based on form answers and groundedness results.
+ * l4b — parsed L4b response (or null if L4b was not run / failed to parse).
  */
-function buildQuestionsForLawyer(answers, groundednessResult, abstained) {
+function buildQuestionsForLawyer(answers, groundednessResult, abstained, l4b) {
   const questions = []
 
   // ст.192 + prior_basis=agreement with own procedure clause
@@ -138,7 +163,7 @@ function buildQuestionsForLawyer(answers, groundednessResult, abstained) {
     })
   }
 
-  // AMBER spans — soft warnings
+  // L4a AMBER spans — soft warnings from deterministic critic
   if (groundednessResult?.has_amber) {
     questions.push({
       id:       'amber_spans',
@@ -147,6 +172,20 @@ function buildQuestionsForLawyer(answers, groundednessResult, abstained) {
                 (groundednessResult.spans || [])
                   .filter(s => s.status === 'AMBER')
                   .map(s => `"${s.text}" — ${s.reason}`)
+                  .join('; ') +
+                '. Перевірте відповідні місця в документі.',
+    })
+  }
+
+  // L4b AMBER sentences — soft warnings from LLM critic (only when not already abstained)
+  const l4bAmberSentences = (l4b?.sentences || []).filter(s => s.status === 'AMBER')
+  if (!abstained && l4bAmberSentences.length > 0) {
+    questions.push({
+      id:       'l4b_amber',
+      severity: 'info',
+      text:     'LLM-критик (незалежний аналіз) позначив деякі речення як AMBER: ' +
+                l4bAmberSentences
+                  .map(s => `"${String(s.text || '').slice(0, 60)}…" — ${s.reason || ''}`)
                   .join('; ') +
                 '. Перевірте відповідні місця в документі.',
     })
@@ -162,14 +201,15 @@ function buildQuestionsForLawyer(answers, groundednessResult, abstained) {
  * @param {string[]} l2ArticleIds            - allowed citation IDs from Prepare Reasoning node
  * @param {object}   answers                 - L0 form answers snapshot
  * @param {Function} checkGroundednessImpl   - injected from groundedness.js (or a test mock)
+ * @param {object}  [l4bResponse]            - optional: raw Groq HTTP response from L4b LLM Critic node
  * @returns {{ _ai_reasoning: string, _review_card: object, _spans: object[], _has_red: boolean, _abstained: boolean }}
  */
-function buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundednessImpl) {
+function buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundednessImpl, l4bResponse) {
   // 1. Parse L3 response
   const l3 = parseL3Response(l3Response)
   const parseError = l3 === null
 
-  // 2. Run groundedness critic
+  // 2. L4a — deterministic groundedness critic
   let groundedness = { spans: [], has_red: false, has_amber: false }
   if (!parseError) {
     try {
@@ -180,24 +220,28 @@ function buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundedness
     }
   }
 
-  // 3. L4c abstention: parse error OR any RED span → discard AI reasoning
-  const abstained = parseError || groundedness.has_red
+  // 3. L4b — optional LLM critic (null when not provided or parse fails)
+  const l4b = parseL4bResponse(l4bResponse)
+  const l4bHasRed = l4b !== null && l4b.overall === 'RED'
 
-  // 4. ai.reasoning — used by Build Document to fill {{#if ai.reasoning}}
+  // 4. L4c abstention: parse error OR L4a RED OR L4b RED → discard AI reasoning
+  const abstained = parseError || groundedness.has_red || l4bHasRed
+
+  // 5. ai.reasoning — used by Build Document to fill {{#if ai.reasoning}}
   const aiReasoning = abstained ? '' : (l3?.reasoning_text || '')
 
-  // 5. Court fee summary
+  // 6. Court fee summary
   const courtFee = buildCourtFeeSummary(answers)
 
-  // 6. Jurisdiction basis (asymmetric per §3.1)
+  // 7. Jurisdiction basis (asymmetric per §3.1)
   const jurisdictionBasis = answers.change_direction === 'increase'
     ? 'ст.28 ч.1 ЦПК — за вибором позивача (місце проживання позивача або відповідача)'
     : 'ст.27 ЦПК — за зареєстрованим місцем проживання відповідача (загальні правила)'
 
-  // 7. Questions for lawyer
-  const questionsForLawyer = buildQuestionsForLawyer(answers, groundedness, abstained)
+  // 8. Questions for lawyer
+  const questionsForLawyer = buildQuestionsForLawyer(answers, groundedness, abstained, l4b)
 
-  // 8. Review-card (L5 handoff)
+  // 9. Review-card (L5 handoff)
   const reviewCard = {
     service:            'alimony-change',
     direction:          answers.change_direction || 'unknown',
@@ -221,9 +265,10 @@ function buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundedness
       text:      aiReasoning,
       abstained: abstained,
       spans:     groundedness.spans,
-      has_red:   groundedness.has_red,
-      has_amber: groundedness.has_amber,
+      has_red:   groundedness.has_red || l4bHasRed,
+      has_amber: groundedness.has_amber || (l4b?.overall === 'AMBER'),
       ...(parseError ? { parse_error: true } : {}),
+      ...(l4b ? { l4b: { overall: l4b.overall, summary: l4b.summary } } : {}),
     },
     questions_for_lawyer: questionsForLawyer,
   }
@@ -232,7 +277,7 @@ function buildHybridContext(l3Response, l2ArticleIds, answers, checkGroundedness
     _ai_reasoning: aiReasoning,
     _review_card:  reviewCard,
     _spans:        groundedness.spans,
-    _has_red:      groundedness.has_red,
+    _has_red:      groundedness.has_red || l4bHasRed,
     _abstained:    abstained,
   }
 }
@@ -242,6 +287,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     buildHybridContext,
     parseL3Response,
+    parseL4bResponse,
     buildCourtFeeSummary,
     buildQuestionsForLawyer,
   }

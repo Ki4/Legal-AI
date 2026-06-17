@@ -12,6 +12,31 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-17 (session 29) — IMPROVEMENTS #74 + #69 + #73 (hybrid pipeline hardening)
+**Status:** COMMITTED · `feature/hybrid-integration-test` (`6e4c6f0`, `b39d13e`, `81ffcd0`) · PR#45 open
+**Why:** Три IMPROVEMENTS реалізовані за одну сесію: (#74) integration test pinning повного ланцюжка без реального Groq; (#69) L4b LLM Critic підключений у n8n через новий sync-скрипт; (#73) end-to-end трекінг частоти abstention — DB колонка + n8n PATCH нода + dashboard badge. Тепер hybrid pipeline повністю verified у тестах і моніторингу.
+**Files:**
+- `n8n/templates/__tests__/hybrid-pipeline-integration.test.js` — **NEW** — 8 integration tests (fixture L3 → real checkGroundedness → real renderDocumentWithStyles)
+- `n8n/templates/prepare-l4b.js` — **NEW** — `prepareL4b()` + `fillCriticTemplate()` pure fns
+- `n8n/templates/build-hybrid-context.js` — `parseL4bResponse()` + 5th param l4bResponse; L4b RED → abstain; AMBER info in review_card
+- `n8n/templates/__tests__/prepare-l4b.test.js` — **NEW** — 21 unit tests
+- `scripts/sync-l4b-nodes.mjs` — **NEW** — patches Prepare L4b + L4b LLM Critic into form-submit.json
+- `supabase/migrations/020_abstention_tracking.sql` — **NEW** — `cases.abstained BOOLEAN DEFAULT NULL`
+- `scripts/sync-build-document-node.mjs` — FOOTER: `abstained` in return value
+- `scripts/sync-abstention-node.mjs` — **NEW** — idempotent patcher for Update Case Abstention Supabase node
+- `apps/client/src/admin/pages/DashboardPage.tsx` — abstention rate badge (last 30 days)
+- `n8n/workflows/current/form-submit.json` — 37→40 nodes
+**Tests:** 957/957 ✅ · TypeScript clean
+
+### 2026-06-17 (session 28) — harness-visual + process hygiene + IMPROVEMENTS #73 #74
+**Status:** COMMITTED · `main` (`2e6c7db`) · pushed
+**Why:** Проект розрісся до 28 сесій і стало важко тримати в голові де що є і що треба робити. Сесія присвячена наведенню порядку: локальна карта харнесу (один файл з усім), 2 нових IMPROVEMENTS-ідеї з критики карти, і процесний фікс щоб стейл-issue більше не накопичувались (root cause: bulk-import IMPROVEMENTS → GitHub Issues в сесії 11 без подальшого закриття).
+**Files:**
+- `apps/client/.claude/harness-visual.md` — **NEW** (локальний, не комітити) — bird's eye стека, n8n flow, AI harness L0–L5 + ABSTAIN path, таблиця послуг, law lifecycle, задачі з залежностями
+- `docs/architecture/IMPROVEMENTS.md` — #73 (abstention rate monitoring) + #74 (e2e hybrid integration test)
+- `.claude/commands/session-start.md` — крок 4: scan open issues, flag stale у брифінгу
+- `CLAUDE.md` — stale issue rule + IMPROVEMENTS ≠ GitHub Issues
+
 ### 2026-06-16 (session 27) — typography phase 2: {{!style:}} → Google Docs styling (#50)
 **Status:** COMMITTED · `main` (`06019a7`) · PR#43 merged · задеплоєно
 **Why:** Документи генерувались як plain text без жодного форматування — «ПОЗОВНА ЗАЯВА» йшла звичайним текстом. Директиви `{{!style:}}` вже були в усіх шаблонах (зарезервовано в doc-engine #34), але рендерер їх ігнорував. Тепер: `renderDocumentWithStyles()` відстежує styleHints → 3 нові ноди в workflow → Google Docs batchUpdate застосовує реальне форматування. +IMPROVEMENTS #72 (multi-template architecture note).

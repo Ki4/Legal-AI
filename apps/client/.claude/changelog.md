@@ -13,7 +13,7 @@
 ## 📋 Pending commits (uncommitted work)
 
 ### 2026-06-17 (session 32) — divorce-with-children G1-G3 (#28): "суд визначить" + графік побачень (ст.157 СК)
-**Status:** UNCOMMITTED · branch `docs/divorce-with-children-spec` (started as spec-only, grew into full Tier-2 implementation this session)
+**Status:** MERGED · PR#50 (`58ef2d2`) · branch `docs/divorce-with-children-spec` deleted after merge · issue #28 closed automatically (`Closes #28`)
 **Why:** Roadmap v2.3 next item after the checklist-validator cycle closed. Scoped down from the original issue #28 during planning: the existing `divorce` service already handled basic has-children residence/dispute/alimony; "опіка" in Ukrainian family law (for children with living parents) isn't a separate guardianship institute, it's the right to participate in upbringing / contact (ст.157 СК). All 3 dependencies the original issue listed (#19 GraphRAG table, #17 hybrid templates, stable alimony service) turned out to already be satisfied by infrastructure built for alimony-change (sessions 20-29). Net-new scope: a `court`-decides option for `children_live_with`, and an agreed/disputed visitation-schedule clause — both fully deterministic, no hybrid/LLM pipeline (confirmed with Sergey before implementation).
 **What happened:**
 1. Wrote Tier-2 spec triplet (`specs/features/divorce-with-children/{plan,requirements,validation}.md`), mirroring alimony-change's format but scoped to the deterministic delta.
@@ -37,7 +37,7 @@
 - `specs/roadmap.md` — v2.3 line ticked ✅
 **Tests:** root vitest 981/981 ✅ (was 972, +9) · client vitest 92/92 ✅ · tsc clean. Original 263 divorce parity tests pass **unmodified**.
 **Live-verified:** real n8n execution, `Build Document` correct; unrelated pre-existing infra issue surfaced (`Copy Template` failing on expired Google OAuth grant — same class of incident as session 15, needs Sergey to re-authorize; not a regression from this work).
-**Not done:** `gh issue close 28` (deferred to merge), commit (awaiting explicit go-ahead per session protocol).
+**Not done:** nothing outstanding — feature fully shipped (committed, pushed, PR merged, issue closed, live-verified).
 
 ### 2026-06-17 (session 31) — live deploy completed: checklist-validator + hybrid hardening + 2 production bugs found & fixed
 **Status:** COMMITTED · branch `fix/checklist-deploy-and-abstention-filter` → merged to main

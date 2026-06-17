@@ -85,7 +85,15 @@ const NEW_NODE = {
   parameters: {
     operation: 'update',
     tableId:   'cases',
-    id:        '={{ $json._case_id }}',
+    // Supabase node matches rows via filters.conditions (not a flat `id` field) —
+    // see "Get Profile" node for the same pattern. A flat `id` param is silently
+    // dropped by n8n's current Supabase node version, leaving filters empty and
+    // the update failing with "At least one select condition must be defined".
+    filters: {
+      conditions: [
+        { keyName: 'id', condition: 'eq', keyValue: '={{ $json._case_id }}' },
+      ],
+    },
     fieldsUi:  {
       fieldValues: [
         { fieldId: 'abstained', fieldValue: '={{ $json._abstained }}' },

@@ -14,6 +14,24 @@
 
 _none_
 
+### 2026-06-17 (session 31) — live deploy completed: checklist-validator + hybrid hardening + 2 production bugs found & fixed
+**Status:** COMMITTED · branch `fix/checklist-deploy-and-abstention-filter` → merged to main
+**Why:** Sergey stepped away and authorized autonomous execution of the already-agreed next-session deploy plan (deploy workflow → upload checklists → smoke test → docs), with explicit stop conditions agreed in advance (test regression / live-only node conflict / smoke-test failure). Verified live infra state first rather than trusting session-summary's claim — this surfaced that PR#45's hybrid-hardening nodes (`Prepare L4b`, `L4b LLM Critic`, `Update Case Abstention`) had never actually been pushed to live n8n despite being merged to main since session 29, so this deploy closed that gap too, not just the checklist hook.
+**What happened:**
+1. Full regression pass before touching prod: root vitest 972/972, client vitest 92/92, tsc clean.
+2. `node scripts/deploy-workflow.mjs form-submit` — live n8n was missing 3 nodes from PR#45 (37→40 nodes), pushed cleanly, zero live-only conflicts, auto-backup taken.
+3. `node scripts/upload-document-checklist.mjs divorce` / `alimony` — hit a false-negative verification bug: Postgres `jsonb` reorders object keys on storage (by key length then lexicographic), so the script's `JSON.stringify` round-trip compare reported "differs" even though the uploaded data was byte-identical in substance. Fixed with a recursive key-sort canonicalization before comparing (both the pre-check and the post-write verify).
+4. Smoke test (scenario 2, `has_children=true`) against the live webhook surfaced a second, unrelated live bug: `Update Case Abstention` (added session 29/PR#45, never live until step 2) used a flat `id` param to match the row to update — the current n8n Supabase node version silently drops that field, leaving `filters: {}` empty and failing on every single case with `"At least one select condition must be defined"`. Fixed by switching to `filters.conditions` (mirrors the already-working pattern in "Get Profile"), in both the live workflow JSON and the generator script `sync-abstention-node.mjs` so a future regen can't reintroduce it.
+5. Re-deployed, re-ran the smoke test: execution #50 `status=success`, `_checklist_result.ok===true`, `cases.checklist_failed=false`, `cases.abstained=null` all persisted correctly.
+**Files:**
+- `n8n/workflows/current/form-submit.json` — Update Case Abstention node: flat `id` → `filters.conditions`
+- `scripts/sync-abstention-node.mjs` — same fix, for future regeneration
+- `scripts/upload-document-checklist.mjs` — canonicalized (order-insensitive) deep-equal compare, replacing the raw `JSON.stringify` checks
+- `specs/features/checklist-validator/validation.md` — G3/G4 ticked, Definition of Done updated
+- `specs/roadmap.md` — checklist-validator line: 🔴 → 🟢, "next session" deferral note removed
+**Tests:** no regressions — same 972 root / 92 client (no app code changed, only workflow JSON + script logic + docs)
+**Not done (intentionally out of scope, per agreed stop conditions):** `alimony-change` status flip, CRON `schedule:` re-enable, anything on the ~2026-06-25 Olga punch list.
+
 ### 2026-06-17 (session 30, cont.) — PR#48 merged: checklist-validator → main, issue #4 closed
 **Status:** MERGED · `c1b2dc9` (fast-forward, 17 files)
 **Why:** Sergey applied migrations 020+021, started Docker, and authenticated n8n — infra unblocked, but live deploy (workflow push + checklist upload) is deferred to a fresh session per his instruction ("новой сессии продолжим"). This session just merges the code; deploy steps below remain the next session's first task.

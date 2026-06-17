@@ -824,7 +824,15 @@
       "parameters": {
         "operation": "update",
         "tableId": "cases",
-        "id": "={{ $json._case_id }}",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json._case_id }}"
+            }
+          ]
+        },
         "fieldsUi": {
           "fieldValues": [
             {

@@ -1,6 +1,26 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-17 (session 30 — PR#45 merged, stale issues closed, checklist-validator built + merged (PR#48, closes #4))
+> Updated: 2026-06-17 (session 31 — live deploy completed: checklist-validator + hybrid hardening, 2 production bugs found+fixed)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 31 (2026-06-17) — live deploy: checklist-validator + hybrid hardening, 2 production bugs found+fixed
+
+### Головне — стан ЗАРАЗ
+- **Виконано автономно** — Sergey відійшов і дав явний дозвіл діяти без підтвердження кожної команди, з погодженими наперед стоп-умовами (регрес тестів / live-only конфлікт нод / провал smoke-test) та виключеннями (alimony-change флип, CRON schedule, пункти Ольги ~2026-06-25 — не торкались)
+- **main:** змерджено `fix/checklist-deploy-and-abstention-filter` (ця сесія) — branch видалено після merge
+- **Live n8n деплой завершено** — form-submit: 37→40 нод одним прогоном `deploy-workflow.mjs`. Виявилось, що PR#45 (сесія 29, hybrid hardening) НІКОЛИ не був задеплоєний живо, хоч і був злитий в main кілька сесій тому — цю сесію задеплоєно разом з checklist-хуком сесії 30
+- **Чекліст-валідатор живий** — `services.required_checklist` завантажено: divorce (5 пунктів), alimony (4 пункти)
+- **2 production-баги знайдено й виправлено під час деплою:**
+  1. `scripts/upload-document-checklist.mjs` хибно репортував "differs after upload" — причина: Postgres `jsonb` переупорядковує ключі об'єкта при зберіганні (за довжиною ключа, потім лексикографічно), а скрипт порівнював `JSON.stringify` напряму. Виправлено канонізацією (рекурсивне сортування ключів) перед порівнянням
+  2. Нода **Update Case Abstention** (додана сесія 29, але вперше виконалась живо тільки тут) валилась на КОЖНОМУ кейсі: `"At least one select condition must be defined"`. Причина: застарілий формат параметра Supabase-ноди (`id: <expr>` напряму) — поточна версія ноди мовчки відкидає це поле. Виправлено на `filters.conditions` (як вже працює в "Get Profile"), і в живому workflow, і в генерувальному скрипті `sync-abstention-node.mjs`
+- **Smoke test зелений:** execution #50 — `_checklist_result.ok===true`, `cases.checklist_failed=false`, `cases.abstained=null`, усе записано без помилок
+- **972 root / 92 client тестів без регресій** (код застосунку не змінювався — лише workflow JSON, 2 скрипти, доки)
+- `specs/features/checklist-validator/validation.md` — усі G1–G4 пункти закриті; `specs/roadmap.md` — checklist-validator: 🔴→🟢
+
+### 🔴 Наступний крок
+1. (нема нагальних завдань — production-цикл checklist-validator повністю завершено)
+2. **~2026-06-25 (Ольга):** CRON schedule, law changes review, sign-off exception_if, flip alimony-change — нічого з цього списку не торкались
 
 ---
 

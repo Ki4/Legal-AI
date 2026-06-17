@@ -45,6 +45,20 @@ try {
   process.exit(1);
 }
 
+// Postgres stores jsonb object keys reordered by length-then-lexicographic
+// (its internal binary layout), not insertion order — so a plain
+// JSON.stringify compare against a round-tripped jsonb value gives false
+// negatives. Canonicalize (sort object keys recursively) before comparing.
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value).sort().map((k) => [k, canonicalize(value[k])])
+    );
+  }
+  return value;
+}
+
 const rows = await sbGet('services', `slug=eq.${encodeURIComponent(slug)}&select=slug,generation_mode,required_checklist`);
 if (!rows.length) {
   console.error(`Service "${slug}" not found in Supabase`);
@@ -55,7 +69,7 @@ const svc = rows[0];
 console.log(`Service: ${svc.slug} (generation_mode=${svc.generation_mode})`);
 console.log(`Checklist file: ${checklistPath} (${checklist.items.length} items)`);
 
-const same = JSON.stringify(svc.required_checklist) === JSON.stringify(checklist);
+const same = JSON.stringify(canonicalize(svc.required_checklist)) === JSON.stringify(canonicalize(checklist));
 if (same) {
   console.log('DB already has this exact checklist — nothing to do.');
   process.exit(0);
@@ -74,7 +88,7 @@ await sbPatch('services', `slug=eq.${encodeURIComponent(slug)}`, { required_chec
 
 // verify round-trip
 const after = await sbGet('services', `slug=eq.${encodeURIComponent(slug)}&select=required_checklist`);
-if (JSON.stringify(after[0].required_checklist) === JSON.stringify(checklist)) {
+if (JSON.stringify(canonicalize(after[0].required_checklist)) === JSON.stringify(canonicalize(checklist))) {
   console.log('✅ Uploaded and verified (DB === file).');
 } else {
   console.error('❌ Verification failed: DB content differs from file after upload.');

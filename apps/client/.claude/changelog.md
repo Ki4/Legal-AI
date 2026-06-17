@@ -12,8 +12,19 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+_none_
+
+### 2026-06-17 (session 30, cont.) — PR#48 merged: checklist-validator → main, issue #4 closed
+**Status:** MERGED · `c1b2dc9` (fast-forward, 17 files)
+**Why:** Sergey applied migrations 020+021, started Docker, and authenticated n8n — infra unblocked, but live deploy (workflow push + checklist upload) is deferred to a fresh session per his instruction ("новой сессии продолжим"). This session just merges the code; deploy steps below remain the next session's first task.
+**Next session — live deploy (infra now available):**
+1. `node scripts/deploy-workflow.mjs form-submit` — push regenerated Build Document node (checklist hook) + `checklist_failed` field to live n8n
+2. `node scripts/upload-document-checklist.mjs divorce` and `... alimony` — populate `services.required_checklist`
+3. Manual smoke test: submit one divorce case with `has_children=true` and confirm `_checklist_result.ok === true` in the n8n execution log
+4. Update `specs/features/checklist-validator/validation.md` G3 checkboxes once confirmed live
+
 ### 2026-06-17 (session 30, cont.) — checklist-validator: required-clause check (issue #4 / IMPROVEMENTS #39)
-**Status:** COMMITTED · branch `feature/checklist-validator`
+**Status:** COMMITTED · branch `feature/checklist-validator` (merged to main above)
 **Why:** Issue #4 (🔴 critical, open since the bulk-import in session 11) asked for an automatic check that generated documents contain every legally-mandatory element — missing one means a legally incorrect lawsuit. Hit an explicit Tier-2 trigger in SDD-GUIDE.md ("affects legal correctness — error = invalid lawsuit"), so got a real spec (`specs/features/checklist-validator/`). The issue's original proposal (LLM regenerates the whole document on failure) was stale — divorce/alimony have rendered through the deterministic doc-engine template since session 20, no LLM in that path at all. Replaced with a pure deterministic regex-presence check on the rendered text, reusing render-document.js's own `{{#if}}` condition parser for applicability (`appliesIf`) instead of inventing a second condition language.
 **Files:**
 - `n8n/templates/render-document.js` — export `evalExpr` (additive, 1 line)

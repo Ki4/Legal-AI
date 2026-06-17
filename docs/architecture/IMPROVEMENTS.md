@@ -349,6 +349,7 @@ ALTER TABLE services ADD COLUMN needs_law_review BOOLEAN DEFAULT false;
 - **Альтернатива:** При кліку на рік — показувати input з числом замість grid
 - **Пріоритет:** 🟡 важливо (UX — багато клієнтів вводять дату народження 30+ років назад)
 - **Файл:** `apps/client/src/components/form/fields/DatePickerField.tsx`
+- ✅ Done: 2026-06-17 (issue #27, PR #52) — варіант A реалізовано; iOS/Android живий девайс не перевірявся (тільки браузер)
 
 ### 10. Drag & drop полів у конструкторі
 - **Зараз:** Кнопки ↑↓ для переміщення полів

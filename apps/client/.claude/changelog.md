@@ -12,6 +12,20 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-17 (session 33) — DatePickerField: manual ДД.ММ.РРРР input (#27)
+**Status:** MERGED · PR#52 (`ea881d4`) · branch `fix/datepicker-manual-input` deleted after merge · issue #27 closed automatically (`Closes #27`)
+**Why:** Small UX fix picked from the backlog (IMPROVEMENTS #10а / issue #27): selecting a birth year far in the past (e.g. 1985) required clicking through many 12-year calendar pages — a real pain point since most clients enter a birth date 30+ years back. Implemented Option A from the issue: a masked text input next to the calendar button, so the date can be typed directly.
+**What happened:**
+1. `DatePickerField.tsx` — replaced the click-to-open `<div>` trigger with a real `<input>` (masked `ДД.ММ.РРРР`, `inputMode="numeric"`) next to the calendar icon button. Two new pure helpers: `maskDateInput` (digits → live-formatted display string as you type) and `parseDisplay` (validates real calendar bounds — day-in-month, month 1-12, year 1900..now+1 — and converts to the internal ISO `YYYY-MM-DD`). A complete valid date commits immediately via `onChange`; an incomplete or impossible date (e.g. `31.02.1990`) shows a red border + "Некоректна дата" instead of failing silently. Picking via the calendar (or clearing) still works exactly as before and re-syncs the text input via a `value`-watching effect.
+2. Moved the field's `id` from the old non-focusable wrapper `<div>` onto the actual `<input>` — `FieldLabel`'s `htmlFor` now correctly focuses the input when the label is clicked (previously a no-op).
+3. Exported the two new pure helpers and added `__tests__/DatePickerField.test.ts` — 11 unit tests (masking edge cases incl. backspace/dot-stripping/8-digit cap; date validation incl. leap years, short months, out-of-range years) — first tests for this component, following the project's existing pure-logic-test convention (no component-rendering library in this repo).
+4. Browser-verified live via Playwright against the running divorce form: typing `15031985` auto-formats to `15.03.1985` and commits; opening the calendar afterward jumps straight to March 1985 with day 15 selected (the exact problem from the issue); typing an impossible date shows the error state; correcting it clears the error.
+**Files:**
+- `apps/client/src/components/form/fields/DatePickerField.tsx` — masked input + validation, replaces click-only trigger
+- `apps/client/src/components/form/fields/__tests__/DatePickerField.test.ts` — **NEW** — 11 tests
+**Tests:** client vitest 103/103 ✅ (was 92, +11) · tsc clean
+**Not done:** real-device check on iOS/Android Telegram TWA (listed in the issue's Definition of Done) — only browser (Playwright/Chromium) verified this session.
+
 ### 2026-06-17 (session 32) — divorce-with-children G1-G3 (#28): "суд визначить" + графік побачень (ст.157 СК)
 **Status:** MERGED · PR#50 (`58ef2d2`) · branch `docs/divorce-with-children-spec` deleted after merge · issue #28 closed automatically (`Closes #28`)
 **Why:** Roadmap v2.3 next item after the checklist-validator cycle closed. Scoped down from the original issue #28 during planning: the existing `divorce` service already handled basic has-children residence/dispute/alimony; "опіка" in Ukrainian family law (for children with living parents) isn't a separate guardianship institute, it's the right to participate in upbringing / contact (ст.157 СК). All 3 dependencies the original issue listed (#19 GraphRAG table, #17 hybrid templates, stable alimony service) turned out to already be satisfied by infrastructure built for alimony-change (sessions 20-29). Net-new scope: a `court`-decides option for `children_live_with`, and an agreed/disputed visitation-schedule clause — both fully deterministic, no hybrid/LLM pipeline (confirmed with Sergey before implementation).

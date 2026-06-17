@@ -26,6 +26,7 @@
 - [Citations as data: regex-екстрактор + golden-страж (GraphRAG крок 0)](#citations-as-data-regex-екстрактор--golden-страж-graphrag-крок-0)
 - [Hybrid pipeline (G4): no Merge node, injectable critic, court fee §3.4, idempotent sync](#hybrid-pipeline-g4-no-merge-node-injectable-critic-court-fee-34-idempotent-sync)
 - [Model-agnostic AI harness: модель у конфізі, не в коді (#71)](#model-agnostic-ai-harness-модель-у-конфізі-не-в-коді-71)
+- [Checklist validator: детермінований regex-чек замість LLM-регенерації (#4 / #39)](#checklist-validator-детермінований-regex-чек-замість-llm-регенерації-4--39)
 
 ---
 
@@ -616,5 +617,19 @@ hardcode значення: `PM_ABLE_BODIED_2026 = 3328` (прожитковий 
 - Потребують зовнішній акаунт + ще одна точка відмови
 - На пілоті (< 100 документів/місяць) Groq free-tier стабільний
 - Архітектуру закладено: коли знадобиться, зміна = одна URL в Global Config
+
+## Checklist validator: детермінований regex-чек замість LLM-регенерації (#4 / #39)
+
+**Проблема:** issue #4 (закладений ще в березні) просив агента-валідатора, що перевіряє згенерований документ і **регенерує через LLM** при провалі. Постановка застаріла: з doc-engine (#34, session 20) divorce/alimony рендеряться детермінованим шаблонним движком — LLM у шляху взагалі немає. Навіть hybrid-пілот (alimony-change) використовує AI лише для одного абзацу обґрунтування; обов'язкові юридичні пункти (підсудність, судовий збір, місце проживання дітей) так само рендеряться тим самим движком.
+
+**Рішення:** валідатор — **чиста детермінована функція**, без LLM: `validateChecklist(renderedText, context, checklist)` шукає regex-паттерни (`mustMatchAny`) у фінальному тексті, за умовою застосовності (`appliesIf`). Без вартості, без латентності, без галюцинацій — узгоджено з принципом проєкту «95% документа детерміновано за задумом» (hybrid template approach, #4 у IMPROVEMENTS, ще 2026-03-23).
+
+**Мова умов `appliesIf` — переюзана, не нова.** `render-document.js` вже має парсер булевих виразів для `{{#if}}` (`parseExpr`/`evalExpr`). Замість придумувати другу мову умов для checklist-конфігу, `evalExpr` додано в `module.exports` і переюзано напряму. Автор checklist-конфігу пише той самий синтаксис, що вже бачить у шаблоні.
+
+**Чому `mustMatchAny` (масив паттернів), а не один фіксований рядок.** Реальний приклад з `divorce.document.txt`: обов'язок «вирішити місце проживання дітей» виконується ОДНИМ з двох способів — або пункт «Визначити місце проживання...» у ПРОШУ, або явне «буде вирішуватися в окремому провадженні» (коли `children_dispute == 'separate'`). Один фіксований рядок дав би фальшиве «не виконано» на легітимному документі, що відкладає спір. Це знайдено саме читанням реального шаблону під час планування фічі, не вигадано абстрактно.
+
+**Чому всередині існуючого footer Build Document, а не нова n8n-нода.** `sync-build-document-node.mjs` вже обчислює `context` (`buildContext`) і рендерить документ для `template`/`hybrid` режимів — тут вже є все потрібне. Аналогічно: персист `checklist_failed` додано як ще одне поле в ІСНУЮЧУ ноду `Update Case Abstention` (сесія 29), а не нову Supabase-ноду. Найменший можливий blast radius.
+
+**v1 не блокує доставку.** При провалі (`checklist_failed = true`) документ все одно йде клієнту — лише флагується в `cases` + бейдж у `DashboardPage.tsx`. Хибний негатив на живому клієнті (заблокована доставка через помилку в самому checklist-конфізі) — гірший ризик, ніж пропущений сигнал ревʼю.
 
 **Файли:** `n8n/templates/prepare-reasoning.js`, `scripts/sync-hybrid-nodes.mjs`, `n8n/workflows/current/form-submit.json` (Global Config + Prepare Reasoning Code node), `scripts/deploy-workflow.mjs` (KEY_MAP: `YOUR_GROQ_API_KEY`)

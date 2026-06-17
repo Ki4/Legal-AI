@@ -644,6 +644,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // internals exposed for unit tests
     truthy,
     parseExpr,
+    evalExpr,
     detectGender,
     parseChildrenDetails,
     normalizeCert,

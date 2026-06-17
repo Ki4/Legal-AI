@@ -93,6 +93,7 @@
   - [x] Портувати divorce на шаблон — **зроблено** (фіча #35, session 21): 263 parity-тести байт-у-байт, live e2e + rollback-флип перевірені; обидві послуги на `generation_mode='template'`. Сервіс-специфічні словники (REASONS_MAP, EXEMPT_REASONS) і динамічна нумерація «ПРОШУ» живуть у самому шаблоні. Винос legacy-білдерів з ноди → IMPROVEMENTS #52
   - [x] Фаза 2: типографіка Google Docs з `{{!style:}}` директив (IMPROVEMENTS #50, session 27, PR#43 merged + задеплоєно) 🟡
   - [ ] Admin-UI редактор шаблону для юриста (IMPROVEMENTS #51) 🔵
+- [x] Checklist validator — детермінований regex-чек обов'язкових юридичних пунктів (issue #4 / IMPROVEMENTS #39, `specs/features/checklist-validator/`): код+тести+конфіги в репо, готові до застосування (migration 021 + деплой workflow — наступна сесія, коли інфра підключена) 🔴
 - [ ] RLS: посилити row-level security 🟡
 - [x] Тести для n8n Code nodes — 79 тестів (validate, shared utils, divorce document), commit b3c9013
 

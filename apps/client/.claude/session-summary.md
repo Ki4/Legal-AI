@@ -1,6 +1,25 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-17 (session 29 — IMPROVEMENTS #74, #69, #73 done; PR#45 ready to merge)
+> Updated: 2026-06-17 (session 30 — PR#45 merged, stale issues closed, checklist-validator built + merged (PR#48, closes #4))
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 30 (2026-06-17) — merge PR#45 + stale-issue cleanup + checklist-validator (#4/#39)
+
+### Головне — стан ЗАРАЗ
+- **main чистий** ✅ — `c1b2dc9` (PR#48 merged, checklist-validator)
+- **PR#45 merged** (`97598fe`) — session 29's hybrid integration test + L4b wiring + abstention monitoring
+- **Stale issues closed:** #7, #14, #25 (PR#47) + **#4 closed via PR#48** (`Closes #4`)
+- **972 root vitest ✅** (was 957, +15) · **92 client vitest ✅** · tsc clean
+- **Checklist validator live in repo** — deterministic regex-presence check for legally-mandatory clauses (divorce 5 items, alimony 4 items), reuses render-document.js's `{{#if}}` condition parser, hooked into existing Build Document footer + existing abstention Supabase node. Full design: `specs/features/checklist-validator/`
+- **Infra unblocked** — Sergey applied migrations 020 + 021, started Docker, authenticated n8n. Live deploy was deliberately deferred to next session (not done this session).
+
+### 🔴 Наступний крок (first thing next session)
+1. `node scripts/deploy-workflow.mjs form-submit` — push regenerated Build Document node (checklist hook + `checklist_failed` field) to live n8n
+2. `node scripts/upload-document-checklist.mjs divorce` + `... alimony` — populate `services.required_checklist`
+3. Smoke test: one divorce case with `has_children=true` → confirm `_checklist_result.ok === true` in n8n execution log
+4. Tick remaining box in `specs/features/checklist-validator/validation.md` (G3 live-deploy items)
+5. **~2026-06-25 (Ольга):** CRON schedule, law changes review, sign-off exception_if, flip alimony-change
 
 ---
 

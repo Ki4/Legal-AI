@@ -24,7 +24,12 @@
 
 ### 🔴 Наступний крок (нова сесія)
 1. **Vercel:** кастомний домен — IMPROVEMENTS #76.
-2. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+2. **⏰ Backlog Ольги (~2026-06-25, єдиний ревʼюер повертається) — нічого не торкались:**
+   - **(#33) Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml`** — 2 рядки (`schedule:` / `- cron: '0 6 * * 1'`). Зараз закоментовано, бо щотижневий авто-флип нікому ревʼюити. До того: ручна кнопка (Actions → Law change monitor → Run) + локальний `node scripts/check-law-updates.mjs`.
+   - **(#33) Вирішити 2 РЕАЛЬНІ зміни законів, знайдені dry-run** — СК `2026-03-04→2026-05-25`, ЦПК `2025-07-17→2026-04-24`: релевантні нашим шаблонам? флипати залежні послуги чи ні? Деталі: runbook `docs/runbooks/law-monitor-cron.md`.
+   - **Sign-off `exception_if` edges** у `law_relations` (`verified_by` = email юриста).
+   - **Прод-флип `alimony-change`** `status='disabled' → 'active'`.
+   - (Issue **#33** лишається відкритою як GitHub-трекер перших двох пунктів; цей блок — дзеркало в session-summary + канонічна памʼять `project_cron_schedule_pending`.)
 
 ### Запуск середовища
 - n8n live (Docker, 40 нод form-submit active) — деплоєно через `node scripts/sync-init-data-verification.mjs && node scripts/deploy-workflow.mjs form-submit`.

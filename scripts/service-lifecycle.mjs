@@ -27,7 +27,7 @@
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAWS, resolveLaw, lawByUrl } from './law-registry.mjs';
+import { LAWS, resolveLaw, lawByUrl, lawCode } from './law-registry.mjs';
 import { loadEnv, createSupabaseClient } from './lib/supabase-rest.mjs';
 import { applyLawChange } from './lib/law-change.mjs';
 
@@ -214,6 +214,7 @@ async function cmdLogLawChange() {
   for (const s of affected) {
     console.log(`  🟡 ${s.slug}: status ${s.status} → needs_review (law date → ${newDate})`);
   }
+  console.log(`  🟡 law_chunks/law_documents (law_code=${lawCode(law)}) marked is_stale=true — re-seed to clear.`);
   console.log('\n  Done. Review in DB / re-activate with: set-status <slug> active\n');
 }
 

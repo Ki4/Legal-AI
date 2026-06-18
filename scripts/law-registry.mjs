@@ -49,6 +49,15 @@ export function lawByUrl(url) {
   return byUrl.get(normalizeUrl(url)) || null;
 }
 
+/**
+ * Derive the rada doc-id code from a law's canonical URL (e.g. '2947-14') — the trailing
+ * URL segment, matching `law_chunks.law_code` / `law_documents.law_code` in Supabase.
+ */
+export function lawCode(law) {
+  const normalized = normalizeUrl(law?.url);
+  return normalized.split('/').pop() || null;
+}
+
 export function lawBySlug(slug) {
   return bySlug.get(slug) || null;
 }

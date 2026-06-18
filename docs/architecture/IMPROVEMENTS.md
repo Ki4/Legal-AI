@@ -757,12 +757,10 @@ CREATE TABLE invites (
 
 ### 29. Retrieval Debt — актуальність RAG
 - **Проблема:** закони в `law_chunks` можуть застаріти — документ генерується за старими нормами.
-- **Що вже є:** `watched_laws` таблиця ✅, `scripts/check-law-updates.mjs` ✅
-- **Чого не вистачає:**
-  - Автоматичний запуск скрипту (CRON в n8n)
-  - Алерт у Telegram адміну коли закон змінився
-  - Позначка `is_outdated` у `law_chunks` до переіндексації
-- **Пріоритет:** 🟡 важливо
+- **Виявилось при реалізації (сесія 34):** `is_outdated`-прапорець вже існував як `is_stale` на `law_chunks`/`law_documents` (migration 002/003), і всі read-RPC (`search_law_chunks`, `search_law_chunks_hybrid`, `search_law_text`, `get_law_articles`) вже фільтрували `is_stale = false`. CRON (GitHub Actions, не n8n) і Telegram-алерт — уже були (сесія 19, issue #33). Бракувало лише фактичного виставлення прапорця.
+- **Зроблено:** `scripts/law-registry.mjs` → `lawCode()`; канонічний `applyLawChange()` (`scripts/lib/law-change.mjs`) тепер позначає `law_chunks`/`law_documents` `is_stale=true` по `law_code` зміненого закону — для CRON і ручного CLI одночасно (один продюсер).
+- **Поза скоупом:** автоматичне переіндексування (скрапінг нового тексту + переембеддинг) — окремий більший пайплайн; ручний шлях (`seed-divorce-laws.ts --force`) вже знімає прапорець як побічний ефект `replace_law_chunks`.
+- **Issue:** [#11](https://github.com/Ki4/Legal-AI/issues/11) closed.
 
 ### 30. Control Debt — моніторинг якості генерації
 - **Проблема:** невідомо наскільки добре AI генерує документи. Немає сигналу про деградацію.

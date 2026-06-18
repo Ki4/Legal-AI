@@ -1,27 +1,29 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-18 (session 37 — initData HMAC verification, #56 done — live, PR not yet merged)
+> Updated: 2026-06-18 (session 37 — initData HMAC verification, #56 done + hardened — live, PR #58 awaiting review)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 37 (2026-06-18) — initData HMAC-верифікація (#56) — задеплоєно живо
+## 🆕 Session 37 (2026-06-18) — initData HMAC-верифікація (#56) — задеплоєно живо + закрито fail-open дірку
 
 ### Головне — стан ЗАРАЗ
-- **Гілка `fix/initdata-hmac-verification`** — реалізовано, задеплоєно живо в n8n, верифіковано живими тестами (3 сценарії). **Ще НЕ змержена в main** (наступний крок — відкрити PR, дати Сергію переглянути перед мерджем у production write-path).
-- **Issue #56 — усі 3 пункти чекліста виконані**: TWA шле підписаний `initData`, `form-submit` верифікує HMAC, голий `?uid=` довіряється лише як unverified-fallback.
-- **903 root vitest ✅ (+12) · 103 client vitest ✅ · tsc clean.**
+- **Гілка `fix/initdata-hmac-verification`, PR #58 відкритий** — реалізовано, задеплоєно живо в n8n, верифіковано живими тестами (двічі — основний фікс + hardening). **Ще НЕ змержена в main** (чекає review Сергія, оскільки змінює довіру до production write-path).
+- **Issue #56 — усі 3 пункти чекліста виконані** (закрито коментарем + body, закриється автоматично через `Closes #56` при мерджі PR #58).
+- **Security review (commit-review + push-sweep) знайшов і виправлено CRITICAL/HIGH дірку того ж дня:** перша версія fail-open на відсутність `init_data` (фолбек на голий `uid`) була точно тим самим вектором атаки #56 без потреби підробляти підпис. Закрито: тепер відсутність `init_data` теж hard reject за замовчуванням; dev/web-fallback лишився тільки за явним server-side прапорцем `Global Config.ALLOW_UNVERIFIED_UID` (`'false'` за замовчуванням).
+- **907 root vitest ✅ (+16) · 103 client vitest ✅ · tsc clean.**
 
 ### Що зроблено
-1. `n8n/templates/verify-init-data.js` (NEW) — `verifyInitData()`: офіційний алгоритм Telegram **Mini App** (HMAC_SHA256 key="WebAppData" → secret_key → HMAC_SHA256(data_check_string) → hex hash), timing-safe compare, 24г anti-replay вікно на `auth_date`. 12 unit-тестів.
+1. `n8n/templates/verify-init-data.js` (NEW) — `verifyInitData()`: офіційний алгоритм Telegram **Mini App** (HMAC_SHA256 key="WebAppData" → secret_key → HMAC_SHA256(data_check_string) → hex hash), timing-safe compare, 24г anti-replay вікно на `auth_date`. Плюс `resolveSubmission(initData, userId, botToken, { allowUnverified })` — тестована функція, що приймає рішення accept/reject (винесена з generated entry-point коду саме через раунд 2 нижче). 16 unit-тестів разом.
 2. `apps/client/src/App.tsx` — шле сирий підписаний `tg.initData` як `init_data` поряд з існуючим `user_id`.
-3. `scripts/sync-init-data-verification.mjs` (NEW) — ідемпотентний патчер: `TELEGRAM_BOT_TOKEN` у Global Config, регенерує `Validate` (GENERATED-конвенція), додає `uid_verified` у `Insert Case`. Логіка: valid → trust + `uid_verified=true`; present-but-invalid → **hard reject 400** (підробка/misconfig); absent → fallback на `user_id`, `uid_verified=false` (за чеклістом issue).
+3. `scripts/sync-init-data-verification.mjs` (NEW) — ідемпотентний патчер: `TELEGRAM_BOT_TOKEN` + `ALLOW_UNVERIFIED_UID` у Global Config, регенерує `Validate` (GENERATED-конвенція, тепер викликає `resolveSubmission()`), додає `uid_verified` у `Insert Case`.
 4. `supabase/migrations/023_uid_verified.sql` — `cases.uid_verified` (NULL/true/false) + audit-індекс. **Застосована живо Сергієм** напряму в Supabase SQL editor.
-5. `scripts/deploy-workflow.mjs` — KEY_MAP: `YOUR_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN` (токен вже був у `.env.local`, той самий бот, що й адмін-алерти `check-law-updates.mjs`).
-6. **Живий баг, знайдений лише смоук-тестом:** усі 12 unit-тестів зелені локально, але перший живий деплой відхиляв НАВІТЬ валідно підписані запити — `URLSearchParams` не глобальний у сендбоксі n8n Code-ноди (хоч `require('crypto')`/`Buffer` — доступні). Знайдено інʼєкцією тимчасового diagnostic-патча прямо в живу ноду. Виправлено: ручний парсинг query-string (`split('&')`+`decodeURIComponent`). Перевірено живо: valid→200+verified=true, tampered (forged user id, точний сценарій #56)→400, no init_data→200+verified=false. Підтверджено прямими SELECT з `cases`, не лише HTTP-кодами.
+5. `scripts/deploy-workflow.mjs` — KEY_MAP: `YOUR_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN`.
+6. **Живий баг #1, знайдений лише смоук-тестом:** `URLSearchParams` не глобальний у сендбоксі n8n Code-ноди (хоч `require('crypto')`/`Buffer` — доступні). Виправлено: ручний парсинг query-string.
+7. **Раунд 2 (security scanner):** перша версія приймала запит без `init_data` взагалі (fail-open), що = той самий #56-бейпас без підробки підпису. Виправлено через `resolveSubmission()` + `ALLOW_UNVERIFIED_UID`-прапорець. Перевірено живо двічі (відомий test-профіль `identities.external_id=236581343`): valid→200+verified=true, tampered→400, **missing init_data→400 (раніше було 200 — це і є фікс)**. Підтверджено прямим SELECT `cases.uid_verified` з Supabase.
 **Файли:** `n8n/templates/verify-init-data.js`, `__tests__/verify-init-data.test.js`, `scripts/sync-init-data-verification.mjs`, `scripts/deploy-workflow.mjs`, `supabase/migrations/023_uid_verified.sql`, `apps/client/src/App.tsx`, `n8n/workflows/current/form-submit.json` (задеплоєно), `TELEGRAM-BOT-GUIDE.md` §8, `DECISIONS.md`.
 
 ### 🔴 Наступний крок (нова сесія)
-1. **Відкрити PR `fix/initdata-hmac-verification` → main** (review diff, оскільки змінює довіру до production write-path) → змерджити (закриє #56 автоматично).
+1. **Review + merge PR #58** (`fix/initdata-hmac-verification` → main) — закриє #56 автоматично.
 2. **Vercel:** кастомний домен — IMPROVEMENTS #76.
 3. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
 

@@ -10,6 +10,21 @@
 
 ---
 
+### 2026-06-18 (session 36) — Telegram bot onboarding fixes (#55 G3) — issue complete
+**Status:** DEPLOYED + verified live · branch `feature/bot-onboarding-g3` (not yet merged) · issue #55 all 3 groups checked, closes on merge to `main`
+**Why:** Continuation of session 35's `main-bot` audit (`docs/architecture/TELEGRAM-BOT-GUIDE.md` §4.2/§4.3). Two functional bugs remained after G1 (Error Trigger) + G2 (web_app button): a brand-new user's first real message was swallowed (Welcome New User was a dead-end node), and tapping `Ask Confirm`'s Так/Ні buttons leaked the raw `callback_data` into Pre-filter/AI Agent as plain text instead of being routed.
+**What happened:**
+1. `scripts/sync-main-bot-onboarding.mjs` (NEW) — idempotent patcher, same convention as `sync-main-bot-fixes.mjs`. Adds 4 nodes (`Mark New User`, `Is Callback?`, `Route Callback`, `Callback: Confirm Service?`), rewires `Welcome New User`/`User Exists?` connections, updates `Pre-filter`'s code to carry an `_is_new` flag through, adds an `_is_new` greeting prefix to `Show Menu`/`Send Help`/`Ask Confirm`/`Send TWA Button`, and adds a `🔄 Інша послуга` button to `Send TWA Button`. Caught and fixed a self-review bug before deploying: the greeting-prefix injector double-wrapped text on a second run (no it-already-has-the-prefix check) — fixed by detecting a marker substring before wrapping, confirmed idempotent (0 changes) on a second run.
+2. Deployed via `scripts/deploy-workflow.mjs main-bot` (26→30 nodes, all 4 new nodes credential-free so no rebinding risk).
+3. **Verified live** against the real n8n webhook (`POST /webhook/tg-webhook/webhook`, secret token derived from n8n's own formula `${workflowId}_${nodeId}` after `node_modules` source inspection — Telegram Trigger v1.1+ rejects unauthenticated calls). Three scenarios via the n8n executions API: (a) existing-user text message → `Is Callback?`(FALSE)→`Pre-filter`→AI Agent→`Send TWA Button` with the new 🔄 button and no greeting prefix (`_is_new=false` correctly suppressed it) — confirmed live in Sergey's own Telegram; (b) `callback_query: show_menu` → `Route Callback`→`Callback: Confirm Service?`(FALSE)→`Show Menu`, AI Agent never invoked; (c) `callback_query: confirm_service_1` → same routing → `Get Service (high)`→`Is Active?`→`Send TWA Button` for the correct service. A 4th test with a synthetic (non-existent) chat ID hit Telegram's `400 chat not found` on `Welcome New User` as expected (fake chat can't receive messages) — incidentally re-confirmed G1's Error Trigger still alerts correctly. Cleaned up the test profile/identity rows created during that run.
+4. Updated `docs/architecture/TELEGRAM-BOT-GUIDE.md` §4.2/§4.3 (marked fixed, fix description), §5 table, §9 plan (all 3 groups ✅).
+**Files:**
+- `scripts/sync-main-bot-onboarding.mjs` — **NEW** — idempotent G3 patcher
+- `n8n/workflows/current/main-bot.json` — +4 nodes, rewired connections, Pre-filter code, 4 prefixed texts, new button (deployed)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §4.2/§4.3/§5/§9 marked done
+**Issue:** #55 — all 3 checklist boxes ticked (G1/G2/G3), comment posted with verification detail; closes automatically on merge to `main`.
+**Not done:** out-of-scope items remain backlogged (#6 initData security, IMPROVEMENTS #43/#4a).
+
 ### 2026-06-18 (session 35) — Telegram bot un-broken: web_app button + Vercel domain + Error Trigger (#55 G1+G2)
 **Status:** COMMITTED · branch `feature/bot-reliability-onboarding` → merged to main · issue #55 **stays OPEN** (G3 onboarding remains) · #56 created (initData security)
 **Why:** Session started as `/session-start` → a discussion on reducing RAG hallucinations / lawyer hand-off → pivoted to "polish the Telegram user interaction". While mapping the bot, Sergey hit a live bug: typing «Алименты» (an existing user, real service, high confidence) returned **silence**. Diagnosed via the n8n executions API, not the repo file.

@@ -1,6 +1,45 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-18 (session 35 — Telegram bot un-broken: web_app button fix + Vercel domain + Error Trigger, #55 G1+G2 done)
+> Updated: 2026-06-18 (session 36 — Telegram bot onboarding, #55 G3 done — issue #55 complete, all 3 groups)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 36 (2026-06-18) — Telegram bot онбординг (#55 G3) — issue #55 повністю закрито (закриється при мерджі)
+
+### Головне — стан ЗАРАЗ
+- **Гілка `feature/bot-onboarding-g3`** — готова, задеплоєна live, верифікована живими тестами. **Ще НЕ змержена в main** (наступний крок — review diff + PR).
+- **Issue #55 — усі 3 групи (G1+G2+G3) ✅**, чекліст затиканий, коментар з деталями верифікації додано. Закриється автоматично при мерджі PR в `main` (`Closes #55`).
+- Продовження сесії 35: залишались 2 функціональні баги з аудиту (`TELEGRAM-BOT-GUIDE.md` §4.2/§4.3) — обидва виправлені цієй сесії.
+
+### Що зроблено (session 36)
+1. **`scripts/sync-main-bot-onboarding.mjs`** (NEW) — ідемпотентний патчер у стилі `sync-main-bot-fixes.mjs`:
+   - §4.2 фікс: `Welcome New User` (був тупик) → нова нода `Mark New User` (тегує `_is_new: true`, ре-читає `Normalize` напряму) → `Pre-filter`.
+   - §4.3 фікс: нова гілка `Is Callback?` (за `_type==='callback_query'`) між `User Exists?`(FALSE) і `Pre-filter` → `Route Callback` парсить `confirm_service_{id}`/`show_menu` → `Callback: Confirm Service?` фан-інить у вже існуючі `Get Service (high)`/`Show Menu` (нуль дублювання логіки).
+   - Привітання-префікс за `_is_new` на 4 термінальних нодах (`Show Menu`/`Send Help`/`Ask Confirm`/`Send TWA Button`), кнопка `🔄 Інша послуга` на `Send TWA Button`.
+   - **Самоперевірка знайшла й виправила баг до деплою:** префікс-інжектор подвоював текст при повторному запуску скрипта (немає чеку "вже є префікс?") — додано маркер-підрядок, підтверджено ідемпотентність (0 змін на 2-му прогоні).
+2. **Задеплоєно** (`scripts/deploy-workflow.mjs main-bot`): 26→30 нод, усі 4 нові — без credentials (нуль ризику ребайндингу).
+3. **Верифіковано live** через реальний n8n webhook (знадобилось дізнатись секрет-токен Telegram Trigger — формула `${workflowId}_${nodeId}`, знайдена в сорсі ноди всередині контейнера). 3 сценарії на реальному chat_id адміна:
+   - текст від існуючого юзера → `Is Callback?`(FALSE)→`Pre-filter`→AI Agent→`Send TWA Button` (нова кнопка 🔄, без префіксу — `_is_new=false` коректно) — **підтверджено скріном з реального Telegram**;
+   - `callback_query: show_menu` → `Route Callback`→`Callback: Confirm Service?`(FALSE)→`Show Menu`, AI Agent НЕ викликався;
+   - `callback_query: confirm_service_1` → `Get Service (high)`→`Is Active?`→`Send TWA Button` (правильний сервіс).
+   - Побічно: тест із фейковим chat_id підтвердив, що G1 Error Trigger досі коректно перехоплює "chat not found" і шле адмін-алерт. Тестові profile/identity рядки видалено з Supabase після перевірки.
+4. Оновлено `docs/architecture/TELEGRAM-BOT-GUIDE.md` (§4.2/§4.3 позначені виправленими, §5 таблиця, §9 план).
+5. Issue #55: усі 3 чекбокси затикано, доданий деталізований коментар з верифікацією.
+
+### Ключові файли
+- `scripts/sync-main-bot-onboarding.mjs` — **NEW** ідемпотентний патчер G3
+- `n8n/workflows/current/main-bot.json` — +4 ноди, перепрокладені connections, оновлений Pre-filter, 4 префікси, нова кнопка (задеплоєно)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §4.2/§4.3/§5/§9 оновлено
+
+### 🔴 Наступний крок (нова сесія)
+1. **Review diff гілки `feature/bot-onboarding-g3`** → відкрити PR → змерджити в `main` (закриє #55 автоматично).
+2. **#56** — серверна верифікація initData (#6) у form-submit.
+3. **Vercel:** кастомний домен — IMPROVEMENTS #76.
+4. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+
+### Запуск середовища
+- n8n live (Docker, 30 нод main-bot active) + ngrok (`rosy-caution-progeny.ngrok-free.dev`).
+- Для прямого тесту webhook без реального Telegram-клієнта: потрібен заголовок `X-Telegram-Bot-Api-Secret-Token: <workflowId>_<telegramTriggerNodeId>` (інакше n8n відповість `403 Provided secret is not valid`), і шлях `/webhook/<webhookId>/webhook` (НЕ просто `/webhook/<webhookId>` — підтверджено через `getWebhookInfo` Telegram Bot API).
 
 ---
 

@@ -4,11 +4,11 @@
 
 ---
 
-## 🆕 Session 36 (2026-06-18) — Telegram bot онбординг (#55 G3) — issue #55 повністю закрито (закриється при мерджі)
+## 🆕 Session 36 (2026-06-18) — Telegram bot онбординг (#55 G3) — PR#57 змержено, issue #55 закрито
 
 ### Головне — стан ЗАРАЗ
-- **Гілка `feature/bot-onboarding-g3`** — готова, задеплоєна live, верифікована живими тестами. **Ще НЕ змержена в main** (наступний крок — review diff + PR).
-- **Issue #55 — усі 3 групи (G1+G2+G3) ✅**, чекліст затиканий, коментар з деталями верифікації додано. Закриється автоматично при мерджі PR в `main` (`Closes #55`).
+- **PR#57 змержено в `main`** (`0123510`), гілка `feature/bot-onboarding-g3` видалена на GitHub після merge.
+- **Issue #55 CLOSED** — усі 3 групи (G1+G2+G3) ✅, чекліст затиканий, коментар з деталями верифікації доданий.
 - Продовження сесії 35: залишались 2 функціональні баги з аудиту (`TELEGRAM-BOT-GUIDE.md` §4.2/§4.3) — обидва виправлені цієй сесії.
 
 ### Що зроблено (session 36)
@@ -32,10 +32,9 @@
 - `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §4.2/§4.3/§5/§9 оновлено
 
 ### 🔴 Наступний крок (нова сесія)
-1. **Review diff гілки `feature/bot-onboarding-g3`** → відкрити PR → змерджити в `main` (закриє #55 автоматично).
-2. **#56** — серверна верифікація initData (#6) у form-submit.
-3. **Vercel:** кастомний домен — IMPROVEMENTS #76.
-4. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+1. **#56** — серверна верифікація initData (#6) у form-submit.
+2. **Vercel:** кастомний домен — IMPROVEMENTS #76.
+3. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
 
 ### Запуск середовища
 - n8n live (Docker, 30 нод main-bot active) + ngrok (`rosy-caution-progeny.ngrok-free.dev`).

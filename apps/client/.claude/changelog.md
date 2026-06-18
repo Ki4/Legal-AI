@@ -11,7 +11,7 @@
 ---
 
 ### 2026-06-18 (session 36) — Telegram bot onboarding fixes (#55 G3) — issue complete
-**Status:** DEPLOYED + verified live · branch `feature/bot-onboarding-g3` (not yet merged) · issue #55 all 3 groups checked, closes on merge to `main`
+**Status:** MERGED · PR#57 (`0123510`) · branch `feature/bot-onboarding-g3` deleted after merge · issue #55 **closed** (all 3 groups G1+G2+G3 done)
 **Why:** Continuation of session 35's `main-bot` audit (`docs/architecture/TELEGRAM-BOT-GUIDE.md` §4.2/§4.3). Two functional bugs remained after G1 (Error Trigger) + G2 (web_app button): a brand-new user's first real message was swallowed (Welcome New User was a dead-end node), and tapping `Ask Confirm`'s Так/Ні buttons leaked the raw `callback_data` into Pre-filter/AI Agent as plain text instead of being routed.
 **What happened:**
 1. `scripts/sync-main-bot-onboarding.mjs` (NEW) — idempotent patcher, same convention as `sync-main-bot-fixes.mjs`. Adds 4 nodes (`Mark New User`, `Is Callback?`, `Route Callback`, `Callback: Confirm Service?`), rewires `Welcome New User`/`User Exists?` connections, updates `Pre-filter`'s code to carry an `_is_new` flag through, adds an `_is_new` greeting prefix to `Show Menu`/`Send Help`/`Ask Confirm`/`Send TWA Button`, and adds a `🔄 Інша послуга` button to `Send TWA Button`. Caught and fixed a self-review bug before deploying: the greeting-prefix injector double-wrapped text on a second run (no it-already-has-the-prefix check) — fixed by detecting a marker substring before wrapping, confirmed idempotent (0 changes) on a second run.

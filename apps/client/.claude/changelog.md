@@ -10,10 +10,8 @@
 
 ---
 
-## 📋 Pending commits (uncommitted work)
-
 ### 2026-06-18 (session 34) — Retrieval Debt: wire is_stale flagging into applyLawChange (#11)
-**Status:** UNCOMMITTED (working tree) · no branch yet
+**Status:** MERGED · PR#54 (`6705b98`) · branch `feature/retrieval-debt-is-stale` deleted after merge · issue #11 closed automatically (`Closes #11`)
 **Why:** Picked from the Tier-1 backlog. Issue #11 asked for an `is_outdated` flag on `law_chunks` + CRON wiring + Telegram alert. Investigating the schema first (per the project's stale-issue habit) found 3 of 4 Definition-of-Done items already existed under a different name: `is_stale BOOLEAN` already on both `law_chunks` and `law_documents` (migration 002/003), already filtered (`WHERE is_stale = false`) in every read RPC (`search_law_chunks`, `search_law_chunks_hybrid`, `search_law_text`, `get_law_articles`), and the Telegram alert already shipped in session 19. The actual gap: nothing ever set the flag to `true` on a detected law change.
 **What happened:**
 1. `scripts/law-registry.mjs` — new `lawCode(law)`: derives the rada doc-id (e.g. `2947-14`) from a law's canonical URL, matching `law_chunks.law_code` / `law_documents.law_code`.

@@ -1,6 +1,39 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-17 (session 32 — divorce-with-children G1-G3 (#28): "суд визначить" + графік побачень, live-deployed)
+> Updated: 2026-06-18 (session 34 — issue #18 mobile-verified+closed, issue #11 Retrieval Debt implemented+merged PR#54)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 34 (2026-06-18) — #18 mobile verification + #11 Retrieval Debt (is_stale flagging)
+
+### Головне — стан ЗАРАЗ
+- **main чистий** ✅ — `6705b98` (PR#54 merged, fast-forward), branch `feature/retrieval-debt-is-stale` deleted.
+- **Issues #18 і #11 ОБИДВА closed.**
+- (Примітка: session 33's master-doc section was never written — only `changelog.md` got it, per that session's "low token budget" note. Not backfilled here; see changelog.md 2026-06-17 entries for session 33's actual work — DatePickerField #27 + admin toast #18 implementation.)
+
+### Що зроблено
+
+#### Issue #18 — admin toast, mobile verification (no code change)
+- Session 33 shipped the toast (PR#53) but left #18 open pending the one remaining DoD box: mobile-overlap check, blocked on no admin test login.
+- Minted a one-time Supabase magic-link (`generate_link`, service-role key, local script only) for the lawyer test account — no password reset/exposure. Loaded the real admin app at 375×667, intercepted `window.fetch` on the Supabase `PATCH /services` call (mocked 403 then 200) to trigger both error and success toasts live without writing to production.
+- Confirmed: `Toast` (`fixed bottom-4 ... z-[60]`) renders centered, fully in-viewport, never overlaps — `AdminLayout`'s mobile layout has only a top bar, no bottom nav. Signed out, deleted all temp artifacts.
+- **Issue #18 closed.**
+
+#### Issue #11 — Retrieval Debt (`is_outdated` flag)
+- Investigation found 3 of 4 Definition-of-Done items already existed under a different name: `is_stale BOOLEAN` on `law_chunks`/`law_documents` (migration 002/003), already filtered in every read RPC, Telegram alert already shipped (session 19). Real gap: nothing ever set the flag `true`.
+- `scripts/law-registry.mjs` — new `lawCode(law)` (canonical URL → rada doc-id, e.g. `2947-14`).
+- `scripts/lib/law-change.mjs` — the single canonical `applyLawChange()` (shared by CRON + manual CLI) now also PATCHes `law_chunks`/`law_documents` to `is_stale=true` by `law_code`, independent of service dependents.
+- `scripts/service-lifecycle.mjs`, `scripts/check-law-updates.mjs` — one console line each reporting the flip.
+- Verified live (read-only): dry-run against real Supabase resolved divorce+alimony as dependents; a real PATCH against a non-existent `law_code` proved schema/permissions without touching real rows.
+- Full test suite green; PR#54 opened and merged (fast-forward).
+- **Issue #11 closed**, automated re-indexing (scrape+re-embed) explicitly deferred — manual `seed-divorce-laws.ts --force` already clears the flag as a side effect.
+
+#### Misc
+- Replaced the `[console]::Beep` notification/stop sound hooks (fixed volume, no amplitude control) with a WAV-tone generator (`C:\Users\serge\.claude\scripts\play-tone.ps1` + `notify-sound.ps1`/`stop-sound.ps1`) played via `System.Media.SoundPlayer`, same frequencies/durations, volume scaled to 75% (~25% quieter). Not part of this repo — lives in the global `~/.claude` config.
+
+### 🔴 Наступний крок
+1. (нема нагальних завдань — обидва issue цієї сесії закриті, змержено)
+2. **~2026-06-25 (Ольга):** CRON schedule, law changes review (тепер включно з RAG-стале маркуванням), sign-off `exception_if`, flip alimony-change — нічого з цього списку не торкались.
 
 ---
 

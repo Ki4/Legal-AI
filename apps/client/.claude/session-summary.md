@@ -1,14 +1,42 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-18 (session 36 — Telegram bot onboarding, #55 G3 done — issue #55 complete, all 3 groups)
+> Updated: 2026-06-18 (session 37 — initData HMAC verification, #56 done + hardened — live, PR #58 awaiting review)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 36 (2026-06-18) — Telegram bot онбординг (#55 G3) — issue #55 повністю закрито (закриється при мерджі)
+## 🆕 Session 37 (2026-06-18) — initData HMAC-верифікація (#56) — задеплоєно живо + закрито fail-open дірку
 
 ### Головне — стан ЗАРАЗ
-- **Гілка `feature/bot-onboarding-g3`** — готова, задеплоєна live, верифікована живими тестами. **Ще НЕ змержена в main** (наступний крок — review diff + PR).
-- **Issue #55 — усі 3 групи (G1+G2+G3) ✅**, чекліст затиканий, коментар з деталями верифікації додано. Закриється автоматично при мерджі PR в `main` (`Closes #55`).
+- **Гілка `fix/initdata-hmac-verification`, PR #58 відкритий** — реалізовано, задеплоєно живо в n8n, верифіковано живими тестами (двічі — основний фікс + hardening). **Ще НЕ змержена в main** (чекає review Сергія, оскільки змінює довіру до production write-path).
+- **Issue #56 — усі 3 пункти чекліста виконані** (закрито коментарем + body, закриється автоматично через `Closes #56` при мерджі PR #58).
+- **Security review (commit-review + push-sweep) знайшов і виправлено CRITICAL/HIGH дірку того ж дня:** перша версія fail-open на відсутність `init_data` (фолбек на голий `uid`) була точно тим самим вектором атаки #56 без потреби підробляти підпис. Закрито: тепер відсутність `init_data` теж hard reject за замовчуванням; dev/web-fallback лишився тільки за явним server-side прапорцем `Global Config.ALLOW_UNVERIFIED_UID` (`'false'` за замовчуванням).
+- **907 root vitest ✅ (+16) · 103 client vitest ✅ · tsc clean.**
+
+### Що зроблено
+1. `n8n/templates/verify-init-data.js` (NEW) — `verifyInitData()`: офіційний алгоритм Telegram **Mini App** (HMAC_SHA256 key="WebAppData" → secret_key → HMAC_SHA256(data_check_string) → hex hash), timing-safe compare, 24г anti-replay вікно на `auth_date`. Плюс `resolveSubmission(initData, userId, botToken, { allowUnverified })` — тестована функція, що приймає рішення accept/reject (винесена з generated entry-point коду саме через раунд 2 нижче). 16 unit-тестів разом.
+2. `apps/client/src/App.tsx` — шле сирий підписаний `tg.initData` як `init_data` поряд з існуючим `user_id`.
+3. `scripts/sync-init-data-verification.mjs` (NEW) — ідемпотентний патчер: `TELEGRAM_BOT_TOKEN` + `ALLOW_UNVERIFIED_UID` у Global Config, регенерує `Validate` (GENERATED-конвенція, тепер викликає `resolveSubmission()`), додає `uid_verified` у `Insert Case`.
+4. `supabase/migrations/023_uid_verified.sql` — `cases.uid_verified` (NULL/true/false) + audit-індекс. **Застосована живо Сергієм** напряму в Supabase SQL editor.
+5. `scripts/deploy-workflow.mjs` — KEY_MAP: `YOUR_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN`.
+6. **Живий баг #1, знайдений лише смоук-тестом:** `URLSearchParams` не глобальний у сендбоксі n8n Code-ноди (хоч `require('crypto')`/`Buffer` — доступні). Виправлено: ручний парсинг query-string.
+7. **Раунд 2 (security scanner):** перша версія приймала запит без `init_data` взагалі (fail-open), що = той самий #56-бейпас без підробки підпису. Виправлено через `resolveSubmission()` + `ALLOW_UNVERIFIED_UID`-прапорець. Перевірено живо двічі (відомий test-профіль `identities.external_id=236581343`): valid→200+verified=true, tampered→400, **missing init_data→400 (раніше було 200 — це і є фікс)**. Підтверджено прямим SELECT `cases.uid_verified` з Supabase.
+**Файли:** `n8n/templates/verify-init-data.js`, `__tests__/verify-init-data.test.js`, `scripts/sync-init-data-verification.mjs`, `scripts/deploy-workflow.mjs`, `supabase/migrations/023_uid_verified.sql`, `apps/client/src/App.tsx`, `n8n/workflows/current/form-submit.json` (задеплоєно), `TELEGRAM-BOT-GUIDE.md` §8, `DECISIONS.md`.
+
+### 🔴 Наступний крок (нова сесія)
+1. **Review + merge PR #58** (`fix/initdata-hmac-verification` → main) — закриє #56 автоматично.
+2. **Vercel:** кастомний домен — IMPROVEMENTS #76.
+3. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+
+### Запуск середовища
+- n8n live (Docker, 40 нод form-submit active) — деплоєно через `node scripts/sync-init-data-verification.mjs && node scripts/deploy-workflow.mjs form-submit`.
+
+---
+
+## 🆕 Session 36 (2026-06-18) — Telegram bot онбординг (#55 G3) — PR#57 змержено, issue #55 закрито
+
+### Головне — стан ЗАРАЗ
+- **PR#57 змержено в `main`** (`0123510`), гілка `feature/bot-onboarding-g3` видалена на GitHub після merge.
+- **Issue #55 CLOSED** — усі 3 групи (G1+G2+G3) ✅, чекліст затиканий, коментар з деталями верифікації доданий.
 - Продовження сесії 35: залишались 2 функціональні баги з аудиту (`TELEGRAM-BOT-GUIDE.md` §4.2/§4.3) — обидва виправлені цієй сесії.
 
 ### Що зроблено (session 36)
@@ -32,10 +60,9 @@
 - `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §4.2/§4.3/§5/§9 оновлено
 
 ### 🔴 Наступний крок (нова сесія)
-1. **Review diff гілки `feature/bot-onboarding-g3`** → відкрити PR → змерджити в `main` (закриє #55 автоматично).
-2. **#56** — серверна верифікація initData (#6) у form-submit.
-3. **Vercel:** кастомний домен — IMPROVEMENTS #76.
-4. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+1. **#56** — серверна верифікація initData (#6) у form-submit.
+2. **Vercel:** кастомний домен — IMPROVEMENTS #76.
+3. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
 
 ### Запуск середовища
 - n8n live (Docker, 30 нод main-bot active) + ngrok (`rosy-caution-progeny.ngrok-free.dev`).

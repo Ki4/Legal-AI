@@ -180,8 +180,17 @@ Welcome/Show Menu обіцяють ТЦК/ФОП/пошук суду — усі 
 
 **#6 (безпека) закриває НЕ кнопка, а сервер:** TWA читає `initDataUnsafe` (непідписане) і приймає голий `?uid=` (підробляється). Справжній фікс — `form-submit` верифікує HMAC-підпис `initData` ботовим токеном і не довіряє `uid` без валідного підпису. Окремий security-кусок у write-path.
 
+**✅ Виправлено (issue #56, нова сесія).** `apps/client/src/App.tsx` тепер шле сирий підписаний `tg.initData` (поле `init_data`) поряд з `user_id`. `Validate`-нода в `form-submit` (`n8n/templates/verify-init-data.js`, GENERATED через `scripts/sync-init-data-verification.mjs`) перевіряє HMAC за офіційним алгоритмом Telegram Mini App (`secret_key = HMAC_SHA256(key="WebAppData", msg=bot_token)`, `hash = HMAC_SHA256(key=secret_key, msg=data_check_string)`) + freshness-вікно 24г проти replay:
+- `init_data` валідний → довіряємо Telegram user id, `uid_verified=true`.
+- `init_data` присутній, але невалідний (підробка/неправильний токен) → **hard reject** (400) — справжній Telegram-клієнт завжди підписує коректно, тож невалідний підпис при наявності `init_data` означає підробку чи misconfig, а не легітимний edge-case.
+- `init_data` ВІДСУТНІЙ → **за замовчуванням теж hard reject** (400 `missing_init_data`). Перша версія фіча мала тут fallback на голий `user_id` (`uid_verified=false`) — security review (комітний + push sweep) правильно вказав, що це відкриває оригінальну дірку #56 знову: атакеру не треба підробляти підпис, достатньо просто НЕ передати `init_data`. Dev/web-fallback (відкриття форми поза Telegram) лишився, але тільки за явним сервер-сайд прапорцем `Global Config.ALLOW_UNVERIFIED_UID` (`'false'` за замовчуванням, не секрет — комітиться як літерал, як `GROQ_MODEL`); клієнт не може на нього вплинути.
+
+**Підводний камінь, знайдений живим тестом:** `URLSearchParams` — НЕ глобальний у сендбоксі n8n Code-ноди (`ReferenceError: URLSearchParams is not defined`), хоч `require('crypto')`/`Buffer` доступні. Query-string парситься вручну (`split('&')` + `decodeURIComponent`).
+
+**Висновок (2 раунди live-перевірки):** unit-тести підтверджують лише логіку, не доступність глобалів сендбоксу — і не ловлять дизайн-дірки типу fail-open за замовчуванням. Автоматизований security review (запускається після кожного коміту й після push) застав другу проблему вже після деплою; рішення логіки винесене у тестовану `resolveSubmission()` (`n8n/templates/verify-init-data.js`), а не лишене лише у згенерованому entry-point коді ноди.
+
 ## 9. План робіт (хірургічно, по сесії на групу)
 
 - **Issue (main-bot):** G1 Error Trigger ✅ → G2 робоча web_app-кнопка (raw HTTP) ✅ → G3 онбординг (фікс тупика нового юзера §4.2 ✅ + обробка callback_query §4.3 ✅ + привітання-префікс `_is_new` ✅ + 🔄 Інша послуга ✅) — усі три групи здано. Спільний контекст = `main-bot.json`.
-- **Issue (#6 security):** серверна верифікація `initData` у `form-submit`, прибрати довіру до `?uid=`.
+- **Issue (#6/#56 security):** ✅ серверна верифікація `initData` у `form-submit` — зроблено.
 - **Беклог (IMPROVEMENTS):** динамічний каталог за `status` (#43), застарілі form-посилання (#4a), loading-індикатор у чаті, чесний список послуг (active/coming-soon/paused).

@@ -59,6 +59,7 @@ const KEY_MAP = {
   YOUR_SUPABASE_SERVICE_ROLE_KEY: 'SUPABASE_SERVICE_KEY',
   YOUR_ENCRYPTION_KEY_64_HEX: 'ENCRYPTION_KEY',
   YOUR_GROQ_API_KEY: 'GROQ_API_KEY',  // #71 model-agnostic: Groq key now readable by Code nodes
+  YOUR_TELEGRAM_BOT_TOKEN: 'TELEGRAM_BOT_TOKEN',  // #56 initData HMAC verification in Validate
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

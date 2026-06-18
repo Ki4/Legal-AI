@@ -10,8 +10,49 @@
 
 ---
 
+### 2026-06-18 (session 37) — initData HMAC verification in form-submit (#56) — live, issue resolved
+**Status:** DEPLOYED + verified live · branch `fix/initdata-hmac-verification` · issue #56 all 3 checklist items done, closes on merge to `main`
+**Why:** TWA's write-path only read `initDataUnsafe` (client-readable, spoofable) and accepted a bare `?uid=` from the URL with zero verification — anyone could open the form in a plain browser with someone else's Telegram id and submit a case under their identity. Dependency on #55 (working web_app button, so `initData` actually arrives) was satisfied last session.
+**What happened:**
+1. `n8n/templates/verify-init-data.js` (NEW) — `verifyInitData(initData, botToken, options)` implements Telegram's official **Mini App** algorithm (not the different Login Widget one): `secret_key = HMAC_SHA256(key="WebAppData", msg=bot_token)`, `hash = HMAC_SHA256(key=secret_key, msg=data_check_string)`, timing-safe compare, + a 24h `auth_date` freshness check against replay. 12 unit tests (`__tests__/verify-init-data.test.js`) cover valid/tampered/forged-user-id/wrong-token/expired/missing-field cases — all built by independently re-deriving a real signature in the test, not by calling back into the function under test.
+2. `apps/client/src/App.tsx` — now sends the raw signed `tg.initData` string as `init_data` alongside the existing `user_id` field.
+3. `scripts/sync-init-data-verification.mjs` (NEW) — idempotent patcher (same GENERATED-code convention as `sync-l4b-nodes.mjs`): adds a `TELEGRAM_BOT_TOKEN` placeholder to Global Config, regenerates `Validate`'s jsCode to call `verifyInitData`, adds a `uid_verified` column mapping to `Insert Case`. Design: `init_data` valid → trust the verified Telegram user id (`uid_verified=true`); `init_data` present but invalid → **hard reject (400)** — a real Telegram client always signs correctly, so this only fires on tampering or a token misconfig, and failing loudly beats failing silently for either; `init_data` absent entirely (old forwarded link opened outside Telegram) → fall back to the raw `user_id`, flagged `uid_verified=false` for audit, per the issue's own checklist wording.
+4. `supabase/migrations/023_uid_verified.sql` — `cases.uid_verified BOOLEAN` (NULL = predates this column, true = HMAC-verified, false = unverified fallback) + an audit index. Applied live by Sergey directly in the Supabase SQL editor.
+5. `scripts/deploy-workflow.mjs` — `YOUR_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN` added to KEY_MAP (the token already existed in `.env.local`, reused from `check-law-updates.mjs`'s admin-alert path — same bot).
+6. **Live bug found and fixed via smoke test, not unit tests:** all 12 unit tests passed locally, but the first live deploy rejected every request — including correctly-signed ones — with a generic `malformed` reason. Root cause, found by temporarily patching the live node to surface the real error: `URLSearchParams` is not a global inside n8n's Code node sandbox (`ReferenceError: URLSearchParams is not defined`), even though `require('crypto')`/`Buffer` are (proven by the pre-existing `Encrypt Data` node). Rewrote the query-string parsing by hand (`split('&')` + `decodeURIComponent`) with no dependency on that global. Re-verified live: valid signature → 200 + `uid_verified=true`; tampered signature (forged user id appended after signing, the exact #56 spoofing scenario) → 400 `invalid_init_data`; no `init_data` at all → 200 + `uid_verified=false`. Confirmed via direct Supabase reads of the resulting `cases` rows, not just HTTP status codes.
+**Files:**
+- `n8n/templates/verify-init-data.js` — **NEW**
+- `n8n/templates/__tests__/verify-init-data.test.js` — **NEW** — 12 tests
+- `scripts/sync-init-data-verification.mjs` — **NEW** — idempotent patcher
+- `scripts/deploy-workflow.mjs` — KEY_MAP entry
+- `supabase/migrations/023_uid_verified.sql` — **NEW** — applied live
+- `apps/client/src/App.tsx` — sends `init_data`
+- `n8n/workflows/current/form-submit.json` — Validate regenerated, Global Config + Insert Case patched (deployed live)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §8 marked resolved with the implementation summary
+- `docs/architecture/DECISIONS.md` — new section on the fail-closed/fail-open asymmetry + the `URLSearchParams` sandbox gotcha
+**Tests:** 903 root vitest ✅ (+12 new) · 103 client vitest ✅ · tsc clean. **Live-verified** against the real n8n webhook (not just unit tests) — see point 6 above.
+**Not done:** PR opened (#58) but not merged to `main` — see follow-up entry below; merging awaits Sergey's review after the fail-open fix.
+
+### 2026-06-18 (session 37 cont.) — close the fail-open gap the security scanner caught in #56 (#56 hardening)
+**Status:** DEPLOYED + verified live · same branch `fix/initdata-hmac-verification` / PR #58 (not yet merged)
+**Why:** the commit-review and push-sweep automated security checks (security-guidance plugin) both independently flagged the same CRITICAL/HIGH finding right after the #56 work above was pushed: the "no `init_data` → fall back to the raw `user_id`, just flagged unverified" branch was still exploitable by the *exact* attack #56 was opened to close — an attacker doesn't need to forge an HMAC signature, they can simply omit `init_data` from the POST body entirely and the server trusted their claimed `user_id` anyway. The fallback was meant for dev/legacy use, but nothing distinguished that from a live attack request.
+**What happened:**
+1. `n8n/templates/verify-init-data.js` — added `resolveSubmission(initData, userId, botToken, { allowUnverified, maxAgeSeconds })`, a pure testable function that now makes the accept/reject call instead of leaving it inline in generated entry-point code: valid signature → trust it (`uidVerified: true`); present-but-invalid signature → reject regardless of any flag; **missing signature → reject by default**, only falling back to the raw `userId` (`uidVerified: false`) when `allowUnverified` is explicitly `true`.
+2. `Global Config` gained `ALLOW_UNVERIFIED_UID: 'false'` — a literal, non-secret, server-only switch (same pattern as `GROQ_MODEL`) the client cannot read or influence. Stays `'false'` in production; an operator would have to flip it by hand in the live n8n Global Config node to ever re-enable the dev fallback.
+3. `scripts/sync-init-data-verification.mjs` — regenerated `Validate`'s jsCode to call `resolveSubmission()` instead of duplicating the accept/reject branching inline; added the `ALLOW_UNVERIFIED_UID` placeholder-insertion step (idempotent, like the rest of the script).
+4. 4 new unit tests for `resolveSubmission` (valid → verified; invalid signature → rejected even with `allowUnverified: true`; missing signature + default flag → rejected; missing signature + `allowUnverified: true` → accepted unverified) — the missing-signature-rejected case is the one that would have caught this regression before it ever reached production.
+5. Live re-smoke-tested against the real webhook with a known `identities.external_id` test profile: valid signed `init_data` → 200, `cases.uid_verified=true` (confirmed via direct Supabase read); tampered → 400 `invalid_init_data` (unchanged); **missing `init_data` → now 400 `missing_init_data`** (this is the fix — previously this returned 200).
+**Files:**
+- `n8n/templates/verify-init-data.js` — added `resolveSubmission()`
+- `n8n/templates/__tests__/verify-init-data.test.js` — +4 tests
+- `scripts/sync-init-data-verification.mjs` — generates `resolveSubmission()`-based entry point + `ALLOW_UNVERIFIED_UID` flag
+- `n8n/workflows/current/form-submit.json` — Validate regenerated, Global Config patched (deployed live)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §8 updated, fail-open framing corrected
+- `docs/architecture/DECISIONS.md` — #56 section rewritten: both invalid paths are now fail-closed, regression explained
+**Tests:** 907 root vitest ✅ (+4 new) · live-verified (see point 5). **Not done:** PR #58 still awaiting Sergey's review before merge to `main`.
+
 ### 2026-06-18 (session 36) — Telegram bot onboarding fixes (#55 G3) — issue complete
-**Status:** DEPLOYED + verified live · branch `feature/bot-onboarding-g3` (not yet merged) · issue #55 all 3 groups checked, closes on merge to `main`
+**Status:** MERGED · PR#57 (`0123510`) · branch `feature/bot-onboarding-g3` deleted after merge · issue #55 **closed** (all 3 groups G1+G2+G3 done)
 **Why:** Continuation of session 35's `main-bot` audit (`docs/architecture/TELEGRAM-BOT-GUIDE.md` §4.2/§4.3). Two functional bugs remained after G1 (Error Trigger) + G2 (web_app button): a brand-new user's first real message was swallowed (Welcome New User was a dead-end node), and tapping `Ask Confirm`'s Так/Ні buttons leaked the raw `callback_data` into Pre-filter/AI Agent as plain text instead of being routed.
 **What happened:**
 1. `scripts/sync-main-bot-onboarding.mjs` (NEW) — idempotent patcher, same convention as `sync-main-bot-fixes.mjs`. Adds 4 nodes (`Mark New User`, `Is Callback?`, `Route Callback`, `Callback: Confirm Service?`), rewires `Welcome New User`/`User Exists?` connections, updates `Pre-filter`'s code to carry an `_is_new` flag through, adds an `_is_new` greeting prefix to `Show Menu`/`Send Help`/`Ask Confirm`/`Send TWA Button`, and adds a `🔄 Інша послуга` button to `Send TWA Button`. Caught and fixed a self-review bug before deploying: the greeting-prefix injector double-wrapped text on a second run (no it-already-has-the-prefix check) — fixed by detecting a marker substring before wrapping, confirmed idempotent (0 changes) on a second run.

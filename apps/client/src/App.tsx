@@ -65,6 +65,10 @@ declare global {
           user?: { id: number; first_name: string; username?: string }
           start_param?: string
         }
+        // Raw signed query string — server (#56) verifies this via HMAC
+        // against the bot token; initDataUnsafe above is client-readable
+        // and must never be trusted for identity.
+        initData: string
         colorScheme: 'light' | 'dark'
         themeParams: Record<string, string>
       }
@@ -291,6 +295,7 @@ export default function App() {
             service_slug: serviceSlug,
             user_id: resolvedUserId,
             user_first_name: tgFirstName,
+            init_data: tg?.initData || '',
             answers,
             consented_at: consentedAt,
           }),

@@ -96,6 +96,7 @@
 | **#71** | [🟠 Model-Agnostic екосистема — уникнення vendor lock-in](#71-model-agnostic-екосистема-уникнення-vendor-lock-in) |
 | **#73** | [🟡 Моніторинг частоти abstention (hybrid quality signal)](#73-моніторинг-частоти-abstention-hybrid-quality-signal) |
 | **#74** | [🟡 E2e integration тест для hybrid pipeline](#74-e2e-integration-тест-для-hybrid-pipeline) |
+| **#75** | [🟡 Telegram bot UX — loading-індикатор + чесний каталог послуг](#75-telegram-bot-ux--loading-індикатор--чесний-каталог-послуг) |
 
 > **✅ ID-колізії розведено (session 14):** другі входження перенумеровано — «RLS policies» → **#44**, «Skill для changelog» → **#45**. Перші входження #12 («Admin Dashboard») і #20 («Service Builder процес») лишились без змін.
 > **#1** відсутній історично (нумерація почалась з #2) — лишаємо як є; нові записи беруть наступний вільний номер.
@@ -1079,6 +1080,17 @@ Groq API key зберігається як n8n credential `Groq HTTP Auth` (то
   6. Окремий кейс: без RED spans → `abstained === false`, `ai_reasoning` не порожній
 - **Пріоритет:** 🟡 перед flip alimony-change → active · **Файли:**
   `n8n/templates/__tests__/hybrid-pipeline-integration.test.js` (новий)
+
+---
+
+### 75. 🟡 Telegram bot UX — loading-індикатор + чесний каталог послуг
+
+- **Зараз:** (а) між відповіддю бота й результатом немає жодного «друкує…»/прогресу — юзер у тиші (особливо болить у `form-submit`, де документ генерується асинхронно, §6 у TELEGRAM-BOT-GUIDE). (б) Welcome/Show Menu рекламують ТЦК/ФОП/пошук суду — усі `disabled`; військові спори за стратегією взагалі blocked (потрібен юрист-партнер), а не «тимчасово».
+- **Що додати:**
+  1. `sendChatAction: typing` (Telegram) перед довгими кроками + проміжний статус замість одноразового «готується ⏳».
+  2. Чесний список: показувати лише `active`, окремо «скоро» (coming-soon, без кнопок) і «на перегляді юристом» (паузовані через зміну закону) — лягає в динамічний каталог #43.
+- **Зв'язок:** #43 (динамічний каталог за `status`), #4a (застарілі form-посилання), issue #55 (надійність/онбординг бота).
+- **Пріоритет:** 🟡 перед публічним запуском · **Деталі:** `docs/architecture/TELEGRAM-BOT-GUIDE.md` §9.
 
 ---
 

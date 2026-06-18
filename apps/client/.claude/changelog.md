@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-19 (session 38) — honest service catalog in the bot (#61) — static copy, deployed
+**Status:** DEPLOYED · branch `feature/bot-honest-catalog` · closes #61 on merge
+**Why:** `main-bot`'s Welcome New User / Show Menu / Send Help all advertised ТЦК/ВЛК, ФОП, Пошук суду — all `disabled` (military is strategically *blocked*: needs a lawyer partner). Only divorce + alimony are `active`, so the bot promised 3 of 5 services that don't exist. Service Unavailable said «тимчасово недоступна... спробуйте пізніше» — reads like an outage. (§4.4 `TELEGRAM-BOT-GUIDE`, IMPROVEMENTS #43/#75.)
+**What happened:** rewrote the 4 texts as static honest copy — available = Розлучення+Аліменти (✅); the rest under «🔜 Скоро»; ТЦК framed «разом із юристом»; Service Unavailable now offers the working alternatives instead of a dead "try later". The `_is_new` greeting prefixes (session 36 / #55 G3) are preserved verbatim. Idempotent patcher `scripts/sync-main-bot-honest-catalog.mjs`.
+**Decision (Sergey):** static copy now; the *dynamic* catalog (build the menu from `services WHERE status='active'`, auto-syncing on a flip) deliberately stays in the backlog — a per-message Supabase fetch isn't worth it for a set that changes ~monthly, and it's better delivered later as **admin-editable bot copy**. Recorded in IMPROVEMENTS #43 (now "done partially").
+**Files:**
+- `scripts/sync-main-bot-honest-catalog.mjs` — **NEW** — idempotent text patcher (4 nodes)
+- `n8n/workflows/current/main-bot.json` — 4 catalog texts rewritten (deployed live)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §4.4 + §5 marked fixed
+- `docs/architecture/IMPROVEMENTS.md` — #43 updated (static done, dynamic/admin-editable deferred)
+**Tests:** no code logic (static n8n copy) — idempotency `--check` green; live-deployed node text verified via n8n API. **Not done (intentional):** live callback round-trip skipped — static text with no logic path, and to avoid more test messages to the admin chat.
+
 ### 2026-06-18 (session 38) — client notified on document-generation failure (#59) — live-verified
 **Status:** DEPLOYED + live-verified · branch `fix/client-generation-failure-feedback` · closes #59 on merge
 **Why:** In `form-submit`, everything after `Respond OK` (the 200 that closes the TWA) runs asynchronously: `Copy Template → … → Share Document`. A failure there only ever reached the catch-all `Error Trigger → Send Admin Alert` — and the Error Trigger runs in a SEPARATE execution with no access to the user's chat id, so only the admin was told. The client stayed forever on «Документ готується… ⏳». This already burned a real user (case `56e84825`, expired Google OAuth on Copy Template). See `TELEGRAM-BOT-GUIDE.md` §3.

@@ -1,6 +1,32 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-18 (session 36 — Telegram bot onboarding, #55 G3 done — issue #55 complete, all 3 groups)
+> Updated: 2026-06-18 (session 37 — initData HMAC verification, #56 done — live, PR not yet merged)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 37 (2026-06-18) — initData HMAC-верифікація (#56) — задеплоєно живо
+
+### Головне — стан ЗАРАЗ
+- **Гілка `fix/initdata-hmac-verification`** — реалізовано, задеплоєно живо в n8n, верифіковано живими тестами (3 сценарії). **Ще НЕ змержена в main** (наступний крок — відкрити PR, дати Сергію переглянути перед мерджем у production write-path).
+- **Issue #56 — усі 3 пункти чекліста виконані**: TWA шле підписаний `initData`, `form-submit` верифікує HMAC, голий `?uid=` довіряється лише як unverified-fallback.
+- **903 root vitest ✅ (+12) · 103 client vitest ✅ · tsc clean.**
+
+### Що зроблено
+1. `n8n/templates/verify-init-data.js` (NEW) — `verifyInitData()`: офіційний алгоритм Telegram **Mini App** (HMAC_SHA256 key="WebAppData" → secret_key → HMAC_SHA256(data_check_string) → hex hash), timing-safe compare, 24г anti-replay вікно на `auth_date`. 12 unit-тестів.
+2. `apps/client/src/App.tsx` — шле сирий підписаний `tg.initData` як `init_data` поряд з існуючим `user_id`.
+3. `scripts/sync-init-data-verification.mjs` (NEW) — ідемпотентний патчер: `TELEGRAM_BOT_TOKEN` у Global Config, регенерує `Validate` (GENERATED-конвенція), додає `uid_verified` у `Insert Case`. Логіка: valid → trust + `uid_verified=true`; present-but-invalid → **hard reject 400** (підробка/misconfig); absent → fallback на `user_id`, `uid_verified=false` (за чеклістом issue).
+4. `supabase/migrations/023_uid_verified.sql` — `cases.uid_verified` (NULL/true/false) + audit-індекс. **Застосована живо Сергієм** напряму в Supabase SQL editor.
+5. `scripts/deploy-workflow.mjs` — KEY_MAP: `YOUR_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN` (токен вже був у `.env.local`, той самий бот, що й адмін-алерти `check-law-updates.mjs`).
+6. **Живий баг, знайдений лише смоук-тестом:** усі 12 unit-тестів зелені локально, але перший живий деплой відхиляв НАВІТЬ валідно підписані запити — `URLSearchParams` не глобальний у сендбоксі n8n Code-ноди (хоч `require('crypto')`/`Buffer` — доступні). Знайдено інʼєкцією тимчасового diagnostic-патча прямо в живу ноду. Виправлено: ручний парсинг query-string (`split('&')`+`decodeURIComponent`). Перевірено живо: valid→200+verified=true, tampered (forged user id, точний сценарій #56)→400, no init_data→200+verified=false. Підтверджено прямими SELECT з `cases`, не лише HTTP-кодами.
+**Файли:** `n8n/templates/verify-init-data.js`, `__tests__/verify-init-data.test.js`, `scripts/sync-init-data-verification.mjs`, `scripts/deploy-workflow.mjs`, `supabase/migrations/023_uid_verified.sql`, `apps/client/src/App.tsx`, `n8n/workflows/current/form-submit.json` (задеплоєно), `TELEGRAM-BOT-GUIDE.md` §8, `DECISIONS.md`.
+
+### 🔴 Наступний крок (нова сесія)
+1. **Відкрити PR `fix/initdata-hmac-verification` → main** (review diff, оскільки змінює довіру до production write-path) → змерджити (закриє #56 автоматично).
+2. **Vercel:** кастомний домен — IMPROVEMENTS #76.
+3. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+
+### Запуск середовища
+- n8n live (Docker, 40 нод form-submit active) — деплоєно через `node scripts/sync-init-data-verification.mjs && node scripts/deploy-workflow.mjs form-submit`.
 
 ---
 

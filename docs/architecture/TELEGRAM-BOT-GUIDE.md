@@ -180,8 +180,15 @@ Welcome/Show Menu обіцяють ТЦК/ФОП/пошук суду — усі 
 
 **#6 (безпека) закриває НЕ кнопка, а сервер:** TWA читає `initDataUnsafe` (непідписане) і приймає голий `?uid=` (підробляється). Справжній фікс — `form-submit` верифікує HMAC-підпис `initData` ботовим токеном і не довіряє `uid` без валідного підпису. Окремий security-кусок у write-path.
 
+**✅ Виправлено (issue #56, нова сесія).** `apps/client/src/App.tsx` тепер шле сирий підписаний `tg.initData` (поле `init_data`) поряд з `user_id`. `Validate`-нода в `form-submit` (`n8n/templates/verify-init-data.js`, GENERATED через `scripts/sync-init-data-verification.mjs`) перевіряє HMAC за офіційним алгоритмом Telegram Mini App (`secret_key = HMAC_SHA256(key="WebAppData", msg=bot_token)`, `hash = HMAC_SHA256(key=secret_key, msg=data_check_string)`) + freshness-вікно 24г проти replay:
+- `init_data` валідний → довіряємо Telegram user id, `uid_verified=true`.
+- `init_data` присутній, але невалідний (підробка/неправильний токен) → **hard reject** (400) — справжній Telegram-клієнт завжди підписує коректно, тож невалідний підпис при наявності `init_data` означає підробку чи misconfig, а не легітимний edge-case.
+- `init_data` відсутній (старе посилання, відкрите поза Telegram) → fallback на голий `user_id`, але `uid_verified=false` — збережено в `cases.uid_verified` (migration 023) для аудиту.
+
+**Підводний камінь, знайдений живим тестом:** `URLSearchParams` — НЕ глобальний у сендбоксі n8n Code-ноди (`ReferenceError: URLSearchParams is not defined`), хоч `require('crypto')`/`Buffer` доступні. Query-string парситься вручну (`split('&')` + `decodeURIComponent`).
+
 ## 9. План робіт (хірургічно, по сесії на групу)
 
 - **Issue (main-bot):** G1 Error Trigger ✅ → G2 робоча web_app-кнопка (raw HTTP) ✅ → G3 онбординг (фікс тупика нового юзера §4.2 ✅ + обробка callback_query §4.3 ✅ + привітання-префікс `_is_new` ✅ + 🔄 Інша послуга ✅) — усі три групи здано. Спільний контекст = `main-bot.json`.
-- **Issue (#6 security):** серверна верифікація `initData` у `form-submit`, прибрати довіру до `?uid=`.
+- **Issue (#6/#56 security):** ✅ серверна верифікація `initData` у `form-submit` — зроблено.
 - **Беклог (IMPROVEMENTS):** динамічний каталог за `status` (#43), застарілі form-посилання (#4a), loading-індикатор у чаті, чесний список послуг (active/coming-soon/paused).

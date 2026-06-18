@@ -27,20 +27,6 @@
     },
     {
       "parameters": {
-        "amount": 1
-      },
-      "id": "wait-001",
-      "name": "Wait",
-      "type": "n8n-nodes-base.wait",
-      "typeVersion": 1.1,
-      "position": [
-        -1820,
-        1700
-      ],
-      "webhookId": "f69ce145-28cc-4796-822d-4ecc13bb2ad4"
-    },
-    {
-      "parameters": {
         "jsCode": "// Normalize: works for both message and callback_query events\nconst data = $input.first().json;\nconst cb = data.callback_query;\nconst msg = data.message;\n\nreturn [{\n  json: {\n    ...data,\n    _chatId:     cb ? cb.message.chat.id         : msg?.chat.id,\n    _userId:     String(cb ? cb.from.id          : msg?.from?.id || ''),\n    _text:       cb ? cb.data                    : (msg?.text || ''),\n    _firstName:  cb ? cb.from.first_name         : (msg?.from?.first_name || 'Клієнт'),\n    _type:       cb ? 'callback_query'           : 'message'\n  }\n}];"
       },
       "id": "normalize-001",
@@ -809,17 +795,6 @@
   ],
   "connections": {
     "Telegram Trigger": {
-      "main": [
-        [
-          {
-            "node": "Wait",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Wait": {
       "main": [
         [
           {

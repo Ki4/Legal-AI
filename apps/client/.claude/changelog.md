@@ -12,6 +12,32 @@
 
 ## 📋 Pending commits (uncommitted work)
 
+### 2026-06-18 (session 34) — Retrieval Debt: wire is_stale flagging into applyLawChange (#11)
+**Status:** UNCOMMITTED (working tree) · no branch yet
+**Why:** Picked from the Tier-1 backlog. Issue #11 asked for an `is_outdated` flag on `law_chunks` + CRON wiring + Telegram alert. Investigating the schema first (per the project's stale-issue habit) found 3 of 4 Definition-of-Done items already existed under a different name: `is_stale BOOLEAN` already on both `law_chunks` and `law_documents` (migration 002/003), already filtered (`WHERE is_stale = false`) in every read RPC (`search_law_chunks`, `search_law_chunks_hybrid`, `search_law_text`, `get_law_articles`), and the Telegram alert already shipped in session 19. The actual gap: nothing ever set the flag to `true` on a detected law change.
+**What happened:**
+1. `scripts/law-registry.mjs` — new `lawCode(law)`: derives the rada doc-id (e.g. `2947-14`) from a law's canonical URL, matching `law_chunks.law_code` / `law_documents.law_code`.
+2. `scripts/lib/law-change.mjs` — the canonical `applyLawChange()` (already the single producer shared by the GitHub Actions CRON and the manual CLI) now additionally PATCHes `law_chunks` and `law_documents` to `is_stale=true` by `law_code`, independent of whether any service depends on the law (the RAG flag protects retrieval, not just document-generation services).
+3. `scripts/service-lifecycle.mjs` and `scripts/check-law-updates.mjs` — one new console line each reporting the staleness flip, for operator visibility.
+4. Verified live (read-only): `log-law-change simeinyi-kodeks 2026-05-25 --dry-run` against the real Supabase correctly resolved divorce+alimony as dependents; a real PATCH against a non-existent `law_code` confirmed the REST call/schema/permissions work without touching any real row.
+**Files:**
+- `scripts/law-registry.mjs` — `lawCode()` export
+- `scripts/lib/law-change.mjs` — stale-marking step in `applyLawChange()`
+- `scripts/lib/__tests__/law-change.test.mjs` — `lawCode` tests + stale-patch assertions (incl. orphan-law case)
+- `scripts/service-lifecycle.mjs`, `scripts/check-law-updates.mjs` — console visibility line
+- `docs/architecture/IMPROVEMENTS.md` — #29 updated with what was already done vs. newly done vs. deferred
+**Tests:** root vitest 994/994 ✅ (was 981, +13: +11 from session 33's merged PRs, +2 new `lawCode` tests; existing law-change tests extended in place) · client vitest 103/103 ✅ · tsc clean
+**Not done (explicitly out of scope, was solution narrative not a DoD item):** automated re-indexing (scraping new article text + re-embedding) — separate, larger pipeline. The manual path already works: `replace_law_chunks` (used by `seed-divorce-laws.ts --force`) clears `is_stale` as a side effect of its full delete+insert.
+**Issue:** #11 closed (all 4 DoD items satisfied).
+
+### 2026-06-18 (session 34) — Admin toast (#18): mobile verification + close
+**Status:** VERIFIED, no code change · issue #18 closed
+**Why:** Session 33 shipped the toast (PR#53) but left #18 open pending the one remaining DoD box: "Перевірено на мобільному (toast не перекриває UI)" — blocked last session on having no admin test login.
+**What happened:** Used the Supabase admin API (`generate_link`, service-role key, local script — never exposed to the browser) to mint a one-time magic-link session for the lawyer test account, without ever touching/knowing the password. Loaded the real local admin app (`admin.html`) at a 375×667 mobile viewport, opened the live `alimony` service editor, and intercepted `window.fetch` for the Supabase `PATCH /services` call (returning a mocked 403 then a mocked 200) so both the error and success toasts could be exercised live without writing to the real production database. Screenshots confirmed `Toast` (`fixed bottom-4 ... z-[60] max-w-[90vw]`) renders centered, fully within the viewport, and doesn't overlap any persistent UI — `AdminLayout` has no bottom nav bar on mobile (top bar only), and the toast's z-index is above the sidebar/preview-modal anyway. Signed out and cleaned up all temp artifacts (magic-link file, screenshots, Playwright snapshots) afterward.
+**Files:** none (verification only).
+**Tests:** n/a (manual/browser verification).
+**Issue:** #18 closed (last DoD box ticked).
+
 ### 2026-06-17 (session 33) — Admin toast on save/load error (#18)
 **Status:** MERGED · PR#53 (`dd1d93f`) · branch `fix/admin-save-toast` deleted after merge · issue #18 left OPEN (mobile + live-render not verified this session — low remaining token budget)
 **Why:** Second small backlog item this session. Save/load errors in `ServiceEditPage.tsx` failed silently (`setSaving(false)` with no feedback) — a lawyer could lose edits without knowing.

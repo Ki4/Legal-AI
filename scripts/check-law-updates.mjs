@@ -28,7 +28,7 @@
 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LAWS, normalizeUrl } from './law-registry.mjs';
+import { LAWS, normalizeUrl, lawCode } from './law-registry.mjs';
 import { loadEnv, createSupabaseClient } from './lib/supabase-rest.mjs';
 import { fetchRevisionDate } from './lib/rada.mjs';
 import { affectedServices, applyLawChange } from './lib/law-change.mjs';
@@ -150,6 +150,7 @@ async function main() {
     changes.push({ law, oldDate, newDate: current, affected: res.affected.map((s) => s.slug) });
     if (!DRY_RUN) {
       console.log(`     📝 law_change_log #${res.logRow.id} · 🟡 flipped: ${res.affected.map((s) => s.slug).join(', ') || '— none —'}`);
+      console.log(`     🟡 law_chunks/law_documents (law_code=${lawCode(law)}) marked is_stale=true`);
     }
     await politeDelay();
   }

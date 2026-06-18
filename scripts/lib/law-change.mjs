@@ -8,12 +8,16 @@
  *      never by free-text slug — see scripts/law-registry.mjs);
  *   2. append one append-only audit row to law_change_log (action='flagged');
  *   3. flip each dependent service to status='needs_review' and acknowledge the new
- *      revision date in its watched_laws entry (so the same change isn't re-flagged).
+ *      revision date in its watched_laws entry (so the same change isn't re-flagged);
+ *   4. mark the law's RAG content (`law_chunks` + `law_documents`, matched by `law_code`)
+ *      `is_stale = true` — retrieval RPCs already filter on this (migrations 002/003), so
+ *      hybrid search stops surfacing the outdated text immediately. Re-seeding the law
+ *      (`replace_law_chunks` deletes+inserts by `law_code`) clears the flag as a side effect.
  *
  * This is pure data work — no console output. Callers decide how to report.
  */
 
-import { normalizeUrl } from '../law-registry.mjs';
+import { normalizeUrl, lawCode } from '../law-registry.mjs';
 
 /**
  * @typedef {{ slug: string, title: string, url: string }} Law
@@ -99,6 +103,14 @@ export async function applyLawChange(client, opts) {
       needs_law_review: true,
       watched_laws: next,
     });
+  }
+
+  // 3. Mark this law's RAG content stale (independent of whether any service depends on
+  // it — the flag protects retrieval, not just the document-generation services).
+  const code = lawCode(law);
+  if (code) {
+    await client.sbPatch('law_chunks', `law_code=eq.${code}`, { is_stale: true });
+    await client.sbPatch('law_documents', `law_code=eq.${code}`, { is_stale: true });
   }
 
   return { affected, derivedOld, logRow };

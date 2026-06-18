@@ -10,6 +10,24 @@
 
 ---
 
+### 2026-06-18 (session 35) — Telegram bot un-broken: web_app button + Vercel domain + Error Trigger (#55 G1+G2)
+**Status:** COMMITTED · branch `feature/bot-reliability-onboarding` → merged to main · issue #55 **stays OPEN** (G3 onboarding remains) · #56 created (initData security)
+**Why:** Session started as `/session-start` → a discussion on reducing RAG hallucinations / lawyer hand-off → pivoted to "polish the Telegram user interaction". While mapping the bot, Sergey hit a live bug: typing «Алименты» (an existing user, real service, high confidence) returned **silence**. Diagnosed via the n8n executions API, not the repo file.
+**What happened:**
+1. **Audit doc** `docs/architecture/TELEGRAM-BOT-GUIDE.md` (NEW) — mapped the live `main-bot` flow + `form-submit` UX path from the n8n API (the repo file's `active:false` was stale). Logged issues #55 (bot reliability/onboarding/button) + #56 (server-side initData verification, #6) + IMPROVEMENTS #75 (loading indicator + honest catalog) + #76 (TWA custom domain / config-driven base URL).
+2. **Root cause of the silence (exec 54):** the whole pipeline ran fine (Normalize → AI Agent classified alimony → Get Service → Is Active) and `Send TWA Button` failed with Telegram `400: can't parse inline keyboard button: Text buttons are unallowed`. Cause: the button used `webAppUrl`, a field name from an **older** n8n Telegram node; n8n 2.20.6 expects `web_app: { url }` (confirmed by reading the node source in the container — `addAdditionalFields` `Object.assign`s the button, so the stale key was sent verbatim and Telegram rejected it). An n8n upgrade silently broke it. Plus `main-bot` had **no Error Trigger** (unlike form-submit) → invisible to user and admin.
+3. **G2** — fixed `webAppUrl` → `web_app: { url }`. Live test surfaced a **second, separate** failure: the form opened inside Telegram but Vercel returned `404 DEPLOYMENT_NOT_FOUND` — the bot hardcoded `legal-twa.vercel.app`, but the live prod deployment is at **`legal-twa-xi.vercel.app`** (Vercel auto-suffixed `-xi`; bare name taken). Verified `legal-twa.vercel.app`→404, `legal-twa-xi…/?service=alimony`→200. Repointed the launch URL (centralised in `TWA_BASE_URL`). **Verified live end-to-end: service → web_app button → form opens in Telegram on the new domain.**
+4. **G1** — added Error Trigger → Format Error → Send Admin Alert to `main-bot` (mirror of form-submit).
+5. Reconciled the repo `main-bot.json` to live (identical except cred ids; deploy rebinds creds from live), minimised `settings` to the public PUT API shape. Migrated the dead domain in `ServiceEditPage.tsx` + `ARCHITECTURE.md`/`DECISIONS.md`.
+**Files:**
+- `scripts/sync-main-bot-fixes.mjs` — **NEW** — idempotent patcher (G1 error chain + G2 web_app/url, `TWA_BASE_URL` const)
+- `n8n/workflows/current/main-bot.json` — reconciled to live + G1+G2 (deployed)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — **NEW** — bot map/audit + confirmed root cause + launch decision (§7-9)
+- `apps/client/src/admin/pages/ServiceEditPage.tsx`, `docs/architecture/{ARCHITECTURE,DECISIONS}.md` — dead-domain migration
+- `docs/architecture/IMPROVEMENTS.md` — #75, #76
+**Commits:** `c4b3373` (G1+G2), `0e0bb53` (domain), `0d22042` (IMPROVEMENTS #76), `525e34d` (audit doc).
+**Deployed + verified live:** `main-bot` 23→26 nodes, active; typed-service → web_app button → form loads on `legal-twa-xi`. **Not done:** G3 (onboarding: new-user dead-end + callback Так/Ні + 🔄 + greeting prefix) — next session, Sonnet, fresh branch.
+
 ### 2026-06-18 (session 34) — Retrieval Debt: wire is_stale flagging into applyLawChange (#11)
 **Status:** MERGED · PR#54 (`6705b98`) · branch `feature/retrieval-debt-is-stale` deleted after merge · issue #11 closed automatically (`Closes #11`)
 **Why:** Picked from the Tier-1 backlog. Issue #11 asked for an `is_outdated` flag on `law_chunks` + CRON wiring + Telegram alert. Investigating the schema first (per the project's stale-issue habit) found 3 of 4 Definition-of-Done items already existed under a different name: `is_stale BOOLEAN` already on both `law_chunks` and `law_documents` (migration 002/003), already filtered (`WHERE is_stale = false`) in every read RPC (`search_law_chunks`, `search_law_chunks_hybrid`, `search_law_text`, `get_law_articles`), and the Telegram alert already shipped in session 19. The actual gap: nothing ever set the flag to `true` on a detected law change.

@@ -1,6 +1,38 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-18 (session 34 — issue #18 mobile-verified+closed, issue #11 Retrieval Debt implemented+merged PR#54)
+> Updated: 2026-06-18 (session 35 — Telegram bot un-broken: web_app button fix + Vercel domain + Error Trigger, #55 G1+G2 done)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 35 (2026-06-18) — Telegram bot: надійність + робоча web_app кнопка (#55 G1+G2)
+
+### Головне — стан ЗАРАЗ
+- **Гілка `feature/bot-reliability-onboarding`** змержена в `main` (G1+G2). **Issue #55 лишається ВІДКРИТОЮ** на G3 (онбординг). **Issue #56** заведено (initData security, #6) — ще не починали.
+- **Основний CTA бота полагоджено й ЗАДЕПЛОЄНО live** — `main-bot` тепер 26 нод, active.
+- Доба почалась як `/session-start` → обговорення GraphRAG/галюцинацій → перейшли на «довести до ума взаємодію в Telegram» → знайшли й полагодили реальний live-баг.
+
+### Що зроблено (session 35)
+1. **Аудит-док** `docs/architecture/TELEGRAM-BOT-GUIDE.md` — карта живого бота (знято з n8n API, не з файлу) + сценарії + знайдені баги. Issues #55 (bot reliability/onboarding/button) + #56 (initData #6) заведені. IMPROVEMENTS #75 (loading + чесний каталог), #76 (TWA URL — кастомний домен).
+2. **Діагностика «тиші на Алименти»** через n8n executions API (exec 54): весь pipeline ОК → `Send TWA Button` падав з Telegram `400: Text buttons are unallowed`. Корінь — поле `webAppUrl` (старе імʼя n8n-ноди); n8n 2.20.6 чекає `web_app: { url }` (підтверджено в сорсі ноди в контейнері). + у `main-bot` НЕ БУЛО Error Trigger → збій німий.
+3. **G2** — виправлено `webAppUrl`→`web_app.url`. Live-тест виявив ДРУГИЙ баг: форма відкривалась, але Vercel `404` — бот вів на `legal-twa.vercel.app`, а прод-деплой живе на **`legal-twa-xi.vercel.app`** (Vercel авто-суфікс). Перенаправлено (централізовано в `TWA_BASE_URL`). **Верифіковано live: послуга → web_app кнопка → форма відкривається в Telegram з новим доменом.**
+4. **G1** — додано Error Trigger → Format Error → Send Admin Alert у `main-bot` (дзеркало form-submit).
+5. **Drift killed** — репо `main-bot.json` звірено з live (були ідентичні крім cred-id; deploy перепривʼязує creds з live). `settings` мінімізовано під публічний PUT API.
+6. Мігровано мертвий домен у `ServiceEditPage.tsx` + `ARCHITECTURE.md`/`DECISIONS.md`.
+
+### Ключові файли
+- `scripts/sync-main-bot-fixes.mjs` — **NEW** ідемпотентний патчер (G1+G2, `TWA_BASE_URL` константа)
+- `n8n/workflows/current/main-bot.json` — звірено з live + G1+G2 (задеплоєно)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — **NEW** карта/аудит бота
+
+### 🔴 Наступний крок (нова сесія, Sonnet — Tier-1)
+1. **#55 G3 — онбординг** (свіжа гілка від main): (а) фікс тупика `Welcome New User` — нового юзера пропускати в Pre-filter pipeline з `_is_new`; (б) обробка `callback_query` ДО Pre-filter (зараз Так/Ні з «Ask Confirm» летять у AI Agent як текст → не працюють); (в) кнопка 🔄 Інша послуга в Send TWA Button; (г) привітання-префікс за `_is_new`. План: `TELEGRAM-BOT-GUIDE.md §9`.
+2. **#56** — серверна верифікація initData (#6) у form-submit. Після G3.
+3. **Vercel:** прод-деплой форми живий на `legal-twa-xi.vercel.app` (старий `legal-twa` 404). Кастомний домен — IMPROVEMENTS #76.
+4. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+
+### Запуск середовища
+- n8n live (Docker, 26 нод main-bot active) + ngrok піднято цю сесію (`rosy-caution-progeny.ngrok-free.dev`). Google OAuth переавторизовано Сергієм (Copy Template у form-submit знову робочий).
+- Деплой бота: `node scripts/sync-main-bot-fixes.mjs && node scripts/deploy-workflow.mjs main-bot`. Тест: написати боту «аліменти» (НОВЕ повідомлення — кнопки вшиті в старі повідомлення).
 
 ---
 

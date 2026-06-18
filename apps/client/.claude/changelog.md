@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-19 (session 38) — bot cleanup: remove dead Wait(1s) + audit stale form-links (#4a)
+**Status:** DEPLOYED (Wait removal) + verified-already-covered (#4a) · branch `chore/bot-remove-wait-and-stale-link-audit`
+**Why:** Two backlog cleanups from `TELEGRAM-BOT-GUIDE` §4.1 / §4.7.
+**What happened:**
+1. **Wait(1s) removed (§4.1).** `main-bot` had a `n8n-nodes-base.wait` (`amount: 1`) between `Telegram Trigger` and `Normalize` — no debounce/grouping after it, just a flat 1-second delay on every message (debug leftover). Rewired `Telegram Trigger → Normalize` directly, deleted the node (30→29 nodes), deployed + verified live.
+2. **Stale form-links (§4.7 / IMPROVEMENTS #4a) — verified already covered, no code needed.** The concern was that an old bot message's button opens the form with stale context after a config/service change. Checked `apps/client/src/App.tsx:250-269`: the button URL embeds only `slug`+`uid` (not the config), the TWA fetches the *current* `form_config` by slug on open, and a read-path guard shows the «недоступна» screen when `status !== 'active'` (mirroring the authoritative write-path 503), plus a «не знайдено» screen for an unknown slug. Loading the current config from an old link is correct behaviour, so `form_config_version` (the other #4a option) is unnecessary. Marked #4a closed.
+**Files:**
+- `n8n/workflows/current/main-bot.json` — Wait node removed, Telegram Trigger rewired (deployed)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §4.1/§4.7 + §5 table marked resolved
+- `docs/architecture/IMPROVEMENTS.md` — #4a closed (already covered by read-path guard)
+**Tests:** no app-code change; live-verified main-bot (Wait gone, 29 nodes, active). #4a was verification-only.
+
 ### 2026-06-19 (session 38) — honest service catalog in the bot (#61) — static copy, deployed
 **Status:** DEPLOYED · branch `feature/bot-honest-catalog` · closes #61 on merge
 **Why:** `main-bot`'s Welcome New User / Show Menu / Send Help all advertised ТЦК/ВЛК, ФОП, Пошук суду — all `disabled` (military is strategically *blocked*: needs a lawyer partner). Only divorce + alimony are `active`, so the bot promised 3 of 5 services that don't exist. Service Unavailable said «тимчасово недоступна... спробуйте пізніше» — reads like an outage. (§4.4 `TELEGRAM-BOT-GUIDE`, IMPROVEMENTS #43/#75.)

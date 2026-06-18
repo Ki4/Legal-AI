@@ -436,7 +436,7 @@
                     "text": "📝 Заповнити форму",
                     "additionalFields": {
                       "web_app": {
-                        "url": "=https://legal-twa.vercel.app?service={{ $json.slug }}&uid={{ $('Normalize').item.json._userId }}"
+                        "url": "=https://legal-twa-xi.vercel.app/?service={{ $json.slug }}&uid={{ $('Normalize').item.json._userId }}"
                       }
                     }
                   }

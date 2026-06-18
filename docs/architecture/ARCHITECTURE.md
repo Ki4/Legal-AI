@@ -38,7 +38,7 @@
 Telegram Bot
     │
     │  Inline кнопка з URL:
-    │  https://legal-twa.vercel.app/?service=divorce&uid=123
+    │  https://legal-twa-xi.vercel.app/?service=divorce&uid=123
     ▼
 Telegram Mini App (TWA)
     │
@@ -182,10 +182,10 @@ legal-twa/
 ## Маршрутизація (Vercel)
 
 ```
-legal-twa.vercel.app/            → App.tsx (TWA форма)
-legal-twa.vercel.app/?service=X  → завантажує форму послуги X
-legal-twa.vercel.app/admin/      → AdminApp (панель юриста)
-legal-twa.vercel.app/admin/login → реєстрація / вхід
+legal-twa-xi.vercel.app/            → App.tsx (TWA форма)
+legal-twa-xi.vercel.app/?service=X  → завантажує форму послуги X
+legal-twa-xi.vercel.app/admin/      → AdminApp (панель юриста)
+legal-twa-xi.vercel.app/admin/login → реєстрація / вхід
 ```
 
 `vercel.json` перенаправляє всі шляхи на `index.html` (SPA routing).

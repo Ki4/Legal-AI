@@ -353,7 +353,7 @@ export function ServiceEditPage() {
                 <div className="bg-slate-800 rounded-xl p-4">
                   <p className="text-xs text-slate-500 mb-1 uppercase tracking-wide font-semibold">Посилання на форму</p>
                   <code className="text-sm text-blue-400 break-all">
-                    https://legal-twa.vercel.app/?service={config.service_id || 'your_slug'}
+                    https://legal-twa-xi.vercel.app/?service={config.service_id || 'your_slug'}
                   </code>
                 </div>
               </div>

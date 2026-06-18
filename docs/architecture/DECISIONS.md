@@ -146,8 +146,8 @@ S3 і гірше розуміє українську (Titan V2). Доцільн�
 
 **Структура:**
 ```
-legal-twa.vercel.app/       → TWA (Telegram users)
-legal-twa.vercel.app/admin/ → Admin Panel (lawyers)
+legal-twa-xi.vercel.app/       → TWA (Telegram users)
+legal-twa-xi.vercel.app/admin/ → Admin Panel (lawyers)
 ```
 
 **Причини:**

@@ -30,19 +30,32 @@ const TG_CRED = wf.nodes.find(
 )?.credentials?.telegramApi || { id: 'YPiMlLjRRAznPhvZ', name: 'Telegram account' };
 
 const ADMIN_CHAT_ID = '236581343';
+
+// Canonical TWA production domain. Vercel auto-assigned `legal-twa-xi` (the bare
+// `legal-twa.vercel.app` 404s — base name taken). Keep the launch URL in ONE
+// place so a future domain change is a one-line edit. See IMPROVEMENTS (TWA base
+// URL should ideally come from config, not be hardcoded in the workflow).
+const TWA_BASE_URL = 'https://legal-twa-xi.vercel.app';
+const TWA_LAUNCH_URL =
+  `=${TWA_BASE_URL}/?service={{ $json.slug }}&uid={{ $('Normalize').item.json._userId }}`;
+
 let changed = 0;
 
-// ── G2: fix Send TWA Button web_app field ────────────────────────────────────
+// ── G2: fix Send TWA Button web_app field + canonical launch URL ─────────────
 const twa = wf.nodes.find((n) => n.name === 'Send TWA Button');
 if (twa) {
   const btn = twa.parameters?.inlineKeyboard?.rows?.[0]?.row?.buttons?.[0];
-  if (btn && btn.additionalFields && 'webAppUrl' in btn.additionalFields) {
-    const url = btn.additionalFields.webAppUrl;
-    btn.additionalFields = { web_app: { url } };
-    console.log('✓ G2: Send TWA Button webAppUrl → web_app.url');
-    changed++;
-  } else if (btn?.additionalFields?.web_app) {
-    console.log('· G2: Send TWA Button already uses web_app (skip)');
+  if (btn) {
+    // Migrate stale `webAppUrl` (old n8n field name) → `web_app: { url }`, and
+    // always reset the URL to the canonical domain (idempotent).
+    const before = JSON.stringify(btn.additionalFields);
+    btn.additionalFields = { web_app: { url: TWA_LAUNCH_URL } };
+    if (JSON.stringify(btn.additionalFields) !== before) {
+      console.log('✓ G2: Send TWA Button → web_app.url =', TWA_BASE_URL);
+      changed++;
+    } else {
+      console.log('· G2: Send TWA Button already canonical (skip)');
+    }
   } else {
     console.log('⚠ G2: Send TWA Button button shape unexpected — inspect manually');
   }

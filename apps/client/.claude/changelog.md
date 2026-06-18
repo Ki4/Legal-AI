@@ -31,10 +31,10 @@
 - `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §8 marked resolved with the implementation summary
 - `docs/architecture/DECISIONS.md` — new section on the fail-closed/fail-open asymmetry + the `URLSearchParams` sandbox gotcha
 **Tests:** 903 root vitest ✅ (+12 new) · 103 client vitest ✅ · tsc clean. **Live-verified** against the real n8n webhook (not just unit tests) — see point 6 above.
-**Not done:** PR opened (#58) but not merged to `main` — see follow-up entry below; merging awaits Sergey's review after the fail-open fix.
+**Merged:** PR #58 → `main` (`a9f8a72`), see follow-up entry below for the fail-open fix folded into the same PR before merge.
 
 ### 2026-06-18 (session 37 cont.) — close the fail-open gap the security scanner caught in #56 (#56 hardening)
-**Status:** DEPLOYED + verified live · same branch `fix/initdata-hmac-verification` / PR #58 (not yet merged)
+**Status:** MERGED · same branch `fix/initdata-hmac-verification` / PR #58 → `main` (`a9f8a72`), branch deleted, issue #56 closed
 **Why:** the commit-review and push-sweep automated security checks (security-guidance plugin) both independently flagged the same CRITICAL/HIGH finding right after the #56 work above was pushed: the "no `init_data` → fall back to the raw `user_id`, just flagged unverified" branch was still exploitable by the *exact* attack #56 was opened to close — an attacker doesn't need to forge an HMAC signature, they can simply omit `init_data` from the POST body entirely and the server trusted their claimed `user_id` anyway. The fallback was meant for dev/legacy use, but nothing distinguished that from a live attack request.
 **What happened:**
 1. `n8n/templates/verify-init-data.js` — added `resolveSubmission(initData, userId, botToken, { allowUnverified, maxAgeSeconds })`, a pure testable function that now makes the accept/reject call instead of leaving it inline in generated entry-point code: valid signature → trust it (`uidVerified: true`); present-but-invalid signature → reject regardless of any flag; **missing signature → reject by default**, only falling back to the raw `userId` (`uidVerified: false`) when `allowUnverified` is explicitly `true`.
@@ -49,7 +49,7 @@
 - `n8n/workflows/current/form-submit.json` — Validate regenerated, Global Config patched (deployed live)
 - `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §8 updated, fail-open framing corrected
 - `docs/architecture/DECISIONS.md` — #56 section rewritten: both invalid paths are now fail-closed, regression explained
-**Tests:** 907 root vitest ✅ (+4 new) · live-verified (see point 5). **Not done:** PR #58 still awaiting Sergey's review before merge to `main`.
+**Tests:** 907 root vitest ✅ (+4 new) · live-verified (see point 5). **Merged** to `main` same session — Sergey requested the merge directly rather than reviewing the diff first.
 
 ### 2026-06-18 (session 36) — Telegram bot onboarding fixes (#55 G3) — issue complete
 **Status:** MERGED · PR#57 (`0123510`) · branch `feature/bot-onboarding-g3` deleted after merge · issue #55 **closed** (all 3 groups G1+G2+G3 done)

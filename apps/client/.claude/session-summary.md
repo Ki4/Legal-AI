@@ -1,14 +1,14 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-18 (session 37 — initData HMAC verification, #56 done + hardened — live, PR #58 awaiting review)
+> Updated: 2026-06-18 (session 37 — initData HMAC verification, #56 done + hardened — live, PR #58 змержено в main)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 37 (2026-06-18) — initData HMAC-верифікація (#56) — задеплоєно живо + закрито fail-open дірку
+## 🆕 Session 37 (2026-06-18) — initData HMAC-верифікація (#56) — задеплоєно живо, змержено в main
 
 ### Головне — стан ЗАРАЗ
-- **Гілка `fix/initdata-hmac-verification`, PR #58 відкритий** — реалізовано, задеплоєно живо в n8n, верифіковано живими тестами (двічі — основний фікс + hardening). **Ще НЕ змержена в main** (чекає review Сергія, оскільки змінює довіру до production write-path).
-- **Issue #56 — усі 3 пункти чекліста виконані** (закрито коментарем + body, закриється автоматично через `Closes #56` при мерджі PR #58).
+- **PR #58 (`fix/initdata-hmac-verification` → main) змержено** (merge commit `a9f8a72`), гілка видалена. Реалізовано, задеплоєно живо в n8n, верифіковано живими тестами (двічі — основний фікс + hardening).
+- **Issue #56 закрито** (auto-close через `Closes #56` при мерджі) — усі 3 пункти чекліста виконані.
 - **Security review (commit-review + push-sweep) знайшов і виправлено CRITICAL/HIGH дірку того ж дня:** перша версія fail-open на відсутність `init_data` (фолбек на голий `uid`) була точно тим самим вектором атаки #56 без потреби підробляти підпис. Закрито: тепер відсутність `init_data` теж hard reject за замовчуванням; dev/web-fallback лишився тільки за явним server-side прапорцем `Global Config.ALLOW_UNVERIFIED_UID` (`'false'` за замовчуванням).
 - **907 root vitest ✅ (+16) · 103 client vitest ✅ · tsc clean.**
 
@@ -23,9 +23,8 @@
 **Файли:** `n8n/templates/verify-init-data.js`, `__tests__/verify-init-data.test.js`, `scripts/sync-init-data-verification.mjs`, `scripts/deploy-workflow.mjs`, `supabase/migrations/023_uid_verified.sql`, `apps/client/src/App.tsx`, `n8n/workflows/current/form-submit.json` (задеплоєно), `TELEGRAM-BOT-GUIDE.md` §8, `DECISIONS.md`.
 
 ### 🔴 Наступний крок (нова сесія)
-1. **Review + merge PR #58** (`fix/initdata-hmac-verification` → main) — закриє #56 автоматично.
-2. **Vercel:** кастомний домен — IMPROVEMENTS #76.
-3. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
+1. **Vercel:** кастомний домен — IMPROVEMENTS #76.
+2. **~2026-06-25 (Ольга):** CRON schedule, law changes, exception_if sign-off, flip alimony-change — не торкались.
 
 ### Запуск середовища
 - n8n live (Docker, 40 нод form-submit active) — деплоєно через `node scripts/sync-init-data-verification.mjs && node scripts/deploy-workflow.mjs form-submit`.

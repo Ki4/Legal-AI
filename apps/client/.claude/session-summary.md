@@ -1,6 +1,36 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-18 (session 37 — initData HMAC verification, #56 done + hardened — live, PR #58 змержено в main)
+> Updated: 2026-06-19 (session 38 — Telegram stage: #59 client-failure feedback + #61 honest catalog + Wait(1s) cleanup + #4a audit — усе змержено в main, задеплоєно живо)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 38 (2026-06-18/19) — Telegram stage: надійність + чесність + cleanup
+
+### Головне — стан ЗАРАЗ
+- **main чистий** ✅ — `b174803`. 4 PR змержено цю сесію (#60, #62, #63 + issue-hygiene), усі гілки видалені.
+- **Обидва workflow живі:** `form-submit` (42 ноди — +error-feedback), `main-bot` (29 нод — honest catalog, без Wait).
+- **1019 root vitest ✅ (+9)** · client без змін.
+- **Фокус сесії = «довести до ума стадію Telegram».** Зроблено 4 одиниці.
+
+### Що зроблено
+1. **Stale-issue hygiene:** #5 (lawyer-on-signup) понижено 🔴critical→🔵strategic + коментар (немає self-service signup UI, revenue-share відкладено) — лишив відкритим. #33 (CRON) підтверджено як валідний Olga-трекер — **лишив відкритим**, 2 його пункти змірорено в Backlog Ольги нижче.
+2. **#59 — клієнт дізнається про збій генерації** (PR #60, live-verified). `onError:continueErrorOutput` на 7 нодах генерації (Copy Template…Share Document) → `Format Gen Failure` → фан-аут у `Notify User Failed` (клієнт) + `Send Admin Alert`. Працює в ОСНОВНОму execution. Live-тест (штучний збій Copy Template): клієнт+адмін сповіщені, без подвійного алерта. Файли: `n8n/templates/format-gen-failure.js`(+9 тестів), `scripts/sync-user-error-feedback.mjs`.
+3. **#61 — чесний каталог послуг** (PR #62, deployed). 4 тексти main-bot (Welcome/Show Menu/Send Help/Service Unavailable) більше не рекламують disabled-послуги: active=Розлучення+Аліменти, решта «🔜 Скоро», ТЦК «разом із юристом». `_is_new` префікси збережені. Патчер `scripts/sync-main-bot-honest-catalog.mjs`. **Рішення Сергія:** статика зараз; динаміка за `status` → пізніше як **admin-editable bot-copy** (IMPROVEMENTS #43, done partially).
+4. **Cleanup §4.1+§4.7** (PR #63). Прибрано мертву ноду `Wait(1s)` (Telegram Trigger→Normalize напряму, 30→29). #4a (старі form-посилання) — перевірено, **вже покрито** read-path guard у `App.tsx:250-269` (TWA тягне свіжий config за slug + екран «недоступна» при status≠active); коду не треба, #4a закрито.
+
+### 🔴 Наступний крок (нова сесія)
+1. **Vercel:** кастомний домен — IMPROVEMENTS #76.
+2. **⏰ Backlog Ольги (~2026-06-25, єдиний ревʼюер повертається) — нічого не торкались:**
+   - **(#33) Розкоментувати `schedule:` у `.github/workflows/law-monitor.yml`** — 2 рядки (`schedule:` / `- cron: '0 6 * * 1'`). Зараз закоментовано, бо щотижневий авто-флип нікому ревʼюити.
+   - **(#33) Вирішити 2 РЕАЛЬНІ зміни законів** — СК `2026-03-04→2026-05-25`, ЦПК `2025-07-17→2026-04-24`. Runbook `docs/runbooks/law-monitor-cron.md`.
+   - **Sign-off `exception_if` edges** у `law_relations` (`verified_by` = email юриста).
+   - **Прод-флип `alimony-change`** `status='disabled' → 'active'`.
+3. **§4.5 (відкладено):** AI-диспетчер main-bot не знає про `alimony-change` — стане потрібно одразу ПІСЛЯ флипу alimony-change (зараз disabled, тож не блокує).
+
+### Запуск середовища
+- n8n live (Docker): `form-submit` 42 ноди active, `main-bot` 29 нод active.
+- Деплой: `node scripts/sync-*.mjs && node scripts/deploy-workflow.mjs <form-submit|main-bot>`.
+- Для live-тесту form-submit потрібен валідний підписаний `init_data` (#56) — форжиться bot-токеном за алгоритмом Telegram Mini App (див. `verify-init-data.js`).
 
 ---
 

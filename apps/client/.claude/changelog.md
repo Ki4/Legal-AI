@@ -10,6 +10,31 @@
 
 ---
 
+### 2026-06-18 (session 38) — client notified on document-generation failure (#59) — live-verified
+**Status:** DEPLOYED + live-verified · branch `fix/client-generation-failure-feedback` · closes #59 on merge
+**Why:** In `form-submit`, everything after `Respond OK` (the 200 that closes the TWA) runs asynchronously: `Copy Template → … → Share Document`. A failure there only ever reached the catch-all `Error Trigger → Send Admin Alert` — and the Error Trigger runs in a SEPARATE execution with no access to the user's chat id, so only the admin was told. The client stayed forever on «Документ готується… ⏳». This already burned a real user (case `56e84825`, expired Google OAuth on Copy Template). See `TELEGRAM-BOT-GUIDE.md` §3.
+**What happened:**
+1. `n8n/templates/format-gen-failure.js` (NEW) — two pure formatters: `formatGenFailure({error,executionId,caseId,serviceTitle})` (admin alert) and `userFailureMessage(caseId)` (friendly client message). 9 unit tests.
+2. `scripts/sync-user-error-feedback.mjs` (NEW) — idempotent patcher (GENERATED-code convention, like `sync-l4b-nodes.mjs`): sets `onError:'continueErrorOutput'` on the 7 generation nodes (Copy Template … Share Document — NOT Send Doc Link, whose failure means the doc IS ready, a different case left out of scope), adds `Format Gen Failure` (Code) + `Notify User Failed` (Telegram → client, `onError:continueRegularOutput`), and wires each generation node's error output (`main[1]`) → `Format Gen Failure`, which **fans out** to both `Notify User Failed` and the existing `Send Admin Alert`. The branch runs in the MAIN execution, so `$('Validate')._user_id` / `$('Insert Case').id` resolve directly — no n8n-API runData lookup, no extra secret. The catch-all Error Trigger stays for anything pre-Respond-OK.
+3. **Live bug found and fixed by the smoke test, not the unit tests:** the first wiring chained `Format Gen Failure → Notify User Failed → Send Admin Alert` *sequentially*. The admin leg then received Notify User Failed's Telegram-RESPONSE output (no usable `text`) → Telegram `Bad request` → the failed terminal node flipped the whole execution to `error` → which spuriously fired the catch-all Error Trigger (a second, redundant admin alert). Fixed by fanning `Format Gen Failure` out to both nodes in parallel; re-verified the execution now completes `success` with exactly one user message + one admin alert.
+**Live verification (issue #59 DoD):** forged a valid `initData` (so #56 passes legitimately), temporarily pointed Copy Template at an invalid Drive file id (via repo edit + deploy, restored after), submitted one divorce case. Confirmed via the n8n executions API: `Copy Template` errored → `Format Gen Failure` → `Notify User Failed` delivered «⚠️ Вибачте, … технічна помилка … 🔢 Ваш кейс №: …» to the client AND `Send Admin Alert` delivered the admin alert (case id + "The resource you are requesting could not be found" + exec id). Restored Copy Template, redeployed clean, deleted the 3 test `cases` rows.
+**Files:**
+- `n8n/templates/format-gen-failure.js` — **NEW**
+- `n8n/templates/__tests__/format-gen-failure.test.js` — **NEW** — 9 tests
+- `scripts/sync-user-error-feedback.mjs` — **NEW** — idempotent patcher
+- `n8n/workflows/current/form-submit.json` — +2 nodes (40→42), onError on 7 gen nodes, error-output wiring (deployed live)
+- `docs/architecture/TELEGRAM-BOT-GUIDE.md` — §3/§5 marked resolved
+- `docs/architecture/DECISIONS.md` — new section: error-output branch vs Error Trigger, and the fan-out gotcha
+**Tests:** 1019 root vitest ✅ (+9) · client unchanged · idempotency `--check` green. **Live-verified** (see above).
+
+### 2026-06-18 (session 38) — stale-issue hygiene (#5 downgrade, #33 kept) + Olga tracker mirror
+**Status:** COMMITTED (issue metadata + session-summary)
+**Why:** Session-start review. Two issues flagged as candidates.
+**What happened:**
+- **#33** (CRON monitor) — verified it's a deliberate live tracker for two Olga-blocked actions (re-enable `schedule:` + resolve 2 detected law changes, ~2026-06-25). NOT stale — kept open. Mirrored its two specifics into `session-summary.md`'s «Backlog Ольги» block so they're visible at session-start (the durable copy stays in memory `project_cron_schedule_pending`).
+- **#5** (lawyer row on signup) — verified current reality: `LoginPage.tsx` exposes only sign-in, `signUp()` is wired to no page (no self-service registration), the single lawyer account is provisioned manually, and revenue-share is deferred. The bug is neither solved nor currently relevant, so downgraded `priority: critical → strategic` and posted a comment documenting reality; kept open as backlog (real DoD — an `on_auth_user_created` trigger — still unmet, to revisit when lawyer roles land).
+**Files:** `apps/client/.claude/session-summary.md` (Olga backlog block). Issue metadata via `gh`.
+
 ### 2026-06-18 (session 37) — initData HMAC verification in form-submit (#56) — live, issue resolved
 **Status:** DEPLOYED + verified live · branch `fix/initdata-hmac-verification` · issue #56 all 3 checklist items done, closes on merge to `main`
 **Why:** TWA's write-path only read `initDataUnsafe` (client-readable, spoofable) and accepted a bare `?uid=` from the URL with zero verification — anyone could open the form in a plain browser with someone else's Telegram id and submit a case under their identity. Dependency on #55 (working web_app button, so `initData` actually arrives) was satisfied last session.

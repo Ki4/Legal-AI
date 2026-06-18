@@ -674,3 +674,17 @@ hardcode значення: `PM_ABLE_BODIED_2026 = 3328` (прожитковий 
 **Урок (двічі за одну фічу):** unit-тести підтверджують лише ЛОГІКУ — ні доступність sandbox-глобалів (раунд 1), ні design-level fail-open дірки, які проходять усі написані тести просто тому, що ніхто не написав тест на «а що якщо клієнт взагалі не надішле це поле» (раунд 2). Живий смоук-тест і автоматизований security review після кожного коміту/push лишаються обовʼязковими, не формальністю.
 
 **Файли:** `n8n/templates/verify-init-data.js`, `n8n/templates/__tests__/verify-init-data.test.js`, `scripts/sync-init-data-verification.mjs`, `scripts/deploy-workflow.mjs` (KEY_MAP: `YOUR_TELEGRAM_BOT_TOKEN`), `supabase/migrations/023_uid_verified.sql`, `apps/client/src/App.tsx` (надсилає `init_data`).
+
+## Client-facing збій генерації: error-output branch, а не Error Trigger (#59)
+
+**Рішення:** клієнта сповіщати про збій асинхронної генерації документа через `onError:'continueErrorOutput'` на самих нодах генерації (Copy Template … Share Document), а НЕ через окремий catch-all `Error Trigger`.
+
+**Чому не Error Trigger.** Error Trigger в n8n виконується в ОКРЕМОму execution — його payload має лише `execution`/`workflow` метадані, без runData попередніх нод. Тобто `$('Validate')._user_id` там недоступний; саме тому до #59 сповіщався тільки адмін (hardcoded chatId). Щоб дістати chatId клієнта в Error Trigger, довелось би GET-ати failed execution через n8n public API (`?includeData=true`) і парсити `resultData.runData['Validate']…` — крихко (залежить від внутрішньої структури), плюс новий секрет (n8n API key) і self-dependency на сам n8n саме в момент збою.
+
+**Error-output branch виграє** бо працює в ОСНОВНОму execution: `$('Validate')._user_id` і `$('Insert Case').id` резолвляться напряму, без API-lookup і без зайвого секрету. `Format Gen Failure` (Code) будує обидва тексти (адмін + клієнт), далі ФАН-АУТ паралельно у `Notify User Failed` (клієнт) і `Send Admin Alert` (адмін). Catch-all Error Trigger лишається для збоїв ДО `Respond OK` (там форма ще відкрита й бачить HTTP-помилку — тиші в чаті немає).
+
+**Скоуп:** `onError` НЕ ставимо на `Send Doc Link` — його збій означає, що документ ГОТОВИЙ, лише доставка лінку впала; це семантично інший кейс (інше повідомлення), свідомо поза #59.
+
+**Готча, знайдена ЛИШЕ live-смоук-тестом (не unit-тестами):** перша версія wiring була послідовна `Format Gen Failure → Notify User Failed → Send Admin Alert`. Admin-нода тоді отримувала ВИХІД Telegram-ноди (response sendMessage, без придатного `text`) → Telegram `Bad request` → впала термінальна нода → execution став `error` → це СПРАЦЮВАЛО catch-all Error Trigger (другий, зайвий адмін-алерт). Виправлено фан-аутом (паралельно з одного виходу), `Notify User Failed` — лист (leaf) з `onError:continueRegularOutput`, щоб збій надсилання клієнту (напр. заблокував бота) не валив адмін-гілку. Урок той самий, що в #56: unit-тести на чисті форматери зелені, а реальну топологію n8n підтверджує лише живий прогін.
+
+**Файли:** `n8n/templates/format-gen-failure.js` (+тести), `scripts/sync-user-error-feedback.mjs` (ідемпотентний патчер), `n8n/workflows/current/form-submit.json` (40→42 ноди).

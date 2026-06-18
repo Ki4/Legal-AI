@@ -10,7 +10,10 @@
  * as "key=value" lines sorted alphabetically by key and joined with "\n".
  *
  * Without this check, a client can send an arbitrary `user_id` (#56) and
- * have a document generated/sent under someone else's identity.
+ * have a document generated/sent under someone else's identity — including
+ * by simply omitting `initData`, which is why `resolveSubmission()` below
+ * rejects a missing signature by default rather than falling back to the
+ * raw `user_id` unconditionally.
  *
  * Query string is parsed by hand (split/decodeURIComponent) instead of the
  * `URLSearchParams` global — n8n's Code node sandbox does not expose it
@@ -19,8 +22,8 @@
  *
  * n8n entry point (paste into Code Node):
  *   const botToken = $('Global Config').first().json.TELEGRAM_BOT_TOKEN;
- *   const result = verifyInitData($('Webhook').first().json.body.init_data, botToken);
- *   return [{ json: result }];
+ *   const allowUnverified = $('Global Config').first().json.ALLOW_UNVERIFIED_UID === 'true';
+ *   const result = resolveSubmission(init_data, user_id, botToken, { allowUnverified });
  */
 
 const crypto = require('crypto');
@@ -97,8 +100,45 @@ function verifyInitData(initData, botToken, options) {
   return { valid: true, user };
 }
 
+/**
+ * Decides whether a form-submit request is trustworthy enough to persist.
+ *
+ * A present-but-invalid signature is always a hard reject — a real Telegram
+ * WebApp client signs correctly, so this means tampering or a bot-token
+ * misconfig (fail closed). A missing `initData` is ALSO rejected by default:
+ * omitting it entirely is the trivial way to bypass signature checking and
+ * is exactly the spoofing vector #56 was opened for (an attacker doesn't
+ * need to forge a hash if the server accepts requests with no signature at
+ * all). The dev/web-fallback path the #56 checklist asks to keep is only
+ * reachable when a server-side flag explicitly opts into it — never via
+ * anything the client can control.
+ *
+ * @param {string} initData - raw `Telegram.WebApp.initData`, or falsy if absent
+ * @param {string|number} userId - client-supplied `user_id` from the request body
+ * @param {string} botToken - the bot's token (secret)
+ * @param {{ allowUnverified?: boolean, maxAgeSeconds?: number }} [options]
+ * @returns {{ ok: boolean, userId?: string, uidVerified?: boolean, error?: string, reason?: string }}
+ */
+function resolveSubmission(initData, userId, botToken, options) {
+  const allowUnverified = !!(options && options.allowUnverified);
+
+  if (initData) {
+    const verification = verifyInitData(initData, botToken, options);
+    if (!verification.valid) {
+      return { ok: false, error: 'invalid_init_data', reason: verification.reason };
+    }
+    return { ok: true, userId: String(verification.user.id), uidVerified: true };
+  }
+
+  if (allowUnverified) {
+    return { ok: true, userId: String(userId), uidVerified: false };
+  }
+
+  return { ok: false, error: 'missing_init_data' };
+}
+
 // ── Exports (for Node.js testing; ignored in n8n Code Node) ────────────────
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { verifyInitData };
+  module.exports = { verifyInitData, resolveSubmission };
 }

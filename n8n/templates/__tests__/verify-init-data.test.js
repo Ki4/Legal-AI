@@ -7,7 +7,7 @@ import crypto from 'crypto'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 // Load CJS module via new Function (n8n templates use module.exports)
-const { verifyInitData } = (() => {
+const { verifyInitData, resolveSubmission } = (() => {
   const code = readFileSync(resolve(__dirname, '../verify-init-data.js'), 'utf8')
   const m = { exports: {} }
   const fn = new Function('module', 'exports', 'require', code)
@@ -140,5 +140,35 @@ describe('verifyInitData', () => {
     const result = verifyInitData(initData, BOT_TOKEN)
     expect(result.valid).toBe(false)
     expect(result.reason).toBe('missing_user')
+  })
+})
+
+describe('resolveSubmission', () => {
+  it('trusts the verified Telegram user id when initData is valid', () => {
+    const initData = buildInitData(validFields({ user: { id: 111222333 } }), BOT_TOKEN)
+    const result = resolveSubmission(initData, '999999999', BOT_TOKEN)
+    expect(result.ok).toBe(true)
+    expect(result.userId).toBe('111222333')
+    expect(result.uidVerified).toBe(true)
+  })
+
+  it('rejects a present-but-invalid signature regardless of allowUnverified', () => {
+    const initData = buildInitData(validFields(), 'wrong-token')
+    const result = resolveSubmission(initData, '999999999', BOT_TOKEN, { allowUnverified: true })
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('invalid_init_data')
+  })
+
+  it('rejects missing initData by default (closes the #56 bypass: omit the signature entirely)', () => {
+    const result = resolveSubmission('', '999999999', BOT_TOKEN)
+    expect(result.ok).toBe(false)
+    expect(result.error).toBe('missing_init_data')
+  })
+
+  it('falls back to the raw user id, marked unverified, only when allowUnverified is explicitly set', () => {
+    const result = resolveSubmission('', '999999999', BOT_TOKEN, { allowUnverified: true })
+    expect(result.ok).toBe(true)
+    expect(result.userId).toBe('999999999')
+    expect(result.uidVerified).toBe(false)
   })
 })

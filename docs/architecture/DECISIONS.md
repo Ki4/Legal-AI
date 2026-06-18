@@ -28,7 +28,7 @@
 - [Model-agnostic AI harness: модель у конфізі, не в коді (#71)](#model-agnostic-ai-harness-модель-у-конфізі-не-в-коді-71)
 - [Checklist validator: детермінований regex-чек замість LLM-регенерації (#4 / #39)](#checklist-validator-детермінований-regex-чек-замість-llm-регенерації-4--39)
 - [Розлучення з дітьми: графік побачень як ОСТАННІЙ пункт нумерації, без hybrid (#28)](#розлучення-з-дітьми-графік-побачень-як-останній-пункт-нумерації-без-hybrid-28)
-- [initData HMAC-верифікація: fail-closed на підробку, fail-open на відсутність (#56)](#initdata-hmac-верифікація-fail-closed-на-підробку-fail-open-на-відсутність-56)
+- [initData HMAC-верифікація: fail-closed і на підробку, і на відсутність (#56)](#initdata-hmac-верифікація-fail-closed-і-на-підробку-і-на-відсутність-56)
 
 ---
 
@@ -654,19 +654,23 @@ hardcode значення: `PM_ABLE_BODIED_2026 = 3328` (прожитковий 
 
 ---
 
-## initData HMAC-верифікація: fail-closed на підробку, fail-open на відсутність (#56)
+## initData HMAC-верифікація: fail-closed і на підробку, і на відсутність (#56)
 
 **Проблема.** TWA читала лише `initDataUnsafe` (нешифроване, клієнт може підмінити) і приймала голий `?uid=` з URL без жодної перевірки — будь-хто міг відкрити форму в звичайному браузері з чужим `uid` і подати документ від чужого імені.
 
 **Рішення — офіційний алгоритм Telegram Mini App, не Login Widget.** Це дві РІЗНІ схеми підпису з різним виведенням секрету — Login Widget використовує `SHA256(bot_token)` напряму, Mini App використовує `HMAC_SHA256(key="WebAppData", msg=bot_token)` як проміжний `secret_key`. Сплутати їх — типова помилка, яка виглядає правдоподібно, але завжди провалює перевірку. `n8n/templates/verify-init-data.js` реалізує саме Mini App варіант.
 
-**Асиметричний fallback, а не симетричний reject.** Три випадки:
+**Три випадки, обидва invalid-шляхи fail-closed:**
 - `init_data` валідний → довіряємо Telegram user id (`uid_verified=true`).
-- `init_data` присутній, але НЕ валідний → **hard reject (400)**. Справжній Telegram-клієнт завжди підписує коректно; невалідний підпис при наявності `init_data` = підробка АБО misconfig бот-токена — і те, і те краще зловити одразу (видимий збій), ніж тихо обійти.
-- `init_data` відсутній цілком (старе посилання, відкрите поза Telegram) → fallback на `user_id` з тіла запиту, але `uid_verified=false` персистується в `cases` (migration 023) для аудиту.
+- `init_data` присутній, але НЕ валідний → **hard reject (400)**. Справжній Telegram-клієнт завжди підписує коректно; невалідний підпис при наявності `init_data` = підробка АБО misconfig бот-токена.
+- `init_data` відсутній цілком → **за замовчуванням теж hard reject (400 `missing_init_data`)**.
 
-Альтернатива «завжди reject без `init_data`» була відхилена: зламала б старі форвард-лінки й dev-тестування без явної вигоди — атакер, що хоче підробити uid, просто прибере `init_data` цілком (то й буде «відсутній» гілка), а не підробить підпис (то завжди ловиться). Чекліст issue #56 явно дозволяв «unverified» як прийнятний результат для цього шляху.
+**Перша версія мала тут асиметричний fallback (fail-open на відсутність) — і це була помилка.** Логіка: «справжній Telegram-клієнт завжди шле `init_data`, тож відсутність — це старе посилання чи dev-тест, не атака», з fallback на голий `user_id` (`uid_verified=false`, для аудиту). Автоматизований security review (commit-review і push-sweep, обидва незалежно) одразу позначив це як CRITICAL/HIGH: атакеру не треба підробляти HMAC-підпис взагалі — досить просто НЕ передати `init_data` в POST-запиті, і сервер сам падає у ту саму довіру голому `uid`, яку issue #56 мав закрити. Це точно той самий вектор атаки, лише без кроку «підробити хеш».
 
-**Підводний камінь, знайдений ЛИШЕ живим тестом (не unit-тестами):** `URLSearchParams` — НЕ глобальний у сендбоксі n8n Code-ноди. Перша версія коду проходила всі 12 unit-тестів (бо vitest працює в звичайному Node.js), але на живому n8n кожен виклик `new URLSearchParams(initData)` кидав `ReferenceError`, перехоплений власним try/catch і замаскований як generic `reason: 'malformed'` — тобто і валідний, і підроблений `init_data` однаково «не проходили», а помилка виглядала як логічний баг, не як відсутність API. Знайдено інʼєкцією тимчасового diagnostic-патча прямо в живу ноду (`typeof URLSearchParams` → `'undefined'`). Виправлено: query-string парситься вручну (`split('&')` + `decodeURIComponent`), без залежності від глобалів поза `require('crypto')`/`Buffer` (підтверджено робочими — їх вже використовує `Encrypt Data`). **Урок:** для n8n Code-нод unit-тести в Node.js підтверджують лише ЛОГІКУ, не доступність sandbox-глобалів — живий смоук-тест після деплою лишається обовʼязковим, не формальністю.
+**Фікс — gated escape hatch, не client-controlled fallback.** Dev/web-fallback (форма відкрита поза Telegram, як просив чекліст issue #56) лишився можливим, але тільки за явним server-side прапорцем `Global Config.ALLOW_UNVERIFIED_UID` (значення `'false'` за замовчуванням, комітиться як літерал — не секрет, як `GROQ_MODEL`). Клієнт не може встановити чи прочитати цей прапорець; його змінює тільки оператор у живому Global Config. Рішення-логіка винесена з generated entry-point коду ноди в тестовану чисту функцію `resolveSubmission(initData, userId, botToken, { allowUnverified })` (`n8n/templates/verify-init-data.js`) — щоб така регресія була unit-test-перевіряється, а не лише видна по факту живого security-сканування.
+
+**Підводний камінь, знайдений ЛИШЕ живим тестом (не unit-тестами):** `URLSearchParams` — НЕ глобальний у сендбоксі n8n Code-ноди. Перша версія коду проходила всі 12 unit-тестів (бо vitest працює в звичайному Node.js), але на живому n8n кожен виклик `new URLSearchParams(initData)` кидав `ReferenceError`, перехоплений власним try/catch і замаскований як generic `reason: 'malformed'` — тобто і валідний, і підроблений `init_data` однаково «не проходили», а помилка виглядала як логічний баг, не як відсутність API. Знайдено інʼєкцією тимчасового diagnostic-патча прямо в живу ноду (`typeof URLSearchParams` → `'undefined'`). Виправлено: query-string парситься вручну (`split('&')` + `decodeURIComponent`), без залежності від глобалів поза `require('crypto')`/`Buffer` (підтверджено робочими — їх вже використовує `Encrypt Data`).
+
+**Урок (двічі за одну фічу):** unit-тести підтверджують лише ЛОГІКУ — ні доступність sandbox-глобалів (раунд 1), ні design-level fail-open дірки, які проходять усі написані тести просто тому, що ніхто не написав тест на «а що якщо клієнт взагалі не надішле це поле» (раунд 2). Живий смоук-тест і автоматизований security review після кожного коміту/push лишаються обовʼязковими, не формальністю.
 
 **Файли:** `n8n/templates/verify-init-data.js`, `n8n/templates/__tests__/verify-init-data.test.js`, `scripts/sync-init-data-verification.mjs`, `scripts/deploy-workflow.mjs` (KEY_MAP: `YOUR_TELEGRAM_BOT_TOKEN`), `supabase/migrations/023_uid_verified.sql`, `apps/client/src/App.tsx` (надсилає `init_data`).

@@ -6,17 +6,23 @@
  * source of truth: n8n/templates/verify-init-data.js
  *
  * What this script does (idempotent):
- *   1. Adds `TELEGRAM_BOT_TOKEN` placeholder to Global Config (resolved by
- *      deploy-workflow.mjs's KEY_MAP at deploy time, same as the other secrets).
- *   2. Regenerates "Validate" node's jsCode: if `body.init_data` is present,
- *      its HMAC signature is checked against TELEGRAM_BOT_TOKEN — valid means
- *      the Telegram-supplied user id is trusted (`_uid_verified: true`);
- *      invalid is a hard reject (a real Telegram WebApp always signs
- *      correctly, so a present-but-invalid signature means tampering or a
- *      bot-token misconfig — fail closed, not open). If `init_data` is
- *      missing entirely (dev/web-fallback, e.g. an old forwarded link opened
- *      outside Telegram), the raw `user_id` is still trusted but flagged
- *      `_uid_verified: false` for audit, per the #56 checklist.
+ *   1. Adds `TELEGRAM_BOT_TOKEN` + `ALLOW_UNVERIFIED_UID` ('false' by default)
+ *      to Global Config. TELEGRAM_BOT_TOKEN is resolved by deploy-workflow.mjs's
+ *      KEY_MAP at deploy time, same as the other secrets; ALLOW_UNVERIFIED_UID
+ *      is not a secret and is committed as a literal value, like GROQ_MODEL.
+ *   2. Regenerates "Validate" node's jsCode to call `resolveSubmission()`:
+ *      if `body.init_data` is present, its HMAC signature is checked against
+ *      TELEGRAM_BOT_TOKEN — valid means the Telegram-supplied user id is
+ *      trusted (`_uid_verified: true`); invalid is a hard reject (a real
+ *      Telegram WebApp always signs correctly, so a present-but-invalid
+ *      signature means tampering or a bot-token misconfig — fail closed).
+ *      If `init_data` is missing entirely, the request is ALSO rejected by
+ *      default — omitting the signature is the trivial way to replay the
+ *      original #56 spoofing bug, so it must not be a free pass. The
+ *      dev/web-fallback path the #56 checklist asks to keep (raw `user_id`,
+ *      flagged `_uid_verified: false`) only runs when Global Config's
+ *      ALLOW_UNVERIFIED_UID is explicitly set to 'true' — a server-side
+ *      switch the client cannot influence.
  *   3. Adds a `uid_verified` column mapping to "Insert Case" so the flag is
  *      persisted (migration 023_uid_verified.sql must be applied first).
  *
@@ -59,24 +65,17 @@ const VALIDATE_CODE = [
   "if (!answers || Object.keys(answers).length === 0) return [{ json: { _valid: false, _error: 'empty answers' } }];",
   '',
   "const botToken = $('Global Config').first().json.TELEGRAM_BOT_TOKEN;",
-  'let resolvedUserId = String(user_id);',
-  'let uidVerified = false;',
-  '',
-  'if (init_data) {',
-  '  const verification = verifyInitData(init_data, botToken);',
-  '  if (!verification.valid) {',
-  "    console.log('[Validate] init_data verification failed:', verification.reason);",
-  "    return [{ json: { _valid: false, _error: 'invalid_init_data' } }];",
-  '  }',
-  '  resolvedUserId = String(verification.user.id);',
-  '  uidVerified = true;',
+  "const allowUnverified = $('Global Config').first().json.ALLOW_UNVERIFIED_UID === 'true';",
+  'const resolution = resolveSubmission(init_data, user_id, botToken, { allowUnverified });',
+  'if (!resolution.ok) {',
+  "  console.log('[Validate] submission rejected:', resolution.error, resolution.reason || '');",
+  '  return [{ json: { _valid: false, _error: resolution.error } }];',
   '}',
-  '// else: no init_data — dev/web-fallback path (#56), accept but mark unverified.',
   '',
   'return [{ json: {',
   '  _valid: true,',
-  '  _user_id: resolvedUserId,',
-  '  _uid_verified: uidVerified,',
+  '  _user_id: resolution.userId,',
+  '  _uid_verified: resolution.uidVerified,',
   '  _service_slug: service_slug,',
   '  _answers: answers,',
   "  _consented_at: consented_at || new Date().toISOString(),",
@@ -99,12 +98,13 @@ if (!globalConfig || !validateNode || !insertCaseNode) {
 }
 
 const gcHasToken = globalConfig.parameters.jsCode.includes('TELEGRAM_BOT_TOKEN');
+const gcHasAllowFlag = globalConfig.parameters.jsCode.includes('ALLOW_UNVERIFIED_UID');
 const validateInSync = validateNode.parameters.jsCode === VALIDATE_CODE;
 const fieldValues = insertCaseNode.parameters.fieldsUi.fieldValues;
 const hasUidVerifiedField = fieldValues.some((f) => f.fieldId === 'uid_verified');
 
 if (checkOnly) {
-  const inSync = gcHasToken && validateInSync && hasUidVerifiedField;
+  const inSync = gcHasToken && gcHasAllowFlag && validateInSync && hasUidVerifiedField;
   console.log(inSync ? '✅ initData verification already in sync.' : '❌ Out of sync — run without --check.');
   process.exit(inSync ? 0 : 1);
 }
@@ -117,6 +117,15 @@ if (!gcHasToken) {
     "GROQ_MODEL_FALLBACK:  'llama-3.1-8b-instant',\n  // #56 — verifies Telegram WebApp initData signature in Validate\n  TELEGRAM_BOT_TOKEN:   'YOUR_TELEGRAM_BOT_TOKEN',"
   );
   console.log('  + TELEGRAM_BOT_TOKEN placeholder added to Global Config');
+  changed = true;
+}
+
+if (!gcHasAllowFlag) {
+  globalConfig.parameters.jsCode = globalConfig.parameters.jsCode.replace(
+    /TELEGRAM_BOT_TOKEN:\s*'YOUR_TELEGRAM_BOT_TOKEN',/,
+    "TELEGRAM_BOT_TOKEN:   'YOUR_TELEGRAM_BOT_TOKEN',\n  // #56 — dev/web-fallback escape hatch, OFF in prod. Flip to 'true' locally only.\n  ALLOW_UNVERIFIED_UID: 'false',"
+  );
+  console.log("  + ALLOW_UNVERIFIED_UID: 'false' added to Global Config");
   changed = true;
 }
 

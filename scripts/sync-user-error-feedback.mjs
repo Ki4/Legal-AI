@@ -72,10 +72,23 @@ const FORMAT_GEN_FAILURE_CODE = [
   'const error = ($json && ($json.error || $json.lastError)) || null;',
   'return [{ json: {',
   '  text: formatGenFailure({ error, executionId, caseId, serviceTitle }),',
-  '  _user_text: userFailureMessage(caseId),',
+  '  _user_text: userFailureMessage(caseId, serviceTitle),',
   '  _user_id: userId,',
   '} }];',
 ].join('\n');
+
+// Client failure card — HTML + a single navigation button (handled by main-bot).
+const NOTIFY_USER_FAILED_PARAMS = {
+  chatId: '={{ $json._user_id }}',
+  text:   '={{ $json._user_text }}',
+  replyMarkup: 'inlineKeyboard',
+  inlineKeyboard: {
+    rows: [
+      { row: { buttons: [{ text: '➕ Інша послуга', additionalFields: { callback_data: 'show_menu' } }] } },
+    ],
+  },
+  additionalFields: { appendAttribution: false, parse_mode: 'HTML' },
+};
 
 const NEW_NODES = [
   {
@@ -93,11 +106,7 @@ const NEW_NODES = [
     typeVersion: 1.2,
     position:    [3760, 2000],
     onError:     'continueRegularOutput', // a failed send must not block the admin alert
-    parameters: {
-      chatId: '={{ $json._user_id }}',
-      text:   '={{ $json._user_text }}',
-      additionalFields: { appendAttribution: false, parse_mode: 'Markdown' },
-    },
+    parameters:  NOTIFY_USER_FAILED_PARAMS,
     credentials: TELEGRAM_CREDS,
   },
 ];
@@ -161,6 +170,12 @@ if (alreadyPatched) {
   if (fmt && fmt.parameters.jsCode !== FORMAT_GEN_FAILURE_CODE) {
     console.log(`  ↻ Refreshing "Format Gen Failure" (${fmt.parameters.jsCode.length} → ${FORMAT_GEN_FAILURE_CODE.length} chars)`);
     fmt.parameters.jsCode = FORMAT_GEN_FAILURE_CODE;
+    changed = true;
+  }
+  const nuf = wf.nodes.find(n => n.name === 'Notify User Failed');
+  if (nuf && JSON.stringify(nuf.parameters) !== JSON.stringify(NOTIFY_USER_FAILED_PARAMS)) {
+    console.log('  ↻ Reconciling "Notify User Failed" (HTML card + button)');
+    nuf.parameters = NOTIFY_USER_FAILED_PARAMS;
     changed = true;
   }
   if (wireErrorOutputs() > 0) { console.log('  ↻ Re-asserted onError + error-output wiring'); changed = true; }

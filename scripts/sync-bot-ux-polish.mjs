@@ -262,8 +262,11 @@ if (reactNode && reactNode.parameters.jsonBody !== desiredReactBody) {
 }
 
 // new-user branch: Create Identity → Global Config → Welcome New User
-setConn('Create Identity', to('Global Config'));
-setConn('Global Config', to('Welcome New User'));
+// NOTE: setConn assigns the whole connection object, so it MUST be wrapped in
+// { main: ... } — passing a bare to(...) array produced a malformed connection
+// ({"0":[...]} instead of {"main":[...]}) → n8n "object is not iterable" 500.
+setConn('Create Identity', { main: to('Global Config') });
+setConn('Global Config', { main: to('Welcome New User') });
 // Welcome New User → Mark New User (existing) + React First Msg (new leaf)
 setConn('Welcome New User', {
   main: [[

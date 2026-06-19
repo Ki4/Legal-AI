@@ -153,7 +153,7 @@
     {
       "parameters": {
         "chatId": "={{ $('Normalize').item.json._chatId }}",
-        "text": "=Вітаю, {{ $('Normalize').item.json._firstName }}! ⚖️\n\nЯ твій персональний AI-юрист. Зараз готую документи для:\n✅ Розлучення та поділ майна\n✅ Аліменти\n\n🔜 Скоро: реєстрація ФОП, пошук суду, спори з ТЦК/ВЛК (складні справи ведемо разом із юристом).\n\nПросто напиши своє питання або опиши ситуацію ✍️",
+        "text": "=Вітаю, {{ $('Normalize').item.json._firstName }}! ⚖️\nДопоможу підготувати юридичний документ до суду — швидко, без черг та інстанцій.\n\nЗараз готую:\n✅ Розлучення та поділ майна\n✅ Стягнення аліментів\n\nРозкажіть, що сталося, або оберіть нижче 👇",
         "additionalFields": {
           "appendAttribution": false
         },
@@ -239,7 +239,7 @@
     {
       "parameters": {
         "chatId": "={{ $json._chatId }}",
-        "text": "={{ $json._is_new ? '🙏 Дякую, що написали!\\n\\n' : '' }}🏛️ *Юридична допомога*\n\nЗараз я готую документи для:\n✅ Розлучення та поділ майна\n✅ Аліменти\n\n🔜 Скоро:\n• Реєстрація ФОП\n• Пошук суду за адресою\n• Спори з ТЦК/ВЛК (складні справи — разом із юристом)\n\nОпишіть свою ситуацію — я підкажу ✍️",
+        "text": "=🏛️ *Чим допомогти?*\nГотую юридичні документи до суду:\n✅ Розлучення та поділ майна\n✅ Стягнення аліментів\n\nОберіть послугу 👇 або опишіть ситуацію — підкажу.\n_🔜 Скоро: ФОП, пошук суду, спори з ТЦК/ВЛК (складні — разом із юристом)._",
         "additionalFields": {
           "appendAttribution": false,
           "parse_mode": "Markdown"
@@ -469,7 +469,7 @@
     {
       "parameters": {
         "chatId": "={{ $('Normalize').item.json._chatId }}",
-        "text": "={{ (() => { try { return $('Pre-filter').item.json._is_new === true } catch(e) { return false } })() ? '🙏 Дякую, що написали!\\n\\n' : '' }}⚖️ *{{ $json.title }}*\n\n{{ $json.description }}\n\nНатисніть кнопку нижче, щоб заповнити форму та отримати готовий документ:",
+        "text": "=⚖️ *{{ $json.title }}*\n\n{{ $json.description }}\n\nНатисніть кнопку нижче, щоб заповнити форму та отримати готовий документ:",
         "replyMarkup": "inlineKeyboard",
         "inlineKeyboard": {
           "rows": [
@@ -554,7 +554,7 @@
     {
       "parameters": {
         "chatId": "={{ $('Normalize').item.json._chatId }}",
-        "text": "={{ (() => { try { return $('Pre-filter').item.json._is_new === true } catch(e) { return false } })() ? '🙏 Дякую, що написали!\\n\\n' : '' }}🤔 Схоже, ваш запит стосується: *{{ $json.title }}*\n\nЯ правильно зрозумів?",
+        "text": "=Здається, вам потрібно: *{{ $json.title }}* 🤔\nВсе вірно?",
         "replyMarkup": "inlineKeyboard",
         "inlineKeyboard": {
           "rows": [
@@ -602,10 +602,39 @@
     {
       "parameters": {
         "chatId": "={{ $('Normalize').item.json._chatId }}",
-        "text": "={{ (() => { try { return $('Pre-filter').item.json._is_new === true } catch(e) { return false } })() ? '🙏 Дякую, що написали!\\n\\n' : '' }}🏛️ *Не зовсім зрозумів ваше питання*\n\nЗараз я готую документи для:\n✅ Розлучення та поділ майна\n✅ Аліменти\n\n🔜 Скоро: реєстрація ФОП, пошук суду, спори з ТЦК/ВЛК.\n\nСпробуйте переформулювати або опишіть ситуацію детальніше ✍️",
+        "text": "=Хочу впевнитись, що правильно вас зрозумію 🤝\n\nЯ готую документи для *розлучення* та *аліментів*. Якщо ваше питання про це — опишіть кількома словами або оберіть нижче 👇",
         "additionalFields": {
           "appendAttribution": false,
           "parse_mode": "Markdown"
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📋 Розлучення та поділ майна",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💰 Стягнення аліментів",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_2"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         }
       },
       "type": "n8n-nodes-base.telegram",
@@ -691,10 +720,27 @@
     {
       "parameters": {
         "chatId": "={{ $('Normalize').item.json._chatId }}",
-        "text": "=🛠️ Послуга *{{ $json.title || \"—\" }}* зараз на оновленні — приводимо її у відповідність до змін у законодавстві.\n\nЩойно буде готово, повідомимо. А зараз можу допомогти з розлученням та аліментами — просто напишіть ✍️",
+        "text": "=Послуга «{{ $json.title || \"—\" }}» поки недоступна — ще готуємо її 🛠️",
         "additionalFields": {
           "appendAttribution": false,
           "parse_mode": "Markdown"
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "← До меню",
+                    "additionalFields": {
+                      "callback_data": "show_menu"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         }
       },
       "id": "cfcda2b7-dc04-4588-934d-f9954defb052",

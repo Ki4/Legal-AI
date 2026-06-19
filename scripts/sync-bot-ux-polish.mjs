@@ -272,6 +272,87 @@ setConn('Welcome New User', {
   ]],
 });
 
+// ── LAYER 5: quality copy pass (approved by Sergey, session 39) ───────────────
+// Warm, consistent texts. Dropped the old `_is_new` «🙏 Дякую, що написали» prefix
+// (redundant with the new Welcome greeting, and we retired 🙏). Service-pick
+// buttons added to Send Help (no more dead-end «переформулюйте»); Service
+// Unavailable gets only «← До меню» (no upsell — the user wanted THAT service;
+// proactive notify is opt-in, deferred to IMPROVEMENTS #80).
+const svcButtons = {
+  rows: [
+    { row: { buttons: [{ text: '📋 Розлучення та поділ майна', additionalFields: { callback_data: 'confirm_service_1' } }] } },
+    { row: { buttons: [{ text: '💰 Стягнення аліментів', additionalFields: { callback_data: 'confirm_service_2' } }] } },
+  ],
+};
+function setText(name, text, parseMode) {
+  const n = getNode(name);
+  if (!n) { console.log(`⚠ copy: node "${name}" not found`); return; }
+  const af = { ...(n.parameters.additionalFields || {}) };
+  af.appendAttribution = false;
+  if (parseMode) af.parse_mode = parseMode; else delete af.parse_mode;
+  if (n.parameters.text !== text || JSON.stringify(n.parameters.additionalFields) !== JSON.stringify(af)) {
+    n.parameters.text = text;
+    n.parameters.additionalFields = af;
+    console.log(`✓ copy: "${name}" updated`);
+    changed++;
+  } else {
+    console.log(`· copy: "${name}" up to date (skip)`);
+  }
+}
+function setButtons(name, inlineKeyboard) {
+  const n = getNode(name);
+  if (!n) return;
+  if (n.parameters.replyMarkup !== 'inlineKeyboard' || JSON.stringify(n.parameters.inlineKeyboard) !== JSON.stringify(inlineKeyboard)) {
+    n.parameters.replyMarkup = 'inlineKeyboard';
+    n.parameters.inlineKeyboard = inlineKeyboard;
+    console.log(`✓ copy: "${name}" buttons set`);
+    changed++;
+  }
+}
+
+setText('Welcome New User',
+  `=Вітаю, {{ $('Normalize').item.json._firstName }}! ⚖️
+Допоможу підготувати юридичний документ до суду — швидко, без черг та інстанцій.
+
+Зараз готую:
+✅ Розлучення та поділ майна
+✅ Стягнення аліментів
+
+Розкажіть, що сталося, або оберіть нижче 👇`, null);
+
+setText('Show Menu',
+  `=🏛️ *Чим допомогти?*
+Готую юридичні документи до суду:
+✅ Розлучення та поділ майна
+✅ Стягнення аліментів
+
+Оберіть послугу 👇 або опишіть ситуацію — підкажу.
+_🔜 Скоро: ФОП, пошук суду, спори з ТЦК/ВЛК (складні — разом із юристом)._`, 'Markdown');
+
+setText('Ask Confirm',
+  `=Здається, вам потрібно: *{{ $json.title }}* 🤔
+Все вірно?`, 'Markdown');
+
+setText('Send Help',
+  `=Хочу впевнитись, що правильно вас зрозумію 🤝
+
+Я готую документи для *розлучення* та *аліментів*. Якщо ваше питання про це — опишіть кількома словами або оберіть нижче 👇`, 'Markdown');
+setButtons('Send Help', svcButtons);
+
+setText('Service Unavailable (bot)',
+  `=Послуга «{{ $json.title || "—" }}» поки недоступна — ще готуємо її 🛠️`, 'Markdown');
+setButtons('Service Unavailable (bot)', {
+  rows: [{ row: { buttons: [{ text: '← До меню', additionalFields: { callback_data: 'show_menu' } }] } }],
+});
+
+// strip the retired 🙏 prefix from the service card too (body unchanged)
+setText('Send TWA Button',
+  `=⚖️ *{{ $json.title }}*
+
+{{ $json.description }}
+
+Натисніть кнопку нижче, щоб заповнити форму та отримати готовий документ:`, 'Markdown');
+
 writeFileSync(WF_FILE, JSON.stringify(wf, null, 2) + '\n', 'utf8');
 console.log(`\n${changed ? '✓' : '·'} main-bot.json written (${changed} change${changed === 1 ? '' : 's'}).`);
 console.log('Next: node scripts/deploy-workflow.mjs main-bot --check');

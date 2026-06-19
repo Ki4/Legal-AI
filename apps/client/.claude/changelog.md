@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-06-19 (session 39 cont.) — bot copy polish + reaction 👀 + subscribe backlog — deployed
+**Status:** DEPLOYED · branch `feature/bot-copy-polish` → main
+**Why:** quality copywriting pass on the live main-bot messages (Sergey approved each), + neutral reaction emoji, + a GDPR-aware «notify me» backlog item.
+**What happened:**
+- **Reaction 🙏 → 👀** — «seen, got it» reads better than gratitude/pleading on a user's question. Smoke-verified live.
+- **Copy pass (LAYER 5 in `sync-bot-ux-polish.mjs`)** — rewrote 6 texts warmer + consistent (Welcome / Show Menu / Ask Confirm / Send Help / Service Unavailable / Send TWA Button). Two structural fixes: **Send Help** now carries service buttons (was a dead-end «переформулюйте»); **Service Unavailable** shows only «← До меню» — no textual upsell of other services (the user wanted *that* paused/disabled one). Dropped the retired `_is_new` «🙏 Дякую, що написали» greeting prefix from all nodes (redundant with the new Welcome, and it carried 🙏). Each message previewed in Sergey's real Telegram before deploy.
+- **IMPROVEMENTS #80** — «notify me when the service is available» (opt-in). Captures Sergey's GDPR question: no held connection (a bot can `sendMessage(chat_id)` anytime), consent = the button tap, channel = the same Telegram chat (NOT email — data minimisation), and `needs_review` (law changed) vs `disabled` (in dev) warrant different messaging. Deferred until real users + in-dev services exist.
+**Files:** `scripts/sync-bot-ux-polish.mjs` (LAYER 5 copy + 👀 reconcile), `n8n/workflows/current/main-bot.json` (deployed, 33 nodes), `docs/architecture/IMPROVEMENTS.md` (#80).
+**Tests:** n8n config only; Markdown render confirmed via a live Telegram demo batch; deployed nodes read back from live (texts + buttons + no 🙏 prefix).
+
 ### 2026-06-19 (session 39 cont.) — 🙏 reaction on a new user's first message — deployed
 **Status:** DEPLOYED · branch `feature/bot-first-message-reaction` → main
 **Why:** the one deferred item from the #65 bundle — Sergey gave the explicit go ("сделай реакцию 🙏").

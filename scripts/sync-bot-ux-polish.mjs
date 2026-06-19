@@ -34,6 +34,9 @@ const wf = JSON.parse(readFileSync(WF_FILE, 'utf8'));
 const TG_CRED = wf.nodes.find(
   (n) => n.type === 'n8n-nodes-base.telegram' && n.credentials?.telegramApi,
 )?.credentials?.telegramApi || { id: 'YPiMlLjRRAznPhvZ', name: 'Telegram account' };
+const SB_CRED = wf.nodes.find(
+  (n) => n.type === 'n8n-nodes-base.supabase' && n.credentials?.supabaseApi,
+)?.credentials?.supabaseApi || { id: 'UpDcJgOGQzIc8axI', name: 'Supabase account' };
 
 let changed = 0;
 
@@ -262,7 +265,20 @@ if (reactNode && reactNode.parameters.jsonBody !== desiredReactBody) {
 // NOTE: setConn assigns the whole connection object, so it MUST be wrapped in
 // { main: ... } — passing a bare to(...) array produced a malformed connection
 // ({"0":[...]} instead of {"main":[...]}) → n8n "object is not iterable" 500.
-setConn('Create Identity', { main: to('Global Config') });
+// Init the off-topic rate-limit row at onboarding (#78, table migration 024) so
+// the guard only ever UPDATEs an existing row. onError:continue → a duplicate on
+// re-onboard (PK conflict) never blocks onboarding.
+ensureNode({
+  id: 'main-bot-init-ratelimit', name: 'Init Rate Limit', type: 'n8n-nodes-base.supabase', typeVersion: 1,
+  position: [-740, 1660], onError: 'continueRegularOutput',
+  parameters: { tableId: 'bot_rate_limit', fieldsUi: { fieldValues: [
+    { fieldId: 'external_id', fieldValue: "={{ $('Normalize').item.json._userId }}" },
+    { fieldId: 'off_topic_count', fieldValue: '0' },
+  ] } },
+  credentials: { supabaseApi: SB_CRED },
+});
+setConn('Create Identity', { main: to('Init Rate Limit') });
+setConn('Init Rate Limit', { main: to('Global Config') });
 setConn('Global Config', { main: to('Welcome New User') });
 // Welcome New User → Mark New User (existing) + React First Msg (new leaf)
 setConn('Welcome New User', {
@@ -382,13 +398,9 @@ ensureNode({
     options: {},
   },
 });
-// Skip AI?(TRUE = greeting) → Greeting: is new? ; (FALSE) → Send Typing (unchanged)
-setConn('Skip AI?', {
-  main: [
-    [{ node: 'Greeting: is new?', type: 'main', index: 0 }],
-    [{ node: 'Send Typing', type: 'main', index: 0 }],
-  ],
-});
+// NOTE: Skip AI?'s connection is OWNED by sync-offtopic-guard.mjs (TRUE →
+// Greeting: is new?, FALSE → Cooldown Read). Setting it here too would flip-flop
+// each run (non-idempotent). The guard patcher must run after this one.
 // new user → terminal (Welcome already greeted) ; existing → Show Menu
 setConn('Greeting: is new?', { main: [[], [{ node: 'Show Menu', type: 'main', index: 0 }]] });
 

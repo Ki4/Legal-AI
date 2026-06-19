@@ -154,3 +154,24 @@ switch to a `profiles.off_topic_count` column (Sergey can apply the migration).
 toward the limit (only AI-reaching off-topic, incl. abuse/gibberish, counts). To
 make ALL off-topic count, route Pre-filter's `off_topic` reason through the same
 counter. Low priority — abuse (the real threat) reaches the AI and IS counted.
+
+---
+
+## Update (session 39) — moved to Supabase + future escalation ladder
+
+**Storage is now the `bot_rate_limit` table** (migration 024), not n8n static data —
+read via `Cooldown Read`, written via `Update Rate Limit` (Supabase nodes, bound
+credential; row seeded at onboarding by `Init Rate Limit`). Visible in the DB/admin
+(ties to #79). Live-verified end-to-end: off-topic → `off_topic_count` 0→1 in the
+DB; legal message → reset to 0.
+
+**FUTURE — escalation ladder (Sergey, session 39):** ship the short **timeout** now
+(~15 min pause at 4+ off-topic). Later, escalate repeat offenders with a
+`pause_level` column (migration): 1st pause 15 min → 2nd a week → 3rd 3 months →
+permanent **ban** (`paused_until` far-future or a `banned` flag). The guard already
+sets `paused_until`; only the duration calc + a level counter need adding.
+
+**FUTURE — hybrid cache (Sergey's idea):** keep the live counter in n8n static data
+(no DB roundtrip per message) and persist to `bot_rate_limit` for the record/admin.
+A latency/cost optimisation — only worth it if per-message DB reads become a problem
+(today the read is once per AI-bound message, which is fine).

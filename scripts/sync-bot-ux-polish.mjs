@@ -155,13 +155,10 @@ setConn('Is Callback?', {
 });
 setConn('Answer Callback', { main: to('Route Callback') });
 
-// AI path: Skip AI?(FALSE) → Send Typing → AI Agent
-setConn('Skip AI?', {
-  main: [
-    [{ node: 'Show Menu', type: 'main', index: 0 }],
-    [{ node: 'Send Typing', type: 'main', index: 0 }],
-  ],
-});
+// AI path: Skip AI?(FALSE) → Send Typing → AI Agent.
+// NOTE: Skip AI?'s OWN connection (both branches) is set in LAYER 6 — it owns it
+// (TRUE → Greeting: is new?, FALSE → Send Typing). Setting it here too would
+// flip-flop with LAYER 6 each run (non-idempotent), so only wire Send Typing.
 setConn('Send Typing', { main: to('AI Agent') });
 
 // ── LAYER 4a: tap-to-pick service buttons in the menu ─────────────────────────
@@ -355,6 +352,45 @@ setText('Send TWA Button',
 {{ $json.description }}
 
 Натисніть кнопку нижче, щоб заповнити форму та отримати готовий документ:`, 'Markdown');
+
+// ── LAYER 6: stop the new-user double greeting ───────────────────────────────
+// A brand-new user's first message is greeted by Welcome New User, then ALSO
+// continues Mark New User → Pre-filter → Skip AI?(greeting) → Show Menu — so
+// /start produced TWO greetings (confirmed: exec 105 ran Welcome + Show Menu in
+// ONE execution → it's the onboarding flow, not a Telegram race, so a Wait node
+// would NOT fix it). Welcome already shows the menu (it has the buttons), so for
+// a new user we suppress the duplicate Show Menu; existing users still get it.
+// Non-greeting first messages still flow to the AI (Skip AI? FALSE), so a new
+// user's real query is never swallowed (the session-36 G3 fix stands).
+ensureNode({
+  id: 'main-bot-greeting-isnew',
+  name: 'Greeting: is new?',
+  type: 'n8n-nodes-base.if',
+  typeVersion: 2.2,
+  position: [-620, 2260],
+  parameters: {
+    conditions: {
+      options: { caseSensitive: true, typeValidation: 'loose', version: 2 },
+      conditions: [{
+        id: 'greeting-isnew-cond',
+        leftValue: "={{ $json._is_new ? 'yes' : 'no' }}",
+        rightValue: 'yes',
+        operator: { type: 'string', operation: 'equals' },
+      }],
+      combinator: 'and',
+    },
+    options: {},
+  },
+});
+// Skip AI?(TRUE = greeting) → Greeting: is new? ; (FALSE) → Send Typing (unchanged)
+setConn('Skip AI?', {
+  main: [
+    [{ node: 'Greeting: is new?', type: 'main', index: 0 }],
+    [{ node: 'Send Typing', type: 'main', index: 0 }],
+  ],
+});
+// new user → terminal (Welcome already greeted) ; existing → Show Menu
+setConn('Greeting: is new?', { main: [[], [{ node: 'Show Menu', type: 'main', index: 0 }]] });
 
 writeFileSync(WF_FILE, JSON.stringify(wf, null, 2) + '\n', 'utf8');
 console.log(`\n${changed ? '✓' : '·'} main-bot.json written (${changed} change${changed === 1 ? '' : 's'}).`);

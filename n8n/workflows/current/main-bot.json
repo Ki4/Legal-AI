@@ -973,6 +973,38 @@
         "jsonBody": "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '👀' }] }) }}",
         "options": {}
       }
+    },
+    {
+      "id": "main-bot-greeting-isnew",
+      "name": "Greeting: is new?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -620,
+        2260
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "greeting-isnew-cond",
+              "leftValue": "={{ $json._is_new ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -1080,7 +1112,7 @@
       "main": [
         [
           {
-            "node": "Show Menu",
+            "node": "Greeting: is new?",
             "type": "main",
             "index": 0
           }
@@ -1322,6 +1354,18 @@
         [
           {
             "node": "Welcome New User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Greeting: is new?": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Show Menu",
             "type": "main",
             "index": 0
           }

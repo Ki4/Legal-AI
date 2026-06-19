@@ -295,7 +295,7 @@
         "promptType": "define",
         "text": "={{ $('Pre-filter').item.json._text }}",
         "options": {
-          "systemMessage": "Ти — професійний юридичний диспетчер. Твоя задача — визначити ID послуги та рівень впевненості на основі запиту користувача.\n\nСписок доступних послуг:\nID 1: 'divorce' (розлучення, поділ майна, шлюб)\nID 2: 'alimony' (аліменти, утримання дітей)\nID 3: 'military' (спори з ТЦК, ВЛК, мобілізація, відстрочка)\nID 4: 'business' (бізнес, ФОП, реєстрація, договори)\nID 5: 'court_search' (пошук суду, підсудність)\n\nПравила:\n1. Поверни ТІЛЬКИ чистий JSON: {\"service_id\": число_або_null, \"confidence\": число_від_0_до_1}\n2. Чіткий запит → confidence 0.9–1.0\n3. Розмитий або кілька тем → confidence 0.4–0.8\n4. Не юридичний або незрозумілий → {\"service_id\": null, \"confidence\": 0}\n5. Ніяких пояснень, тільки JSON."
+          "systemMessage": "Ти — професійний юридичний диспетчер українського сервісу, що готує документи до суду.\n\nДоступні послуги:\nID 1: divorce (розлучення, розірвання шлюбу, поділ майна подружжя)\nID 2: alimony (аліменти, утримання дитини)\n\nКласифікуй повідомлення користувача. Поверни ТІЛЬКИ чистий JSON без пояснень:\n{\"service_id\": <1|2|null>, \"confidence\": <0..1>, \"topic\": \"clear|legal_unclear|off_topic\"}\n\ntopic:\n- \"clear\" — чіткий запит саме на divorce або alimony (confidence ≥ 0.7).\n- \"legal_unclear\" — стосується ПРАВА / сімейних спорів / суду / юридичних документів, але неясно якої послуги, АБО людина розгублено описує ситуацію, АБО це інша юридична тема (спадщина, опіка, договір, спір з ТЦК тощо). Легітимний користувач.\n- \"off_topic\" — НЕ юридична тема (погода, розваги, спам, образи, мат, безглуздя, балачки).\n\nПравила:\n- topic=\"clear\" → service_id = 1 або 2; інакше service_id = null.\n- Образи / мат / спам → завжди off_topic."
         }
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
@@ -342,6 +342,12 @@
               "name": "service_id_parsed",
               "value": "={{ (() => { try { return JSON.parse($json.output).service_id } catch(e) { return null } })() }}",
               "type": "number"
+            },
+            {
+              "id": "topic-001",
+              "name": "topic",
+              "value": "={{ (() => { try { return JSON.parse($json.output).topic } catch(e) { return 'off_topic' } })() }}",
+              "type": "string"
             }
           ]
         },
@@ -1005,6 +1011,303 @@
         },
         "options": {}
       }
+    },
+    {
+      "id": "guard-cooldown",
+      "name": "Cooldown Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        2240
+      ],
+      "parameters": {
+        "jsCode": "// Skip the AI entirely while a user is in an off-topic pause (token saving).\nconst userId = $('Normalize').item.json._userId;\nconst sd = $getWorkflowStaticData('global');\nconst rec = (sd.offtopic && sd.offtopic[userId]) || { pausedUntil: 0 };\nconst paused = (rec.pausedUntil || 0) > Date.now();\nreturn [{ json: { ...$json, _paused: paused } }];"
+      }
+    },
+    {
+      "id": "guard-paused-if",
+      "name": "Paused?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -480,
+        2240
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "paused-c",
+              "leftValue": "={{ $json._paused ? 'yes' : 'no' }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "guard-pause-reply",
+      "name": "Pause Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -260,
+        2120
+      ],
+      "parameters": {
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "text": "=Я зробив невелику паузу 🙏\nПовертайтесь трохи згодом — або одразу оберіть послугу нижче 👇",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📋 Розлучення та поділ майна",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💰 Стягнення аліментів",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_2"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "YPiMlLjRRAznPhvZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "guard-decide",
+      "name": "Off-topic Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -140,
+        2060
+      ],
+      "parameters": {
+        "jsCode": "// Update the per-user off-topic counter by topic and decide the response.\n// State in workflow static data (no DB). Tiers (Sergey's policy, no toxicity):\n//   off_topic 1: gentle · 2: warning · 3: nudge · 4+: pause ~15 min.\n// Any legal topic (clear/legal_unclear) RESETS the counter (good faith).\nconst userId = $('Normalize').item.json._userId;\nconst topic = $json.topic;\nconst sd = $getWorkflowStaticData('global');\nsd.offtopic = sd.offtopic || {};\nlet rec = sd.offtopic[userId] || { count: 0, pausedUntil: 0 };\n\nif (topic === 'clear' || topic === 'legal_unclear') {\n  rec.count = 0; rec.pausedUntil = 0; sd.offtopic[userId] = rec;\n  return [{ json: { ...$json, _guard_action: topic === 'clear' ? 'proceed' : 'clarify' } }];\n}\n\n// off_topic\nrec.count = (rec.count || 0) + 1;\nlet text;\nif (rec.count === 1) {\n  text = 'Я тут допомагаю з юридичними документами ✍️\\nПоки це розлучення та аліменти. Якщо ваше питання про це — напишіть, і я допоможу.';\n} else if (rec.count === 2) {\n  text = 'Здається, це не зовсім по темі 🙂\\nЯ — юридичний помічник: розлучення та аліменти. Якщо й далі писатимете не по суті — зроблю невелику паузу 🙏';\n} else if (rec.count === 3) {\n  text = 'Я все ще тут для юридичних питань 👇\\nОберіть послугу або опишіть свою ситуацію.';\n} else {\n  rec.pausedUntil = Date.now() + 15 * 60 * 1000;\n  text = 'Роблю невелику паузу 🙏\\nПовертайтесь трохи згодом — або одразу оберіть послугу нижче 👇';\n}\nsd.offtopic[userId] = rec;\nreturn [{ json: { ...$json, _guard_action: 'offtopic', _guard_text: text } }];"
+      }
+    },
+    {
+      "id": "guard-switch",
+      "name": "Guard Switch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        80,
+        2060
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "g0",
+                    "leftValue": "={{ $json._guard_action }}",
+                    "rightValue": "proceed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "g1",
+                    "leftValue": "={{ $json._guard_action }}",
+                    "rightValue": "clarify",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "g2",
+                    "leftValue": "={{ $json._guard_action }}",
+                    "rightValue": "offtopic",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "guard-clarify",
+      "name": "Clarify Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        2240
+      ],
+      "parameters": {
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "text": "=Бачу, що питання юридичне 🤝\nПоки я готую саме розлучення та аліменти. Опишіть свою ситуацію кількома словами або оберіть нижче 👇",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📋 Розлучення та поділ майна",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💰 Стягнення аліментів",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_2"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "YPiMlLjRRAznPhvZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "guard-offtopic-reply",
+      "name": "Off-topic Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        320,
+        2060
+      ],
+      "parameters": {
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "text": "={{ $json._guard_text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📋 Розлучення та поділ майна",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💰 Стягнення аліментів",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_2"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "YPiMlLjRRAznPhvZ",
+          "name": "Telegram account"
+        }
+      }
     }
   ],
   "connections": {
@@ -1119,7 +1422,7 @@
         ],
         [
           {
-            "node": "Send Typing",
+            "node": "Cooldown Check",
             "type": "main",
             "index": 0
           }
@@ -1157,7 +1460,7 @@
       "main": [
         [
           {
-            "node": "Switch",
+            "node": "Off-topic Guard",
             "type": "main",
             "index": 0
           }
@@ -1366,6 +1669,71 @@
         [
           {
             "node": "Show Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cooldown Check": {
+      "main": [
+        [
+          {
+            "node": "Paused?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paused?": {
+      "main": [
+        [
+          {
+            "node": "Pause Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Typing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Off-topic Guard": {
+      "main": [
+        [
+          {
+            "node": "Guard Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard Switch": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clarify Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Off-topic Reply",
             "type": "main",
             "index": 0
           }

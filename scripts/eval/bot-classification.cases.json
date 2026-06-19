@@ -1,0 +1,36 @@
+{
+  "_doc": "Eval corpus for the main-bot intent classifier (IMPROVEMENTS #78). Each case has the user message + expected `topic` (clear | legal_unclear | off_topic) and, for `clear`, the expected service_id (1=divorce, 2=alimony). Run via scripts/eval/run-classification-eval.mjs → measures accuracy + a confusion matrix BEFORE going live. Includes real tricky/abuse inputs from the first friend-test (session 39). Grow this file as new edge cases appear — it doubles as a regression net.",
+  "services": { "1": "divorce", "2": "alimony" },
+  "cases": [
+    { "msg": "хочу розлучитися", "topic": "clear", "service_id": 1 },
+    { "msg": "як подати на розлучення", "topic": "clear", "service_id": 1 },
+    { "msg": "розірвання шлюбу через суд", "topic": "clear", "service_id": 1 },
+    { "msg": "хочу розлучення і поділ майна", "topic": "clear", "service_id": 1 },
+    { "msg": "стягнути аліменти на дитину", "topic": "clear", "service_id": 2 },
+    { "msg": "потрібні аліменти", "topic": "clear", "service_id": 2 },
+    { "msg": "колишній не платить на дитину", "topic": "clear", "service_id": 2 },
+
+    { "msg": "розлучатися", "topic": "legal_unclear", "note": "one bare word — leans divorce but ambiguous (friend test)" },
+    { "msg": "стягнення при розлученні", "topic": "legal_unclear", "note": "mixes alimony+divorce wording (friend test)" },
+    { "msg": "чоловік пішов, не знаю що робити", "topic": "legal_unclear", "note": "distressed, family-law but unclear service" },
+    { "msg": "хочу подати в суд", "topic": "legal_unclear", "note": "legal, but which?" },
+    { "msg": "питання по спадщині", "topic": "legal_unclear", "note": "legal-adjacent, not our service — must NOT be off_topic" },
+    { "msg": "як оформити опіку над дитиною", "topic": "legal_unclear" },
+    { "msg": "чи можу я отримати компенсацію", "topic": "legal_unclear" },
+    { "msg": "у мене питання щодо договору оренди", "topic": "legal_unclear", "note": "legal-adjacent (friend asked around jurisprudence)" },
+    { "msg": "спір з ТЦК щодо мобілізації", "topic": "legal_unclear", "note": "legal, service is blocked/disabled — not off_topic" },
+
+    { "msg": "яка сьогодні погода?", "topic": "off_topic" },
+    { "msg": "розкажи анекдот", "topic": "off_topic" },
+    { "msg": "що приготувати на вечерю", "topic": "off_topic" },
+    { "msg": "хто виграв матч", "topic": "off_topic" },
+    { "msg": "иди на хуй", "topic": "off_topic", "note": "abuse (friend test, exec 112)" },
+    { "msg": "закройся", "topic": "off_topic", "note": "abuse (friend test, exec 111)" },
+    { "msg": "железяка", "topic": "off_topic", "note": "abuse (friend test, exec 113)" },
+    { "msg": "я твою оперативку шатал", "topic": "off_topic", "note": "abuse (friend test, exec 114)" },
+    { "msg": "кака", "topic": "off_topic", "note": "nonsense (friend test, exec 115)" },
+    { "msg": "ти тупий бот", "topic": "off_topic", "note": "abuse" },
+    { "msg": "asdfgh", "topic": "off_topic", "note": "gibberish" },
+    { "msg": "привіт як справи", "topic": "off_topic", "note": "smalltalk — Pre-filter greeting catches most, classifier sees the rest" }
+  ]
+}

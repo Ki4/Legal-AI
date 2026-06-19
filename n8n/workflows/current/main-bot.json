@@ -27,7 +27,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normalize: works for both message and callback_query events\nconst data = $input.first().json;\nconst cb = data.callback_query;\nconst msg = data.message;\n\nreturn [{\n  json: {\n    ...data,\n    _chatId:     cb ? cb.message.chat.id         : msg?.chat.id,\n    _userId:     String(cb ? cb.from.id          : msg?.from?.id || ''),\n    _text:       cb ? cb.data                    : (msg?.text || ''),\n    _firstName:  cb ? cb.from.first_name         : (msg?.from?.first_name || 'Клієнт'),\n    _type:       cb ? 'callback_query'           : 'message'\n  }\n}];"
+        "jsCode": "// Normalize: works for both message and callback_query events\nconst data = $input.first().json;\nconst cb = data.callback_query;\nconst msg = data.message;\n\nreturn [{\n  json: {\n    ...data,\n    _chatId:     cb ? cb.message.chat.id         : msg?.chat.id,\n    _userId:     String(cb ? cb.from.id          : msg?.from?.id || ''),\n    _text:       cb ? cb.data                    : (msg?.text || ''),\n    _firstName:  cb ? cb.from.first_name         : (msg?.from?.first_name || 'Клієнт'),\n    _type:       cb ? 'callback_query'           : 'message',\n    _callbackId: cb ? cb.id                      : null\n  }\n}];"
       },
       "id": "normalize-001",
       "name": "Normalize",
@@ -235,7 +235,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $json._text }}",
+        "text": "={{ $('Pre-filter').item.json._text }}",
         "options": {
           "systemMessage": "Ти — професійний юридичний диспетчер. Твоя задача — визначити ID послуги та рівень впевненості на основі запиту користувача.\n\nСписок доступних послуг:\nID 1: 'divorce' (розлучення, поділ майна, шлюб)\nID 2: 'alimony' (аліменти, утримання дітей)\nID 3: 'military' (спори з ТЦК, ВЛК, мобілізація, відстрочка)\nID 4: 'business' (бізнес, ФОП, реєстрація, договори)\nID 5: 'court_search' (пошук суду, підсудність)\n\nПравила:\n1. Поверни ТІЛЬКИ чистий JSON: {\"service_id\": число_або_null, \"confidence\": число_від_0_до_1}\n2. Чіткий запит → confidence 0.9–1.0\n3. Розмитий або кілька тем → confidence 0.4–0.8\n4. Не юридичний або незрозумілий → {\"service_id\": null, \"confidence\": 0}\n5. Ніяких пояснень, тільки JSON."
         }
@@ -791,6 +791,52 @@
         },
         "options": {}
       }
+    },
+    {
+      "id": "main-bot-answer-callback",
+      "name": "Answer Callback",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -980,
+        1560
+      ],
+      "parameters": {
+        "resource": "callback",
+        "operation": "answerQuery",
+        "queryId": "={{ $('Normalize').item.json._callbackId }}",
+        "additionalFields": {
+          "text": "Гаразд ✍️"
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "YPiMlLjRRAznPhvZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "main-bot-send-typing",
+      "name": "Send Typing",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -700,
+        2060
+      ],
+      "parameters": {
+        "resource": "chat",
+        "operation": "sendChatAction",
+        "chatId": "={{ $('Normalize').item.json._chatId }}",
+        "action": "typing"
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "YPiMlLjRRAznPhvZ",
+          "name": "Telegram account"
+        }
+      }
     }
   ],
   "connections": {
@@ -900,7 +946,7 @@
         ],
         [
           {
-            "node": "AI Agent",
+            "node": "Send Typing",
             "type": "main",
             "index": 0
           }
@@ -1065,7 +1111,7 @@
       "main": [
         [
           {
-            "node": "Route Callback",
+            "node": "Answer Callback",
             "type": "main",
             "index": 0
           }
@@ -1102,6 +1148,28 @@
         [
           {
             "node": "Show Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Callback": {
+      "main": [
+        [
+          {
+            "node": "Route Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Typing": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
             "type": "main",
             "index": 0
           }

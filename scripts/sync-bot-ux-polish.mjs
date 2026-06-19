@@ -141,6 +141,32 @@ setConn('Skip AI?', {
 });
 setConn('Send Typing', { main: to('AI Agent') });
 
+// ── LAYER 4a: tap-to-pick service buttons in the menu ─────────────────────────
+// "Show Menu" only listed services as text — the user had to TYPE a request,
+// which then round-trips through the Groq classifier (cost + a chance of a
+// low-confidence miss). Add inline buttons for the two active services; their
+// callback_data reuses the existing `confirm_service_{id}` path (Is Callback? →
+// Answer Callback → Route Callback → Get Service (high) → Send TWA Button), so
+// no new routing logic. Static ids (1/2) match the static honest-catalog copy.
+const showMenu = getNode('Show Menu');
+if (showMenu) {
+  const desired = {
+    rows: [
+      { row: { buttons: [{ text: '📋 Розлучення та поділ майна', additionalFields: { callback_data: 'confirm_service_1' } }] } },
+      { row: { buttons: [{ text: '💰 Стягнення аліментів', additionalFields: { callback_data: 'confirm_service_2' } }] } },
+    ],
+  };
+  const before = JSON.stringify(showMenu.parameters.inlineKeyboard);
+  if (before !== JSON.stringify(desired)) {
+    showMenu.parameters.replyMarkup = 'inlineKeyboard';
+    showMenu.parameters.inlineKeyboard = desired;
+    console.log('✓ L4a: Show Menu now has tap-to-pick service buttons');
+    changed++;
+  } else {
+    console.log('· L4a: Show Menu buttons already present (skip)');
+  }
+}
+
 writeFileSync(WF_FILE, JSON.stringify(wf, null, 2) + '\n', 'utf8');
 console.log(`\n${changed ? '✓' : '·'} main-bot.json written (${changed} change${changed === 1 ? '' : 's'}).`);
 console.log('Next: node scripts/deploy-workflow.mjs main-bot --check');

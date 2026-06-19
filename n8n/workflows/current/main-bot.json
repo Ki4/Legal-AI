@@ -214,6 +214,35 @@
         "additionalFields": {
           "appendAttribution": false,
           "parse_mode": "Markdown"
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📋 Розлучення та поділ майна",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💰 Стягнення аліментів",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_2"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         }
       },
       "id": "show-menu-001",

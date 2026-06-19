@@ -114,13 +114,24 @@ ensureNode({
   typeVersion: 1.2,
   position: [-700, 2060],
   parameters: {
-    resource: 'chat',
+    // sendChatAction lives under the `message` resource in the n8n Telegram
+    // node (verified in node source) — `chat` returns a 404.
+    resource: 'message',
     operation: 'sendChatAction',
     chatId: "={{ $('Normalize').item.json._chatId }}",
     action: 'typing',
   },
   credentials: { telegramApi: TG_CRED },
 });
+
+// Reconcile Send Typing resource on an already-present node (earlier revisions
+// used the wrong `chat` resource → Telegram 404).
+const typingNode = getNode('Send Typing');
+if (typingNode && typingNode.parameters.resource !== 'message') {
+  typingNode.parameters.resource = 'message';
+  console.log('✓ Send Typing resource → message (was chat)');
+  changed++;
+}
 
 // ── rewire: insert the two new nodes into their paths ─────────────────────────
 // Callback path: Is Callback?(TRUE) → Answer Callback → Route Callback

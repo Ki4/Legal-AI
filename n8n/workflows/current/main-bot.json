@@ -855,7 +855,7 @@
         2060
       ],
       "parameters": {
-        "resource": "chat",
+        "resource": "message",
         "operation": "sendChatAction",
         "chatId": "={{ $('Normalize').item.json._chatId }}",
         "action": "typing"

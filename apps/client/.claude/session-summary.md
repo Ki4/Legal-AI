@@ -1,6 +1,34 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-19 (session 38 — Telegram stage: #59 client-failure feedback + #61 honest catalog + Wait(1s) cleanup + #4a audit — усе змержено в main, задеплоєно живо)
+> Updated: 2026-06-19 (session 39 — Telegram bot UX polish #65: alive-layer + menu buttons + morph-to-card progress + failure parity — задеплоєно живо, мерж у main)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 39 (2026-06-19) — Telegram bot UX polish bundle (#65)
+
+### Головне — стан ЗАРАЗ
+- **Гілка `feature/bot-ux-polish` змержена в main**, issue **#65 closed**. Обидва workflow задеплоєні живо (main-bot 31 нод, form-submit 43 ноди).
+- **1020 root vitest ✅ (+1).** Live-перевірено через execs 88–97 (реальні сабміти + тапи).
+- **Фокус:** «зробити Telegram-бота приємним/гладким» — одним бандлом (Сергій просив не дробити).
+
+### Що зроблено (UX-шари, всі через ідемпотентні патчери + live deploy)
+1. **L1 «бот ожив»** (`scripts/sync-bot-ux-polish.mjs`): `answerCallbackQuery` (тост «Гаразд ✍️», прибирає крутіння годинника на тапі — це був реальний баг: callback ніхто не відповідав) + `sendChatAction: typing` перед AI-диспетчером. Live-баг: `sendChatAction` — це resource `message`, не `chat` (404 на першому деплої, виправлено за сорсом ноди).
+2. **Кнопки-послуги** в `Show Menu` і `Welcome New User` (тап замість набору) — reuse `confirm_service_{id}`.
+3. **L3 прогрес → морф-у-картку** (`scripts/sync-form-submit-ux.mjs`): ОДНЕ повідомлення морфить `⏳ Готую → 📝 Формую → ✅ картка` з inline-кнопками [📄 Відкрити](url)+[➕ Нова послуга](callback). Прогрес-ноди — fan-out ЛИСТЯ off success-output + `onError:continue` → не чіпають hardened (#56/#59) ланцюг. Бар і 3-крокову версію Сергій відкинув як «різкі»; Telegram НЕ вміє fade на edit, тож рішення = константна шапка (без «стрибка») + менше підмін.
+4. **Картка СБОЮ (A)** піднята до рівня успіху (`format-gen-failure.js`+`sync-user-error-feedback.mjs`): HTML, заголовок послуги, копіюваний `<code>` № кейса, кнопка «➕ Інша послуга».
+5. **ID кейса (C):** прибрано з картки УСПІХУ (UUID = шум коли все ОК; підтримка знайде по Telegram-id), показується копіюваним лише на СБОЇ.
+6. **Тест-харнес:** `scripts/test-webhook.mjs` сам був зламаний після #56 — тепер форжить валідний `init_data` ботовим токеном (дозволяє ганяти L3 без ручного заповнення форми).
+7. **Інфра-діагностика (НЕ баг коду):** реальні тапи Сергія не доходили — `getWebhookInfo` показав 404+pending; корінь — **ngrok був offline** (`ERR_NGROK_3200`). Перезапустив тунель. **Чекліст запуску: Docker + ngrok + `getWebhookInfo`.**
+
+### 🔴 Наступний крок / відкладено
+1. **Реакція 🙏** (`setMessageReaction`) на перше повідомлення — єдиний пункт зі списку Сергія, що ВИМАГАЄ ноду з токеном у main-bot (security-поверхня + Global Config-нода). Лишив **opt-in**, чекає явного «так».
+2. **IMPROVEMENTS #77** — формати документа (PDF/DOCX export, send-as-file) + стилістика — коли візьмемось за стиль/збереження. Кнопка PDF на картці зарезервована.
+3. **⏰ Backlog Ольги (~2026-06-25):** CRON `schedule:`, 2 зміни законів (СК/ЦПК), sign-off `exception_if`, прод-флип `alimony-change` — не торкались.
+
+### Запуск середовища
+- n8n live (Docker) + **ngrok** (`rosy-caution-progeny.ngrok-free.dev → :5678`) — піднятий цю сесію у фоні; перезапуск: `ngrok http 5678 --domain=rosy-caution-progeny.ngrok-free.dev`.
+- Деплой: `node scripts/sync-bot-ux-polish.mjs && node scripts/deploy-workflow.mjs main-bot`; `node scripts/sync-form-submit-ux.mjs && node scripts/sync-user-error-feedback.mjs && node scripts/deploy-workflow.mjs form-submit`.
+- Live-тест генерації без форми: `node scripts/test-webhook.mjs 4` (форжить підписаний init_data на uid 236581343).
 
 ---
 

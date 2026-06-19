@@ -56,20 +56,26 @@ describe('formatGenFailure (admin alert)', () => {
 })
 
 describe('userFailureMessage (client notification)', () => {
-  it('includes the case number when provided', () => {
-    const text = userFailureMessage(412)
+  it('includes a tap-to-copy case number + service title when provided', () => {
+    const text = userFailureMessage(412, 'Розірвання шлюбу')
+    expect(text).toContain('Не вдалося сформувати документ')
     expect(text).toContain('технічна помилка')
-    expect(text).toContain('🔢 Ваш кейс №: 412')
+    expect(text).toContain('📋 Розірвання шлюбу')
+    expect(text).toContain('🔢 Кейс: <code>412</code>')
   })
 
   it('omits the case line when no case id', () => {
     const text = userFailureMessage()
-    expect(text).toContain('технічна помилка')
-    expect(text).not.toContain('Ваш кейс №')
+    expect(text).toContain('Не вдалося сформувати документ')
+    expect(text).not.toContain('Кейс:')
   })
 
   it('omits the case line on empty-string id', () => {
-    expect(userFailureMessage('')).not.toContain('Ваш кейс №')
+    expect(userFailureMessage('')).not.toContain('Кейс:')
+  })
+
+  it('omits the service line when no title', () => {
+    expect(userFailureMessage(412)).not.toContain('📋')
   })
 
   it('never throws', () => {

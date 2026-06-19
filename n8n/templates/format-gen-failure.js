@@ -33,18 +33,27 @@ function formatGenFailure(ctx) {
 
 /**
  * Friendly Telegram message shown to the client when generation fails.
- * Markdown parse_mode.
+ * HTML parse_mode — mirrors the polish of the success card. The case id is shown
+ * here prominently and tap-to-copy (<code>), because on the failure path the user
+ * actually needs it to reference the problem in support (on success it's omitted).
  * @param {string|number} [caseId]
+ * @param {string} [serviceTitle]
  */
-function userFailureMessage(caseId) {
-  const lines = [
-    '⚠️ Вибачте, під час підготовки документа сталася технічна помилка.',
+function userFailureMessage(caseId, serviceTitle) {
+  const lines = ['⚠️ <b>Не вдалося сформувати документ</b>'];
+  if (serviceTitle) lines.push('📋 ' + serviceTitle);
+  lines.push(
     '',
-    'Ми вже отримали сповіщення про це й розберемося. Будь ласка, спробуйте ще раз трохи пізніше — або ми звʼяжемося з вами.',
-  ];
+    'Сталася технічна помилка — але ваші дані збережено, і ми вже отримали сповіщення й розберемось.',
+  );
   if (caseId != null && caseId !== '') {
-    lines.push('', '🔢 Ваш кейс №: ' + caseId);
+    lines.push(
+      '',
+      '🔢 Кейс: <code>' + caseId + '</code>',
+      'Вкажіть цей номер, якщо звертаєтесь у підтримку.',
+    );
   }
+  lines.push('', 'Спробуйте ще раз трохи пізніше.');
   return lines.join('\n');
 }
 

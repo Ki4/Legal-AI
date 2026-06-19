@@ -178,6 +178,28 @@ if (showMenu) {
   }
 }
 
+// ── LAYER 4b: tap-to-pick service buttons in the new-user welcome ─────────────
+// A brand-new user's first contact (Welcome New User) only had text «напиши
+// питання». Give them the same tap buttons as Show Menu so the very first
+// message is actionable — same `confirm_service_{id}` callback path.
+const welcome = getNode('Welcome New User');
+if (welcome) {
+  const desired = {
+    rows: [
+      { row: { buttons: [{ text: '📋 Розлучення та поділ майна', additionalFields: { callback_data: 'confirm_service_1' } }] } },
+      { row: { buttons: [{ text: '💰 Стягнення аліментів', additionalFields: { callback_data: 'confirm_service_2' } }] } },
+    ],
+  };
+  if (JSON.stringify(welcome.parameters.inlineKeyboard) !== JSON.stringify(desired)) {
+    welcome.parameters.replyMarkup = 'inlineKeyboard';
+    welcome.parameters.inlineKeyboard = desired;
+    console.log('✓ L4b: Welcome New User now has tap-to-pick service buttons');
+    changed++;
+  } else {
+    console.log('· L4b: Welcome New User buttons already present (skip)');
+  }
+}
+
 writeFileSync(WF_FILE, JSON.stringify(wf, null, 2) + '\n', 'utf8');
 console.log(`\n${changed ? '✓' : '·'} main-bot.json written (${changed} change${changed === 1 ? '' : 's'}).`);
 console.log('Next: node scripts/deploy-workflow.mjs main-bot --check');

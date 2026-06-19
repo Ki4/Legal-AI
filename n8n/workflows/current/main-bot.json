@@ -156,6 +156,35 @@
         "text": "=Вітаю, {{ $('Normalize').item.json._firstName }}! ⚖️\n\nЯ твій персональний AI-юрист. Зараз готую документи для:\n✅ Розлучення та поділ майна\n✅ Аліменти\n\n🔜 Скоро: реєстрація ФОП, пошук суду, спори з ТЦК/ВЛК (складні справи ведемо разом із юристом).\n\nПросто напиши своє питання або опиши ситуацію ✍️",
         "additionalFields": {
           "appendAttribution": false
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "📋 Розлучення та поділ майна",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_1"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "💰 Стягнення аліментів",
+                    "additionalFields": {
+                      "callback_data": "confirm_service_2"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
         }
       },
       "id": "3dfb8e2f-82be-423b-9a11-f6c5f404887b",

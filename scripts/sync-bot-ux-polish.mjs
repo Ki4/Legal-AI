@@ -75,6 +75,18 @@ if (normalize && !normalize.parameters.jsCode.includes('_callbackId')) {
   console.log('· Normalize already exposes _callbackId (skip)');
 }
 
+// _messageId — the user's incoming message id, for setMessageReaction (L4c).
+if (normalize && !normalize.parameters.jsCode.includes('_messageId')) {
+  normalize.parameters.jsCode = normalize.parameters.jsCode.replace(
+    '_callbackId: cb ? cb.id                      : null',
+    '_callbackId: cb ? cb.id                      : null,\n    _messageId:  msg ? msg.message_id            : null',
+  );
+  console.log('✓ Normalize now exposes _messageId');
+  changed++;
+} else {
+  console.log('· Normalize already exposes _messageId (skip)');
+}
+
 // ── 1a: Answer Callback (clears spinner + soft toast) ─────────────────────────
 // Placed at the very start of the callback branch: Is Callback?(TRUE) → Answer
 // Callback → Route Callback. Route Callback reads $('Normalize') directly, so it
@@ -199,6 +211,55 @@ if (welcome) {
     console.log('· L4b: Welcome New User buttons already present (skip)');
   }
 }
+
+// ── LAYER 4c: 🙏 reaction on a brand-new user's first message ─────────────────
+// setMessageReaction is too new for the n8n Telegram node → raw HTTP, which needs
+// the bot token. A "Global Config" code node (token placeholder injected at deploy
+// by scripts/deploy-workflow.mjs, like form-submit) is placed ON THE NEW-USER
+// BRANCH only (Create Identity → Global Config → Welcome New User), so the hot path
+// for existing users is untouched. The reaction is a fan-out leaf off Welcome New
+// User (onError:continueRegularOutput → a failed reaction never breaks onboarding).
+// 🙏 is in Telegram's allowed default reaction set.
+ensureNode({
+  id: 'main-bot-global-config',
+  name: 'Global Config',
+  type: 'n8n-nodes-base.code',
+  typeVersion: 2,
+  position: [-740, 1380],
+  parameters: {
+    // Placeholder only in repo — deploy-workflow.mjs injects the real token live.
+    jsCode: "return [{ json: { ...$json, TELEGRAM_BOT_TOKEN: 'YOUR_TELEGRAM_BOT_TOKEN' } }];",
+  },
+});
+
+ensureNode({
+  id: 'main-bot-react-first',
+  name: 'React First Msg',
+  type: 'n8n-nodes-base.httpRequest',
+  typeVersion: 4.2,
+  position: [-380, 1360],
+  onError: 'continueRegularOutput',
+  parameters: {
+    method: 'POST',
+    url: "=https://api.telegram.org/bot{{ $('Global Config').first().json.TELEGRAM_BOT_TOKEN }}/setMessageReaction",
+    sendBody: true,
+    specifyBody: 'json',
+    jsonBody:
+      "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '🙏' }] }) }}",
+    options: {},
+  },
+});
+
+// new-user branch: Create Identity → Global Config → Welcome New User
+setConn('Create Identity', to('Global Config'));
+setConn('Global Config', to('Welcome New User'));
+// Welcome New User → Mark New User (existing) + React First Msg (new leaf)
+setConn('Welcome New User', {
+  main: [[
+    { node: 'Mark New User', type: 'main', index: 0 },
+    { node: 'React First Msg', type: 'main', index: 0 },
+  ]],
+});
 
 writeFileSync(WF_FILE, JSON.stringify(wf, null, 2) + '\n', 'utf8');
 console.log(`\n${changed ? '✓' : '·'} main-bot.json written (${changed} change${changed === 1 ? '' : 's'}).`);

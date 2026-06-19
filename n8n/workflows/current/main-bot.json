@@ -27,7 +27,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Normalize: works for both message and callback_query events\nconst data = $input.first().json;\nconst cb = data.callback_query;\nconst msg = data.message;\n\nreturn [{\n  json: {\n    ...data,\n    _chatId:     cb ? cb.message.chat.id         : msg?.chat.id,\n    _userId:     String(cb ? cb.from.id          : msg?.from?.id || ''),\n    _text:       cb ? cb.data                    : (msg?.text || ''),\n    _firstName:  cb ? cb.from.first_name         : (msg?.from?.first_name || 'Клієнт'),\n    _type:       cb ? 'callback_query'           : 'message',\n    _callbackId: cb ? cb.id                      : null\n  }\n}];"
+        "jsCode": "// Normalize: works for both message and callback_query events\nconst data = $input.first().json;\nconst cb = data.callback_query;\nconst msg = data.message;\n\nreturn [{\n  json: {\n    ...data,\n    _chatId:     cb ? cb.message.chat.id         : msg?.chat.id,\n    _userId:     String(cb ? cb.from.id          : msg?.from?.id || ''),\n    _text:       cb ? cb.data                    : (msg?.text || ''),\n    _firstName:  cb ? cb.from.first_name         : (msg?.from?.first_name || 'Клієнт'),\n    _type:       cb ? 'callback_query'           : 'message',\n    _callbackId: cb ? cb.id                      : null,\n    _messageId:  msg ? msg.message_id            : null\n  }\n}];"
       },
       "id": "normalize-001",
       "name": "Normalize",
@@ -895,6 +895,38 @@
           "name": "Telegram account"
         }
       }
+    },
+    {
+      "id": "main-bot-global-config",
+      "name": "Global Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -740,
+        1380
+      ],
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json, TELEGRAM_BOT_TOKEN: 'YOUR_TELEGRAM_BOT_TOKEN' } }];"
+      }
+    },
+    {
+      "id": "main-bot-react-first",
+      "name": "React First Msg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -380,
+        1360
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.telegram.org/bot{{ $('Global Config').first().json.TELEGRAM_BOT_TOKEN }}/setMessageReaction",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '🙏' }] }) }}",
+        "options": {}
+      }
     }
   ],
   "connections": {
@@ -960,22 +992,25 @@
         ]
       ]
     },
-    "Create Identity": {
-      "main": [
-        [
-          {
-            "node": "Welcome New User",
-            "type": "main",
-            "index": 0
-          }
-        ]
+    "Create Identity": [
+      [
+        {
+          "node": "Global Config",
+          "type": "main",
+          "index": 0
+        }
       ]
-    },
+    ],
     "Welcome New User": {
       "main": [
         [
           {
             "node": "Mark New User",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "React First Msg",
             "type": "main",
             "index": 0
           }
@@ -1233,7 +1268,16 @@
           }
         ]
       ]
-    }
+    },
+    "Global Config": [
+      [
+        {
+          "node": "Welcome New User",
+          "type": "main",
+          "index": 0
+        }
+      ]
+    ]
   },
   "settings": {
     "executionOrder": "v1"

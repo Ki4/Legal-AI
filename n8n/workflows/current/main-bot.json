@@ -1022,7 +1022,7 @@
         2240
       ],
       "parameters": {
-        "jsCode": "// Skip the AI entirely while a user is in an off-topic pause (token saving).\nconst userId = $('Normalize').item.json._userId;\nconst sd = $getWorkflowStaticData('global');\nconst rec = (sd.offtopic && sd.offtopic[userId]) || { pausedUntil: 0 };\nconst paused = (rec.pausedUntil || 0) > Date.now();\nreturn [{ json: { ...$json, _paused: paused } }];"
+        "jsCode": "// Read the user's rate-limit row (from Cooldown Read) — pause skips the AI.\nconst norm = $('Pre-filter').item.json;\nconst rec = $('Cooldown Read').item.json || {};\nconst pausedUntil = rec.paused_until ? new Date(rec.paused_until).getTime() : 0;\nreturn [{ json: { ...norm, _paused: pausedUntil > Date.now() } }];"
       }
     },
     {
@@ -1120,7 +1120,7 @@
         2060
       ],
       "parameters": {
-        "jsCode": "// Update the per-user off-topic counter by topic and decide the response.\n// State in workflow static data (no DB). Tiers (Sergey's policy, no toxicity):\n//   off_topic 1: gentle · 2: warning · 3: nudge · 4+: pause ~15 min.\n// Any legal topic (clear/legal_unclear) RESETS the counter (good faith).\nconst userId = $('Normalize').item.json._userId;\nconst topic = $json.topic;\nconst sd = $getWorkflowStaticData('global');\nsd.offtopic = sd.offtopic || {};\nlet rec = sd.offtopic[userId] || { count: 0, pausedUntil: 0 };\n\nif (topic === 'clear' || topic === 'legal_unclear') {\n  rec.count = 0; rec.pausedUntil = 0; sd.offtopic[userId] = rec;\n  return [{ json: { ...$json, _guard_action: topic === 'clear' ? 'proceed' : 'clarify' } }];\n}\n\n// off_topic\nrec.count = (rec.count || 0) + 1;\nlet text;\nif (rec.count === 1) {\n  text = 'Я тут допомагаю з юридичними документами ✍️\\nПоки це розлучення та аліменти. Якщо ваше питання про це — напишіть, і я допоможу.';\n} else if (rec.count === 2) {\n  text = 'Здається, це не зовсім по темі 🙂\\nЯ — юридичний помічник: розлучення та аліменти. Якщо й далі писатимете не по суті — зроблю невелику паузу 🙏';\n} else if (rec.count === 3) {\n  text = 'Я все ще тут для юридичних питань 👇\\nОберіть послугу або опишіть свою ситуацію.';\n} else {\n  rec.pausedUntil = Date.now() + 15 * 60 * 1000;\n  text = 'Роблю невелику паузу 🙏\\nПовертайтесь трохи згодом — або одразу оберіть послугу нижче 👇';\n}\nsd.offtopic[userId] = rec;\nreturn [{ json: { ...$json, _guard_action: 'offtopic', _guard_text: text } }];"
+        "jsCode": "// Decide response by topic + bump/reset the off-topic counter (written by\n// Update Rate Limit next). Tiers (no toxicity): 1 gentle/2 warning/3 nudge/4+ pause.\nconst topic = $json.topic;\nconst rec = $('Cooldown Read').item.json || {};\nlet count = rec.off_topic_count || 0;\n\nif (topic === 'clear' || topic === 'legal_unclear') {\n  return [{ json: { ...$json, _guard_action: topic === 'clear' ? 'proceed' : 'clarify', _new_count: 0, _new_paused: null } }];\n}\ncount = count + 1;\nlet text, paused = null;\nif (count === 1) text = 'Я тут допомагаю з юридичними документами ✍️\\nПоки це розлучення та аліменти. Якщо ваше питання про це — напишіть, і я допоможу.';\nelse if (count === 2) text = 'Здається, це не зовсім по темі 🙂\\nЯ — юридичний помічник: розлучення та аліменти. Якщо й далі писатимете не по суті — зроблю невелику паузу 🙏';\nelse if (count === 3) text = 'Я все ще тут для юридичних питань 👇\\nОберіть послугу або опишіть свою ситуацію.';\nelse { paused = new Date(Date.now() + 15 * 60 * 1000).toISOString(); text = 'Роблю невелику паузу 🙏\\nПовертайтесь трохи згодом — або одразу оберіть послугу нижче 👇'; }\nreturn [{ json: { ...$json, _guard_action: 'offtopic', _guard_text: text, _new_count: count, _new_paused: paused } }];"
       }
     },
     {
@@ -1308,6 +1308,117 @@
           "name": "Telegram account"
         }
       }
+    },
+    {
+      "id": "main-bot-init-ratelimit",
+      "name": "Init Rate Limit",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        1660
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "tableId": "bot_rate_limit",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "external_id",
+              "fieldValue": "={{ $('Normalize').item.json._userId }}"
+            },
+            {
+              "fieldId": "off_topic_count",
+              "fieldValue": "0"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "UpDcJgOGQzIc8axI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "guard-read",
+      "name": "Cooldown Read",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -820,
+        2240
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "bot_rate_limit",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "external_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize').item.json._userId }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "UpDcJgOGQzIc8axI",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "id": "guard-update",
+      "name": "Update Rate Limit",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        1900
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "operation": "update",
+        "tableId": "bot_rate_limit",
+        "filterType": "manual",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "external_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Normalize').item.json._userId }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "off_topic_count",
+              "fieldValue": "={{ $('Off-topic Guard').item.json._new_count }}"
+            },
+            {
+              "fieldId": "paused_until",
+              "fieldValue": "={{ $('Off-topic Guard').item.json._new_paused }}"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {
+          "id": "UpDcJgOGQzIc8axI",
+          "name": "Supabase account"
+        }
+      }
     }
   ],
   "connections": {
@@ -1377,7 +1488,7 @@
       "main": [
         [
           {
-            "node": "Global Config",
+            "node": "Init Rate Limit",
             "type": "main",
             "index": 0
           }
@@ -1422,7 +1533,7 @@
         ],
         [
           {
-            "node": "Cooldown Check",
+            "node": "Cooldown Read",
             "type": "main",
             "index": 0
           }
@@ -1708,7 +1819,7 @@
       "main": [
         [
           {
-            "node": "Guard Switch",
+            "node": "Update Rate Limit",
             "type": "main",
             "index": 0
           }
@@ -1734,6 +1845,39 @@
         [
           {
             "node": "Off-topic Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Global Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cooldown Read": {
+      "main": [
+        [
+          {
+            "node": "Cooldown Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Guard Switch",
             "type": "main",
             "index": 0
           }

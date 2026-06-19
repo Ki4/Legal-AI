@@ -39,3 +39,6 @@ supabase/.temp/
 # Office temp files
 ~$*
 .claude/settings.local.json
+
+# Local scratch visualization (session 28) — never commit
+apps/client/.claude/harness-visual.md

@@ -245,10 +245,21 @@ ensureNode({
     sendBody: true,
     specifyBody: 'json',
     jsonBody:
-      "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '🙏' }] }) }}",
+      "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '👀' }] }) }}",
     options: {},
   },
 });
+
+// Reconcile reaction emoji on an already-present React node (👀 «бачу, прийняв»
+// — neutral acknowledgement; earlier revision used 🙏).
+const reactNode = getNode('React First Msg');
+const desiredReactBody =
+  "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '👀' }] }) }}";
+if (reactNode && reactNode.parameters.jsonBody !== desiredReactBody) {
+  reactNode.parameters.jsonBody = desiredReactBody;
+  console.log('✓ React First Msg emoji → 👀');
+  changed++;
+}
 
 // new-user branch: Create Identity → Global Config → Welcome New User
 setConn('Create Identity', to('Global Config'));

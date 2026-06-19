@@ -924,7 +924,7 @@
         "url": "=https://api.telegram.org/bot{{ $('Global Config').first().json.TELEGRAM_BOT_TOKEN }}/setMessageReaction",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '🙏' }] }) }}",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $('Normalize').item.json._chatId, message_id: $('Normalize').item.json._messageId, reaction: [{ type: 'emoji', emoji: '👀' }] }) }}",
         "options": {}
       }
     }

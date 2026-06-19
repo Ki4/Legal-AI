@@ -10,6 +10,13 @@
 
 ---
 
+### 2026-06-19 (session 39 cont.) — 🙏 reaction on a new user's first message — deployed
+**Status:** DEPLOYED · branch `feature/bot-first-message-reaction` → main
+**Why:** the one deferred item from the #65 bundle — Sergey gave the explicit go ("сделай реакцию 🙏").
+**What happened:** `setMessageReaction` is too new for the n8n Telegram node → raw HTTP, which needs the bot token. Added a `Global Config` code node (placeholder `YOUR_TELEGRAM_BOT_TOKEN`, injected live by `deploy-workflow.mjs` — repo keeps the placeholder, verified no token leak) placed ON THE NEW-USER BRANCH only (`Create Identity → Global Config → Welcome New User`), so the hot path for existing users is untouched. `Normalize` now exposes `_messageId`; a `React First Msg` HTTP leaf fans out off `Welcome New User` (`onError:continueRegularOutput` → a failed reaction never breaks onboarding) and POSTs `setMessageReaction` with `🙏` (in Telegram's allowed set). **Verified:** the exact API call (sendMessage → setMessageReaction 🙏) returns `{"ok":true,"result":true}` live; main-bot active at 33 nodes with the token injected. The full new-user wiring can only be exercised by a genuinely new Telegram user (can't simulate without a real new chat), but it's harmless-by-design (onError continue).
+**Files:** `scripts/sync-bot-ux-polish.mjs` (L4c: Normalize `_messageId`, Global Config, React First Msg, new-user rewire), `n8n/workflows/current/main-bot.json` (deployed).
+**Tests:** no app logic (n8n config + raw API); API call smoke-verified live.
+
 ### 2026-06-19 (session 39) — Telegram bot UX polish bundle (#65) — deployed + live-verified
 **Status:** DEPLOYED + live-verified · branch `feature/bot-ux-polish` · closes #65 on merge
 **Why:** Sergey wanted the Telegram bot to feel like a smooth app, not a request/response form — loading/progress, smoother interactions, nicer buttons, "emotions". One bundle (he explicitly asked not to split it). Key reframe established up front: a Telegram bot has no visual/CSS layer — its UX levers are message text, inline buttons, timing, `sendChatAction`, `editMessageText`, `answerCallbackQuery`. So this is n8n engineering + microcopy, not a design-tool task.

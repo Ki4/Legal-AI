@@ -21,7 +21,7 @@
 7. **Інфра-діагностика (НЕ баг коду):** реальні тапи Сергія не доходили — `getWebhookInfo` показав 404+pending; корінь — **ngrok був offline** (`ERR_NGROK_3200`). Перезапустив тунель. **Чекліст запуску: Docker + ngrok + `getWebhookInfo`.**
 
 ### 🔴 Наступний крок / відкладено
-1. **Реакція 🙏** (`setMessageReaction`) на перше повідомлення — єдиний пункт зі списку Сергія, що ВИМАГАЄ ноду з токеном у main-bot (security-поверхня + Global Config-нода). Лишив **opt-in**, чекає явного «так».
+1. ~~**Реакція 🙏** на перше повідомлення~~ — ✅ **ЗРОБЛЕНО** (session 39 cont., Сергій дав «так»). `Global Config`-нода з токеном (injected at deploy, repo тримає плейсхолдер) на новоюзерній гілці + `React First Msg` HTTP-лист (`setMessageReaction` 🙏) off Welcome New User. main-bot 33 ноди, задеплоєно. API-виклик перевірено live (`{"ok":true}`); повний new-user flow тригериться лише реальним новим юзером (harmless-by-design, onError continue).
 2. **IMPROVEMENTS #77** — формати документа (PDF/DOCX export, send-as-file) + стилістика — коли візьмемось за стиль/збереження. Кнопка PDF на картці зарезервована.
 3. **⏰ Backlog Ольги (~2026-06-25):** CRON `schedule:`, 2 зміни законів (СК/ЦПК), sign-off `exception_if`, прод-флип `alimony-change` — не торкались.
 

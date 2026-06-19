@@ -5,8 +5,33 @@
 //   1 = simple, 2 = children+alimony, 3 = complex, 4 = minimal, 5 = visitation schedule (#28)
 // =============================================================
 
+import crypto from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, resolve } from 'node:path'
+
 // Local n8n (active workflow). Use webhook-test/... when testing via n8n UI Execute button.
 const WEBHOOK_URL = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/form-submit'
+
+// Since #56, form-submit rejects a request with no signed `init_data` (the raw
+// `user_id` path is fail-closed by default). Forge a valid signature with the
+// real bot token so smoke tests exercise the live verified path, exactly like a
+// genuine Telegram Mini App client would. Mirrors verify-init-data.js's algorithm.
+function botToken() {
+  const __dirname = dirname(fileURLToPath(import.meta.url))
+  const env = readFileSync(resolve(__dirname, '../apps/client/.env.local'), 'utf8')
+  const m = env.match(/^TELEGRAM_BOT_TOKEN=(.*)$/m)
+  if (!m) throw new Error('TELEGRAM_BOT_TOKEN not found in apps/client/.env.local')
+  return m[1].trim()
+}
+function signInitData(userId, token) {
+  const user = JSON.stringify({ id: Number(userId), first_name: 'Serhii', language_code: 'uk' })
+  const authDate = Math.floor(Date.now() / 1000)
+  const dcs = [`auth_date=${authDate}`, `user=${user}`].sort().join('\n')
+  const secretKey = crypto.createHmac('sha256', 'WebAppData').update(token).digest()
+  const hash = crypto.createHmac('sha256', secretKey).update(dcs).digest('hex')
+  return `user=${encodeURIComponent(user)}&auth_date=${authDate}&hash=${hash}`
+}
 
 const scenarios = {
   1: {
@@ -360,11 +385,14 @@ const num = arg
 console.log(`📋 Scenario ${num}: ${scenario.name}`)
 console.log(`🚀 Sending to: ${WEBHOOK_URL}\n`)
 
+// Attach a freshly-signed init_data for the scenario's user_id (#56).
+const body = { ...scenario.data, init_data: signInitData(scenario.data.user_id, botToken()) }
+
 try {
   const res = await fetch(WEBHOOK_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json; charset=utf-8' },
-    body: JSON.stringify(scenario.data),
+    body: JSON.stringify(body),
   })
   const text = await res.text()
   console.log(`📨 Response (${res.status}):`)

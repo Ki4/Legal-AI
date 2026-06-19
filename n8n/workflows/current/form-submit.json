@@ -310,10 +310,10 @@
     {
       "parameters": {
         "chatId": "={{ $('Validate').item.json._user_id }}",
-        "text": "=✅ *Дякуємо! Дані отримано.*\n\n📋 Послуга: {{ $('Get Service').item.json.title }}\n🔢 Кейс №: {{ $('Insert Case').item.json.id }}\n\nДокумент готується... ⏳",
+        "text": "=✅ <b>Дякуємо! Дані отримано.</b>\n\n📋 Послуга: {{ $('Get Service').item.json.title }}\n🔢 Ваш кейс: <code>{{ $('Insert Case').item.json.id }}</code>  <i>(торкніться, щоб скопіювати)</i>\n\n⏳ Готую документ — зазвичай 1–2 хвилини. Повідомлю, щойно буде готово.",
         "additionalFields": {
           "appendAttribution": false,
-          "parse_mode": "Markdown"
+          "parse_mode": "HTML"
         }
       },
       "id": "notify-user-001",
@@ -443,10 +443,11 @@
     {
       "parameters": {
         "chatId": "={{ $('Validate').item.json._user_id }}",
-        "text": "=📄 <b>Ваша позовна заява готова!</b>\n\n👇 Відкрийте, перегляньте та завантажте як PDF:\n{{ $('Build Replace Request').item.json._new_doc_url }}\n\n💡 <i>Файл → Завантажити → PDF</i> для друку та подачі до суду.",
+        "text": "=📄 <b>Готово! Ваша позовна заява сформована.</b>\n\n👉 <a href=\"{{ $('Build Replace Request').item.json._new_doc_url }}\">Відкрити документ</a>\n\n💡 У документі: <i>Файл → Завантажити → PDF</i> — і можна подавати до суду.\n\nПотрібен ще один документ? Просто напишіть мені ✍️",
         "additionalFields": {
           "appendAttribution": false,
-          "parse_mode": "HTML"
+          "parse_mode": "HTML",
+          "disable_web_page_preview": true
         }
       },
       "id": "send-link-001",
@@ -901,6 +902,90 @@
           "name": "Telegram account"
         }
       }
+    },
+    {
+      "id": "fs-progress-1",
+      "name": "Progress: Building",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        3040,
+        1340
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "resource": "message",
+        "operation": "editMessageText",
+        "messageType": "message",
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "messageId": "={{ $('Notify User').item.json.result.message_id }}",
+        "text": "📝 Аналізую дані та формую документ…",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "fs-progress-2",
+      "name": "Progress: Finalizing",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4240,
+        1340
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "resource": "message",
+        "operation": "editMessageText",
+        "messageType": "message",
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "messageId": "={{ $('Notify User').item.json.result.message_id }}",
+        "text": "✍️ Майже готово — оформлюю документ…",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "id": "fs-progress-3",
+      "name": "Progress: Ready",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4480,
+        1340
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "resource": "message",
+        "operation": "editMessageText",
+        "messageType": "message",
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "messageId": "={{ $('Notify User').item.json.result.message_id }}",
+        "text": "✅ Документ готовий — дивіться нижче ⤵️",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
     }
   ],
   "connections": {
@@ -1055,6 +1140,11 @@
             "node": "Build Replace Request",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "Progress: Building",
+            "type": "main",
+            "index": 0
           }
         ],
         [
@@ -1107,6 +1197,11 @@
         [
           {
             "node": "Send Doc Link",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Progress: Ready",
             "type": "main",
             "index": 0
           }
@@ -1314,6 +1409,11 @@
         [
           {
             "node": "Share Document",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Progress: Finalizing",
             "type": "main",
             "index": 0
           }

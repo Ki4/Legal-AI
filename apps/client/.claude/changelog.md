@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-19 (session 39 cont.) — slash menu + new-user double-greeting fix (from a live first-time test) — deployed
+**Status:** DEPLOYED + live-verified · branch `feature/bot-onboarding-commands` → main
+**Why:** Sergey's friend tested the bot for the first time and surfaced real issues: no «/» command hint menu, a double greeting on first /start, and (by abuse-testing) that off-topic messages all hit the AI (no limit).
+**What happened:**
+- **Slash-command menu** (`scripts/set-bot-commands.mjs`, NEW) — `setMyCommands` registers `/start /menu /help` so the native «/» menu appears (was empty). `/stop` deliberately left out (no handler yet → IMPROVEMENTS #82).
+- **New-user double-greeting fixed** (LAYER 6 in `sync-bot-ux-polish.mjs`) — **diagnosed with evidence, not guessed:** `exec 105` showed ONE execution ran both Welcome New User AND Show Menu, i.e. it's the onboarding flow (a new user's /start is greeted by Welcome, then continues Mark New User → Pre-filter → Skip AI?(greeting) → Show Menu), **not** a Telegram duplicate-delivery race — so a Wait(1s) would not fix it. Added a `Greeting: is new?` IF after Skip AI?(TRUE): new user → terminal (Welcome already greeted, it has the buttons), existing user → Show Menu. Non-greeting first messages still flow to the AI, so a new user's real query is never swallowed (session-36 G3 stands).
+- Fixed a **non-idempotent patcher** bug found while applying L6: two `setConn('Skip AI?')` (L1 vs L6) flip-flopped each run; L6 now owns that connection.
+- **Live-verified per the new rule** (always send a real webhook message after a main-bot deploy — this is exactly how yesterday's 500 slipped through): `/menu` → exec 117 success → Show Menu, webhook 200.
+- **IMPROVEMENTS #81** (form field validation — email/phone/ІПН, from the friend's test), **#82** (/stop + lifecycle commands), **#83** (idempotent webhook — dedup by update_id; the real fix for Telegram's retry-on-non-200, distinct from the onboarding double-greeting). The off-topic **limit not working** = #78 (designed, deferred) — the friend's abuse test (execs 111-116, 6 off-topic msgs all → AI) validated that it's needed.
+**Files:** `scripts/set-bot-commands.mjs` (NEW), `scripts/sync-bot-ux-polish.mjs` (LAYER 6 + L1 idempotency fix), `n8n/workflows/current/main-bot.json` (deployed, 34 nodes), `docs/architecture/IMPROVEMENTS.md` (#81-83).
+**Tests:** n8n config + Telegram API; live-verified existing-user /menu (single Show Menu). New-user path fixed by logic + readback (a true new-user retest needs a fresh Telegram account).
+
 ### 2026-06-19 (session 39 cont.) — bot copy polish + reaction 👀 + subscribe backlog — deployed
 **Status:** DEPLOYED · branch `feature/bot-copy-polish` → main
 **Why:** quality copywriting pass on the live main-bot messages (Sergey approved each), + neutral reaction emoji, + a GDPR-aware «notify me» backlog item.

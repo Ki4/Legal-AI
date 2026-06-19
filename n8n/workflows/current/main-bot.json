@@ -1038,15 +1038,17 @@
         ]
       ]
     },
-    "Create Identity": [
-      [
-        {
-          "node": "Global Config",
-          "type": "main",
-          "index": 0
-        }
+    "Create Identity": {
+      "main": [
+        [
+          {
+            "node": "Global Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
-    ],
+    },
     "Welcome New User": {
       "main": [
         [
@@ -1315,15 +1317,17 @@
         ]
       ]
     },
-    "Global Config": [
-      [
-        {
-          "node": "Welcome New User",
-          "type": "main",
-          "index": 0
-        }
+    "Global Config": {
+      "main": [
+        [
+          {
+            "node": "Welcome New User",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
-    ]
+    }
   },
   "settings": {
     "executionOrder": "v1"

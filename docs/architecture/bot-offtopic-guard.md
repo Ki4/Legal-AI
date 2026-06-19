@@ -131,3 +131,26 @@ a future miss isn't a surprise, e.g.: «Я готую 2 типи докумен�
 Only 2 trusted users today → no off-topic noise, no cost pressure, and a wrong
 limit would only annoy us. Build the warm/limit logic when there are strangers in
 the chat. Until then this doc is the ready-to-implement spec.
+
+---
+
+## Implementation status (session 39) — ✅ SHIPPED (static-data variant)
+
+Built + deployed live (`scripts/sync-offtopic-guard.mjs`, main-bot 41 nodes).
+
+**Decision: counter in n8n WORKFLOW STATIC DATA, not a Supabase column.** No
+migration, no DB read/write on every message, self-contained — the right fit for
+transient rate-limit state. If admin visibility is wanted later (tie to #79 cost),
+switch to a `profiles.off_topic_count` column (Sergey can apply the migration).
+
+**Validated:**
+- Classifier `topic` prompt — offline eval 93% / 100%-on-abuse, 0 legitimate→off_topic, 0 off_topic→legitimate (`scripts/eval/`).
+- Guard runtime — live test "asdfgh" → AI → topic=off_topic → counter→1 → tier-1 Off-topic Reply (exec 139 success). Proceed/clarify share the same Code node + Switch.
+
+**Tiers live:** off_topic 1 gentle · 2 warning · 3 nudge · 4+ pause (~15 min, AI skipped via Cooldown Check). legal_unclear/clear reset the counter.
+
+**KNOWN GAP (refinement):** `Pre-filter` short-circuits obvious off-topic KEYWORDS
+(погода/рецепт/спорт…) straight to Show Menu BEFORE the AI — so those do NOT count
+toward the limit (only AI-reaching off-topic, incl. abuse/gibberish, counts). To
+make ALL off-topic count, route Pre-filter's `off_topic` reason through the same
+counter. Low priority — abuse (the real threat) reaches the AI and IS counted.

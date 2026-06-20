@@ -10,6 +10,8 @@ import {
   isPublishedFor,
   STATUS_META,
 } from '../../lib/serviceStatus'
+import { analyzeService } from '../../lib/serviceAnatomy'
+import type { FormConfig } from '../../types/form'
 
 interface Service {
   id: string
@@ -19,7 +21,15 @@ interface Service {
   icon: string
   price: number
   status: ServiceStatus
-  form_config: { steps?: unknown[]; tabs?: unknown[] } | null
+  generation_mode: string | null
+  document_template: string | null
+  form_config: FormConfig | null
+}
+
+const HEALTH_DOT: Record<'green' | 'amber' | 'red', { dot: string; title: string }> = {
+  green: { dot: 'bg-emerald-400', title: 'Готова — шаблон і поля узгоджені' },
+  amber: { dot: 'bg-amber-400',   title: 'Є зауваження — відкрий, щоб побачити деталі' },
+  red:   { dot: 'bg-red-400',     title: 'Потребує уваги — шаблон/поля не узгоджені' },
 }
 
 interface AbstentionStats {
@@ -45,7 +55,7 @@ export function DashboardPage() {
 
     supabase
       .from('services')
-      .select('id, slug, title, description, icon, price, status, form_config')
+      .select('id, slug, title, description, icon, price, status, generation_mode, document_template, form_config')
       .eq('lawyer_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -194,25 +204,32 @@ export function DashboardPage() {
             {services.map((svc) => {
               const fieldCount = svc.form_config?.steps?.length ?? 0
               const tabCount   = svc.form_config?.tabs?.length  ?? 0
+              const health = analyzeService(svc.form_config, svc.document_template, svc.generation_mode).health
+              const hd = HEALTH_DOT[health.level]
               return (
                 <div
                   key={svc.id}
                   className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4
                              hover:border-slate-700 transition-colors"
                 >
-                  <div className="flex items-start gap-3">
+                  <button
+                    onClick={() => navigate(`/services/${svc.id}`)}
+                    className="flex items-start gap-3 text-left group/header"
+                    title="Переглянути анатомію послуги"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl flex-shrink-0">
                       {svc.icon || '⚖️'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white text-sm truncate">{svc.title || 'Без назви'}</h3>
+                      <h3 className="font-semibold text-white text-sm truncate group-hover/header:text-blue-400 transition-colors">{svc.title || 'Без назви'}</h3>
                       <p className="text-slate-500 text-xs mt-0.5 line-clamp-2">
                         {svc.description || 'Опис не вказано'}
                       </p>
                     </div>
-                  </div>
+                  </button>
 
                   <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${hd.dot}`} title={hd.title} />
                     <span>📋 {fieldCount} полів</span>
                     <span>•</span>
                     <span>🗂 {tabCount} табів</span>
@@ -253,7 +270,7 @@ export function DashboardPage() {
                       👁
                     </a>
                     <button
-                      onClick={() => navigate(`/services/${svc.id}`)}
+                      onClick={() => navigate(`/services/${svc.id}/edit`)}
                       className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
                       title="Редагувати"
                     >

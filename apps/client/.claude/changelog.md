@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-19 (session 39 cont.) — off-topic guard #78 (classifier `topic` + tiered limit + Supabase) + 2 bug fixes — deployed
+**Status:** DEPLOYED + live-verified · merged to main (`d425456`/`7325213`)
+**Why:** the friend's abuse test (6 off-topic msgs all hit the AI) proved the limit was needed now.
+**What happened:**
+- **Classifier `topic`** (clear/legal_unclear/off_topic) — validated OFFLINE first (`scripts/eval/`: 93% / 100% on abuse, 0 legit→off_topic). The reliable signal is binary "is this legal", not exact service — so tricky inputs («розлучатися») route in the user's favour.
+- **Guard** (`sync-offtopic-guard.mjs`, 7 nodes): legal → warm clarify + reset; off_topic → tiered (1 gentle/2 warning/3 nudge/4+ pause ~15min, AI skipped). Never penalises a confused legitimate user.
+- **State in Supabase `bot_rate_limit`** (migration 024, keyed by Telegram id) — chose DB over n8n static data (Sergey wanted admin visibility, #79). Row seeded at onboarding (`Init Rate Limit`).
+- **2 bugs found+fixed via real users:** (1) malformed `setConn` (missing `{main:}` wrapper) → 500 on every update; (2) Stanislav's text got NO reply — `Update Rate Limit` sat BETWEEN Off-topic Guard and Guard Switch, broke item-pairing → Switch matched no rule (DB write happened, reply didn't). Fix: Update Rate Limit as a parallel leaf, Switch reads `$json`.
+- **Future (spec):** escalation ladder (15min→week→3mo→ban via `pause_level`), hybrid static-cache; known gap — Pre-filter keyword off-topic bypasses the counter.
+**Files:** `scripts/sync-offtopic-guard.mjs`, `scripts/sync-bot-ux-polish.mjs`, `scripts/eval/*`, `supabase/migrations/024_bot_rate_limit.sql`, `docs/architecture/bot-offtopic-guard.md`, `n8n/workflows/current/main-bot.json` (44 nodes).
+**Tests:** offline eval 93%/100%-abuse; live: off-topic → reply sent + `off_topic_count` 0→1 (exec 147). **Lesson:** always send a REAL webhook message after a main-bot deploy — both bugs slipped a DB/API-only check.
+
 ### 2026-06-19 (session 39 cont.) — slash menu + new-user double-greeting fix (from a live first-time test) — deployed
 **Status:** DEPLOYED + live-verified · branch `feature/bot-onboarding-commands` → main
 **Why:** Sergey's friend tested the bot for the first time and surfaced real issues: no «/» command hint menu, a double greeting on first /start, and (by abuse-testing) that off-topic messages all hit the AI (no limit).

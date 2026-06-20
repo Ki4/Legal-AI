@@ -1,6 +1,45 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-20 (session 40 — загартування форми й бота за фідбеком тестера: валідація полів форми #81 + /stop #82 + дедуп webhook #83. Усе живо, мерж у main, запушено, Vercel задеплоєний + Сергій підтвердив наживо)
+> Updated: 2026-06-20 (session 41 — адмінка-дзеркало: розворот «білдер → read-only огляд». Tier-2 спека service-mirror (#66) + слайс 1 (анатомія) ЗМЕРЖЕНО в main + слайс 2 (коментарі) на гілці, чекає migration 025. 2 знахідки дзеркала: #67, IMPROVEMENTS #84)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 41 (2026-06-20) — адмінка-дзеркало: розворот «білдер → огляд», service-mirror (#66)
+
+### Головне — стан ЗАРАЗ
+- **Слайс 1 ЗМЕРЖЕНО в main + запушено** (`ebc2389`) — Vercel задеплоїть адмінку сам. main чистий.
+- **Слайс 2 (коментарі) — на гілці `feature/service-mirror-comments`** (`eed233c`), НЕ змержено: **чекає застосування migration 025** Сергієм (застосовував у кінці сесії — звірити Results). Після цього merge.
+- **Тести: client 175/175 ✅** (+28 анатомія), tsc + обидва білди (TWA + admin) чисті.
+- **Issue #66** відкрита (слайси 1-2 ✅ в коментарях, слайс 3 лишився). **Issue #67** заведено (divorce property_details, Variant B).
+- **Адмінка-дев** піднімалась на `http://localhost:5174` (`npm run dev:admin`; помирає із закриттям сесії).
+
+### Контекст/рішення (важливо для наступної сесії)
+- **Розворот:** замість будувати/чинити білдер форм — спершу зробити адмінку **дзеркалом** (read-only огляд: форма як є + анатомія документа + health + закони). Юрист дивиться → дає фідбек (коментарі) → замовляє послугу з прикладом документа → ми бачимо закономірності → ЛИШЕ потім білдер. Деталі: `specs/features/service-mirror/`, DECISIONS («Адмінка-дзеркало»).
+- **Ролі:** вирішили — 2 ролі (owner/lawyer), «developer» НЕ роль застосунку (розробник через код/Supabase/n8n). Тригер на ролі+RLS — окремий логін Ольги. Відкладено → IMPROVEMENTS #84.
+- **Архітектура адмінки** (відповідь на питання Сергія): НЕ окремий пакет — живе в `apps/client`, але окрема **збірка/деплой** (entry `admin.html`→`src/admin/main.tsx`, `vite.config.admin.ts`, `npm run dev:admin` :5174, `dist-admin/`). Спільний `src/` з TWA. CLAUDE.md згадує майбутній `apps/admin/` — ще не винесено.
+
+### Що зроблено
+1. **Спека** `specs/features/service-mirror/{plan,requirements,validation}.md` (Tier-2).
+2. **Слайс 1 (G1-G4, змержено):**
+   - `apps/client/src/lib/serviceAnatomy.ts` — чисті функції: `analyzeTemplate` (lean tag-екстрактор, БЕЗ імпорту CJS render-document; порт regex цитат), `diffFormVsTemplate` (used/unused/unmatched з **вычисляемым слоем** `PROVIDED_CONTEXT`/`DERIVED_SOURCES` — дзеркало buildContext), `serviceHealth` 🟢/🟡/🔴, `describeShowIf`/`analyzeService`. **28 тестів** (паритет цитат проти golden + інваріант unmatched===[] на реальних шаблонах).
+   - `ServiceViewPage.tsx` — read-only: header+health, анатомія, цитати (zakon.rada), форма як є. Роути: `services/:id`→view, `/edit`→редактор.
+   - `DashboardPage` — health-badge на картці; цитати збагачено stale (`law_chunks.is_stale`) + changed (`law_change_log`).
+3. **Слайс 2 (на гілці):** migration 025 `service_notes` + `ServiceNotes` панель + `NotesInboxPage` («💬 Коментарі» нав).
+
+### 🔎 Знахідки дзеркала (само випало)
+- **divorce** друкує `property_details`/`debt_details`, форма не питає → `________` у проді. **Issue #67** (рішення Сергія — Variant B: фікс шаблону, окремою гілкою з Ольгою).
+- **`has_children` shadowing** у doc-engine (форма питає, движок пере-обчислює з children_details) → IMPROVEMENTS #84.
+
+### 🔴 Наступний крок
+1. **Сергій застосовує migration 025** (звірити Results; якщо FK на slug дав помилку — або `ALTER TABLE services ADD CONSTRAINT services_slug_key UNIQUE(slug)`, або прибрати FK) → потім **merge `feature/service-mirror-comments`** в main.
+2. **Слайс 3** — заявка на послугу (`service_requests`) + завантаження прикладу документа (Supabase Storage). Окрема гілка.
+3. (Сергій планує точкові правки вигляду адмінки за запитом.)
+4. **#67** — фікс divorce-шаблону (Variant B) з Ольгою (Tier-2, зачіпає 263 parity-тести).
+5. ⏰ Backlog Ольги (~2026-06-25): флип alimony-change, 2 зміни законів, CRON schedule, exception_if sign-off.
+
+### Запуск середовища
+- Адмінка: `cd apps/client && npm run dev:admin` → `http://localhost:5174` (логін Supabase з `.env.local`). TWA: `npm run dev` (:5173).
+- Тести: `cd apps/client && npx vitest run`. Білд: `npx vite build` + `npx vite build --config vite.config.admin.ts`.
 
 ---
 

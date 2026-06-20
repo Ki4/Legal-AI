@@ -688,3 +688,20 @@ hardcode значення: `PM_ABLE_BODIED_2026 = 3328` (прожитковий 
 **Готча, знайдена ЛИШЕ live-смоук-тестом (не unit-тестами):** перша версія wiring була послідовна `Format Gen Failure → Notify User Failed → Send Admin Alert`. Admin-нода тоді отримувала ВИХІД Telegram-ноди (response sendMessage, без придатного `text`) → Telegram `Bad request` → впала термінальна нода → execution став `error` → це СПРАЦЮВАЛО catch-all Error Trigger (другий, зайвий адмін-алерт). Виправлено фан-аутом (паралельно з одного виходу), `Notify User Failed` — лист (leaf) з `onError:continueRegularOutput`, щоб збій надсилання клієнту (напр. заблокував бота) не валив адмін-гілку. Урок той самий, що в #56: unit-тести на чисті форматери зелені, а реальну топологію n8n підтверджує лише живий прогін.
 
 **Файли:** `n8n/templates/format-gen-failure.js` (+тести), `scripts/sync-user-error-feedback.mjs` (ідемпотентний патчер), `n8n/workflows/current/form-submit.json` (40→42 ноди).
+
+## Адмінка-дзеркало: read-only перед білдером; анатомія = парсинг, не рендер (#66)
+
+**Рішення (розворот сесії 41):** замість того, щоб одразу будувати/чинити білдер форм, спершу зробити адмінку **дзеркалом** — read-only огляд того, що вже є (форма як є + анатомія документа + health + закони). Юрист дивиться, вчиться, дає фідбек і завантажує приклади документів → ми бачимо закономірності → і ЛИШЕ потім будуємо білдер. Білдер як здогадка → білдер як висновок.
+
+**Чому read-only first.** (1) Ризик 🟢 — слайс нічого не пише в `services`, не чіпає court-ready генерацію. (2) Цінність «бачу, чого бракує» приходить негайно. (3) Анатомія рахується **в браузері** з даних, що вже є (`form_config` + `document_template`) — без AI, без бекенда.
+
+**Межа анатомії — парсинг, НЕ рендер.** `serviceAnatomy.ts` НЕ імпортує `render-document.js` (CommonJS-нода, ризик у Vite-бандлі) і НЕ рендерить документ. Він **портує** дві речі чистими функціями: (1) lean tag-екстрактор (дзеркалить tokenizer render-document — збирає лише шляхи, без eval), (2) regex цитат (дзеркалить `scripts/lib/citations.mjs`). Обидва порти захищені **паритет-тестами** проти реальних шаблонів і golden-цитатників. Живе превʼю РЕАЛЬНОГО документа (повний рендер у браузері) свідомо відкладено — окремий слайс.
+
+**Вычисляемый слой — головна пастка.** Шаблони посилаються на обчислені ключі (`plaintiff_name` ← last/first/middle, `children` ← children_details, `court_fee` ← prior/requested alimony), яких НЕМАЄ серед полів форми. Наївний матчинг «поле ↔ плейсхолдер» дав би лавину фальшивих unused/unmatched → health завжди 🔴. Тому `serviceAnatomy.ts` тримає `PROVIDED_CONTEXT` + `DERIVED_SOURCES` — **дзеркало `buildContext()`**. Дрейф ловить інваріант-тест: реальні шаблони → `unmatchedPlaceholders === []` (окрім реального gap divorce — #67).
+
+**Знахідки, що випали самі (ще до UI) — доказ цінності дзеркала:**
+- **divorce:** шаблон друкує `{{property_details}}`/`{{debt_details}}`, форма їх не питає → `________` у проді. Рішення Сергія — Variant B (окремий позов), фікс шаблону → **#67**.
+- **`has_children` shadowing:** форма має поле `has_children`, але движок ігнорує відповідь і пере-обчислює його з `children_details` (computed key шадовить form field). Аналізатор тепер рахує таке поле «використаним» (шаблон згадує імʼя), але це латентна неузгодженість doc-engine → нотатка IMPROVEMENTS #84.
+- **hybrid AI-fed поля** (`changed_facts`, `evidence_list`…): не в шаблоні, бо живлять L3-обґрунтування. Аналізатор бачить лише шаблон → показує «не в шаблоні (могло живити AI)». Точне моделювання AI-входів — поза скоупом.
+
+**Файли:** `apps/client/src/lib/serviceAnatomy.ts` (+28 тестів), `apps/client/src/admin/pages/ServiceViewPage.tsx`, `DashboardPage.tsx` (health-badge), `AdminApp.tsx` (роути view/edit). Спека `specs/features/service-mirror/`.

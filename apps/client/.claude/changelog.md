@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-20 (session 41) — service-mirror Slice 1 (G1-G3): read-only admin анатомія послуги (#66)
+**Status:** COMMITTED (client-only, Vercel auto-builds) · branch `feature/service-mirror`
+**Why:** Реалізація слайса 1 спеки service-mirror — показати юристу «що є»: форма як є + анатомія документа + health + закони. Read-only → ризик 🟢, нічого не пише в `services`, не чіпає генерацію.
+**What happened:**
+- **G1** `apps/client/src/lib/serviceAnatomy.ts` (NEW) — чисті функції: `analyzeTemplate` (lean tag-екстрактор + порт regex цитат, БЕЗ імпорту CJS render-document — стоп-умова спеки; depth-tracking виключає loop-item поля), `diffFormVsTemplate` (used/unused/unmatched), `serviceHealth` 🟢/🟡/🔴, `collectBrokenShowIf`/`describeShowIf`/`collectEmptyLabelFields`/`fieldTypeLabel`/`analyzeService`. **Вычисляемый слой** (`PROVIDED_CONTEXT`/`DERIVED_SOURCES`) дзеркалить `buildContext()` — інакше computed-ключі (plaintiff_name, court_fee…) давали б лавину фальшивих unmatched. 28 тестів: паритет цитат проти golden + інваріант `unmatched===[]` на реальних шаблонах.
+- **G2** `ServiceViewPage.tsx` (NEW) — read-only сторінка: header+health light, анатомія (used/unused/unmatched), цитати з лінками zakon.rada, форма як є (типи людською, `show_if` природною мовою, `id` під «технічні деталі»). Роути розведено: `services/:id`→view, `services/:id/edit`→редактор; картка каталогу→view, ✏️→edit. Тільки SELECT.
+- **G3** health-badge на картці каталогу (`DashboardPage`); на детальній — збагачення цитат з `law_chunks.is_stale` (badge «застаріло») + pending `law_change_log` (banner «змінено» → /law-changes), feed у health. Поле з id, що збігається з computed-ключем, рахується «використаним» (прибрало шум `has_children`).
+- **Знахідки дзеркала (ще до завершення UI):** (1) divorce друкує `property_details`/`debt_details`, форма не питає → `________` у проді → **issue #67** (Variant B: фікс шаблону, окремо); (2) `has_children` shadowing у doc-engine → IMPROVEMENTS #84; (3) hybrid AI-fed поля (`changed_facts`…) не в шаблоні → показано як «не в шаблоні (могло живити AI)».
+- **G4** доки: `DECISIONS.md` (розворот + межа анатомії + знахідки), `IMPROVEMENTS.md` #84, `roadmap.md` v2.2.
+**Files:** `apps/client/src/lib/serviceAnatomy.ts` (NEW) + `__tests__/serviceAnatomy.test.ts` (NEW, 28), `apps/client/src/admin/pages/ServiceViewPage.tsx` (NEW), `AdminApp.tsx`, `DashboardPage.tsx`, `docs/architecture/{DECISIONS,IMPROVEMENTS}.md`, `specs/roadmap.md`.
+**Tests:** client vitest **175/175** ✅ (+28) · tsc clean · vite build ✅. **Не зроблено:** live-перевірка в браузері з адмін-логіном (потребує запущений застосунок + сесію) — лишилось у validation як ручний крок.
+
 ### 2026-06-20 (session 41) — Tier-2 spec: admin "service-mirror" (read-only огляд + feedback intake)
 **Status:** COMMITTED (spec/docs only, no code) · branch `feature/service-mirror-spec`
 **Why:** Розворот напряму адаптації адмінки. Поточна адмінка — інструмент *редагування* з розірваною петлею (таб «AI-промпт» декоративний — генерація йде з `document_template`, не з `ai_prompt`) і технічно ворожим юристу білдером. Рішення Сергія: спершу зробити адмінку **дзеркалом** — показати юристу те, що є (форма як є + анатомія + закони + health), зібрати фідбек і приклади документів, і лише ПОТІМ будувати білдер на основі закономірностей, а не наосліп.

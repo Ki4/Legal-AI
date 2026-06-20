@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-06-20 (session 40) — bot /stop handler (#82) + idempotent webhook dedup (#83) — deployed + live-verified
+**Status:** DEPLOYED + live-verified · branch `feature/form-bot-hardening` · main-bot 44→47 nodes
+**Why:** Two robustness gaps surfaced by the friend's session-39 test. `/stop` had no handler (5 chars, not a greeting/off-topic keyword → flowed to the AI Agent and landed on Send Help — wrong reply + wasted Groq call). And Telegram re-delivers an update on a non-fast-200 (e.g. session 39's 500), causing the SAME message to be processed twice.
+**What happened:**
+- **#82 /stop** (`scripts/sync-bot-stop-command.mjs`, NEW): a new `Is Stop?` IF intercepts `/stop` (startsWith, reads `$('Normalize')._text`) on the existing-user branch, BEFORE Pre-filter — so it never hits the AI and is independent of Pre-filter's own classifier (owned by other patchers; left untouched to avoid a cross-script fight). Routes to a new `Stop Reply` Telegram node — a polite acknowledgement (no subscriptions yet) + the same service shortcut buttons. `Is Callback?`(FALSE) → `Is Stop?` → {`Stop Reply` | `Pre-filter`}. `/stop` registered in the «/» menu (`set-bot-commands.mjs`).
+- **#83 dedup** (`n8n/templates/dedup-update.js` + `scripts/sync-webhook-dedup.mjs`, NEW): a `Dedup Update` Code node sits FIRST (`Telegram Trigger → Dedup Update → Normalize`) and drops a repeat `update_id` using the workflow's global static data as a 5-min TTL map; a duplicate returns `[]` so the flow stops. Pure core (`dedupUpdate(store, updateId, now, ttl)`) is unit-tested; the node jsCode is GENERATED from the template (anti-drift, like `prepare-l4b`). Fails open on a missing update_id (never drops a real message).
+- **Live-verified** (per the always-send-a-real-webhook rule) against local n8n via direct webhook POST + executions API, with a seeded test identity, cleaned up after: exec 148 `…→ Is Stop? → Stop Reply` for `/stop` (errored only at the send to the synthetic chat — routing correct); exec 150 duplicate `update_id` → `Telegram Trigger → Dedup Update` and STOP (zero side-effects, no admin alert); exec 151 a fresh `update_id` processes again (dedup is per-id, not blanket). Connection-integrity check (all 47 refs valid) caught nothing broken — the structural guard that would have caught session 39's malformed-connection 500.
+**Files:** `scripts/sync-bot-stop-command.mjs` (NEW), `scripts/sync-webhook-dedup.mjs` (NEW), `n8n/templates/dedup-update.js` (NEW), `n8n/templates/__tests__/dedup-update.test.js` (NEW, 7 tests), `scripts/set-bot-commands.mjs` (+/stop), `n8n/workflows/current/main-bot.json` (deployed, 47 nodes), `docs/architecture/IMPROVEMENTS.md` (#82/#83 done).
+**Tests:** root vitest 1056/1056 ✅ (+7) · live-verified (see above). **Note:** 2 expected «chat not found» admin alerts from the synthetic test user during verification.
+
 ### 2026-06-20 (session 40) — form field format validation: email / phone / ІПН (#81)
 **Status:** COMMITTED (client-only, no deploy needed — Vercel auto-builds) · branch `feature/form-bot-hardening`
 **Why:** A friend's session-39 test showed form fields accept garbage (any text in email/phone/ІПН) → an invalid legal document downstream. The form had only a required-empty check, no format check.

@@ -4,8 +4,8 @@
 //
 //   node scripts/set-bot-commands.mjs
 //
-// /stop is intentionally NOT registered yet — it has no handler (would fall to
-// Send Help). Add it together with its handler: IMPROVEMENTS #82.
+// /stop is handled by the "Is Stop?" → "Stop Reply" branch in main-bot
+// (sync-bot-stop-command.mjs, IMPROVEMENTS #82).
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +21,7 @@ const commands = [
   { command: 'start', description: 'Почати / головне меню' },
   { command: 'menu', description: 'Показати послуги' },
   { command: 'help', description: 'Допомога' },
+  { command: 'stop', description: 'Зупинити (я завжди тут)' },
 ];
 
 const body = JSON.stringify({ commands });

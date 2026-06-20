@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-06-20 (session 41) — Tier-2 spec: admin "service-mirror" (read-only огляд + feedback intake)
+**Status:** COMMITTED (spec/docs only, no code) · branch `feature/service-mirror-spec`
+**Why:** Розворот напряму адаптації адмінки. Поточна адмінка — інструмент *редагування* з розірваною петлею (таб «AI-промпт» декоративний — генерація йде з `document_template`, не з `ai_prompt`) і технічно ворожим юристу білдером. Рішення Сергія: спершу зробити адмінку **дзеркалом** — показати юристу те, що є (форма як є + анатомія + закони + health), зібрати фідбек і приклади документів, і лише ПОТІМ будувати білдер на основі закономірностей, а не наосліп.
+**What happened:**
+- `specs/features/service-mirror/{plan,requirements,validation}.md` (NEW) — Tier-2 спека. **Слайс 1** (read-only, ризик 🟢): сторінка перегляду послуги — форма «як є» (типи людською, `show_if` природною мовою, без `field.id` на видноті), **анатомія документа** (поля форми ↔ використані шаблоном / unused / unmatched-плейсхолдери) + **health-світлофор** 🟢/🟡/🔴, **закони списком** (цитати з шаблону → лінки + badge «застаріло/змінено»). Анатомія рахується в браузері чистою функцією `serviceAnatomy.ts` з даних, що вже є (`form_config` + `document_template`) — паритет-тест цитат проти golden. **Слайс 2** коментарі юриста (`service_notes`), **слайс 3** заявка на послугу + приклад документа (Storage) — контуром.
+- Рішення по розвилках: граф `law_relations` (react-flow) — окремим слайсом ПІСЛЯ списку; живе превʼю документа — не в слайсі 1 (лише поля in/out + health).
+- `docs/architecture/IMPROVEMENTS.md` — **#84** (зонтичний): граф-viz, AI-чернетка з прикладу (north-star «Legal Engineer»), превʼю документа, ролі/RLS (тригер — логін Ольги; «developer» НЕ роль застосунку), HITL-редагування графа (v2.2), email, тести-в-адмінці → замінено на health-check.
+**Files:** `specs/features/service-mirror/plan.md` (NEW), `requirements.md` (NEW), `validation.md` (NEW), `docs/architecture/IMPROVEMENTS.md` (#84 + index).
+**Tests:** none (спека/доки). Реалізація слайса 1 — наступна гілка.
+
 ### 2026-06-20 (session 40) — extend form validation: names (Cyrillic), passport, max-length (#81 cont.)
 **Status:** COMMITTED (client-only) · branch `feature/form-validation-names`
 **Why:** Sergey's live test showed garbage like `ыуйцу"` in a name field would land in a court document. Extends #81's email/phone/ІПН validation to the remaining "simple field" classes.

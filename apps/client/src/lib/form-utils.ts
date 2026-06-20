@@ -6,6 +6,7 @@
 
 import type { FormConfig, FormField, Answers } from '../types/form'
 import { isVisible } from './conditions'
+import { validateValue } from './validators'
 
 // ── Field counting ──────────────────────────────────────────────────────────
 
@@ -60,11 +61,31 @@ export function validateForm(config: FormConfig, answers: Answers): string[] {
   return errors
 }
 
-/** Find the index of the first tab that contains a required unanswered field */
+/**
+ * Validate the FORMAT of visible answered fields (email / phone / ІПН).
+ * Independent of required-ness — only non-empty values are checked.
+ * Returns array of `{ label, message }` for each invalid field.
+ */
+export function validateFormats(config: FormConfig, answers: Answers): { label: string; message: string }[] {
+  const errors: { label: string; message: string }[] = []
+  for (const step of config.steps) {
+    if (!isVisible(step, answers)) continue
+    const message = validateValue(step, answers[step.id])
+    if (message) errors.push({ label: step.label, message })
+  }
+  return errors
+}
+
+/**
+ * Find the index of the first tab that contains a required-unanswered OR
+ * format-invalid field, scanning fields in declaration order.
+ */
 export function findFirstErrorTab(config: FormConfig, answers: Answers): number {
   for (const step of config.steps) {
-    if (!step.required || !isVisible(step, answers)) continue
-    if (!isAnswered(answers[step.id])) {
+    if (!isVisible(step, answers)) continue
+    const missing = step.required && !isAnswered(answers[step.id])
+    const invalid = !!validateValue(step, answers[step.id])
+    if (missing || invalid) {
       const tabIdx = config.tabs.findIndex(t => t.id === step.tab)
       if (tabIdx >= 0) return tabIdx
     }

@@ -10,6 +10,9 @@ export type FieldType =
 
 export type AnimationType = 'slide-down' | 'fade-in'
 
+/** Optional format check applied to a field's value (see lib/validators.ts) */
+export type ValidationRule = 'email' | 'phone' | 'inn'
+
 export interface FieldOption {
   value: string
   label: string
@@ -39,6 +42,8 @@ export interface FormField {
   options?: FieldOption[]
   show_if?: ShowIfCondition
   animation?: AnimationType
+  /** Explicit format check; if omitted, inferred from field type/id */
+  validation?: ValidationRule
 }
 
 export interface FormTab {

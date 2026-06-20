@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-06-20 (session 40) — form field format validation: email / phone / ІПН (#81)
+**Status:** COMMITTED (client-only, no deploy needed — Vercel auto-builds) · branch `feature/form-bot-hardening`
+**Why:** A friend's session-39 test showed form fields accept garbage (any text in email/phone/ІПН) → an invalid legal document downstream. The form had only a required-empty check, no format check.
+**What happened:**
+- `apps/client/src/lib/validators.ts` (NEW) — pure validators: `validateEmail` (non-catastrophic regex), `validatePhoneUA` (+380XXXXXXXXX / 380… / 0… after stripping formatting), `validateInn` (10-digit РНОКПП with the real checksum: weights `[-1,5,7,9,4,6,10,5,7]`, `(Σ%11)%10 === d10`). All return a Ukrainian message or `null`; empty values are always valid (required-ness handled separately).
+- `resolveValidationRule(field)` — explicit `field.validation` wins; otherwise inferred from field type/id (`phone` type → phone; id matching email/phone/tax_number → rule), so existing Supabase configs get validation **without a data migration**. `validation?: ValidationRule` added to `FormField` type for future explicit use.
+- Inline error in `FormField.tsx` (red border + message, mirroring `DatePickerField` #27): validates on blur (`touched`) or on a failed submit (`forceShowError`).
+- Submit gate: `validateFormats()` in `form-utils.ts` blocks submit on bad format too; `findFirstErrorTab` now also jumps to format errors; banner gained a «Перевірте формат полів» section.
+**Files:** `apps/client/src/lib/validators.ts` (NEW), `apps/client/src/lib/__tests__/validators.test.ts` (NEW, 24 tests), `apps/client/src/types/form.ts` (`validation` + `ValidationRule`), `apps/client/src/lib/form-utils.ts` (`validateFormats`, `findFirstErrorTab` extended), `apps/client/src/components/form/FormField.tsx` (inline error), `apps/client/src/components/DynamicLegalFormBuilder.tsx` (submit gate + banner).
+**Tests:** client vitest 132/132 ✅ (+24) · tsc clean.
+
 ### 2026-06-19 (session 39 cont.) — off-topic guard #78 (classifier `topic` + tiered limit + Supabase) + 2 bug fixes — deployed
 **Status:** DEPLOYED + live-verified · merged to main (`d425456`/`7325213`)
 **Why:** the friend's abuse test (6 off-topic msgs all hit the AI) proved the limit was needed now.

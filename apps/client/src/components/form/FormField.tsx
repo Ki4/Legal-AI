@@ -1,8 +1,9 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { FormField as FormFieldType, Answers } from '../../types/form'
 import { isVisible } from '../../lib/conditions'
 import { cleanPhoneInput, PHONE_MAX_LENGTH } from '../../lib/form-utils'
+import { validateValue } from '../../lib/validators'
 import { FieldLabel } from './FieldLabel'
 import { BooleanField } from './fields/BooleanField'
 import { ChoiceField } from './fields/ChoiceField'
@@ -13,6 +14,8 @@ interface Props {
   field: FormFieldType
   answers: Answers
   onChange: (id: string, value: Answers[string]) => void
+  /** When true, reveal a format error even before the field has been blurred (set on failed submit) */
+  forceShowError?: boolean
 }
 
 const slideDown = {
@@ -27,13 +30,19 @@ const fadeIn = {
   exit: { opacity: 0 },
 }
 
-export function FormFieldRenderer({ field, answers, onChange }: Props) {
+export function FormFieldRenderer({ field, answers, onChange, forceShowError = false }: Props) {
   const visible = isVisible(field, answers)
   const value = answers[field.id]
   // Only animate conditional fields; always-visible fields mount instantly
   const isConditional = !!field.show_if
   const variant = field.animation === 'fade-in' ? fadeIn : slideDown
   const fieldRef = useRef<HTMLDivElement>(null)
+
+  // ── #81: inline format validation (email / phone / ІПН) ──
+  const [touched, setTouched] = useState(false)
+  const formatError = validateValue(field, value)
+  const showError = !!formatError && (touched || forceShowError)
+  const inputErrorClass = showError ? ' border-red-400 ring-2 ring-red-100' : ''
 
   return (
     <AnimatePresence initial={false}>
@@ -68,10 +77,11 @@ export function FormFieldRenderer({ field, answers, onChange }: Props) {
               <input
                 id={field.id}
                 type="text"
-                className="form-input mt-1"
+                className={`form-input mt-1${inputErrorClass}`}
                 placeholder={field.placeholder}
                 value={(value as string) ?? ''}
                 onChange={(e) => onChange(field.id, e.target.value)}
+                onBlur={() => setTouched(true)}
               />
             )}
 
@@ -80,10 +90,11 @@ export function FormFieldRenderer({ field, answers, onChange }: Props) {
                 id={field.id}
                 type="tel"
                 inputMode="tel"
-                className="form-input mt-1"
+                className={`form-input mt-1${inputErrorClass}`}
                 placeholder={field.placeholder ?? '+380 XX XXX XX XX'}
                 value={(value as string) ?? ''}
                 onChange={(e) => onChange(field.id, cleanPhoneInput(e.target.value))}
+                onBlur={() => setTouched(true)}
                 maxLength={PHONE_MAX_LENGTH}
               />
             )}
@@ -92,10 +103,11 @@ export function FormFieldRenderer({ field, answers, onChange }: Props) {
               <input
                 id={field.id}
                 type="number"
-                className="form-input mt-1"
+                className={`form-input mt-1${inputErrorClass}`}
                 placeholder={field.placeholder}
                 value={(value as string) ?? ''}
                 onChange={(e) => onChange(field.id, e.target.value)}
+                onBlur={() => setTouched(true)}
               />
             )}
 
@@ -144,6 +156,8 @@ export function FormFieldRenderer({ field, answers, onChange }: Props) {
                 onChange={(v) => onChange(field.id, v)}
               />
             )}
+
+            {showError && <p className="mt-1 text-xs text-red-500">{formatError}</p>}
           </div>
         </motion.div>
       )}

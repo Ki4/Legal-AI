@@ -44,6 +44,8 @@ export interface FormField {
   animation?: AnimationType
   /** Explicit format check; if omitted, inferred from field type/id */
   validation?: ValidationRule
+  /** Hard cap on input length; if omitted, a sensible default per field type */
+  maxLength?: number
 }
 
 export interface FormTab {

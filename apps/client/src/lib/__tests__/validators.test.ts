@@ -3,6 +3,8 @@ import {
   validateEmail,
   validatePhoneUA,
   validateInn,
+  validateName,
+  validatePassport,
   resolveValidationRule,
   validateValue,
 } from '../validators'
@@ -75,6 +77,54 @@ describe('validateInn', () => {
   })
 })
 
+// ─── validateName ─────────────────────────────────────────────────────────────
+
+describe('validateName', () => {
+  it('accepts a simple Ukrainian name', () => {
+    expect(validateName('Іваненко')).toBeNull()
+  })
+  it('accepts an apostrophe and hyphen', () => {
+    expect(validateName("Дʼяченко-Петренко")).toBeNull()
+    expect(validateName("Кравець'юк")).toBeNull()
+  })
+  it('accepts a Russian-form name (full Cyrillic block)', () => {
+    expect(validateName('Воробьёв')).toBeNull()
+  })
+  it('rejects a trailing quote (the ыуйцу" case)', () => {
+    expect(validateName('ыуйцу"')).not.toBeNull()
+  })
+  it('rejects digits', () => {
+    expect(validateName('Іван123')).not.toBeNull()
+  })
+  it('rejects Latin letters', () => {
+    expect(validateName('Ivan')).not.toBeNull()
+  })
+  it('rejects a value with no letters', () => {
+    expect(validateName('---')).not.toBeNull()
+  })
+})
+
+// ─── validatePassport ─────────────────────────────────────────────────────────
+
+describe('validatePassport', () => {
+  it('accepts the old book format (2 letters + 6 digits)', () => {
+    expect(validatePassport('АА123456')).toBeNull()
+  })
+  it('accepts the old format with a space', () => {
+    expect(validatePassport('АА 123456')).toBeNull()
+  })
+  it('accepts a 9-digit ID-card number', () => {
+    expect(validatePassport('123456789')).toBeNull()
+  })
+  it('rejects Latin letters in the series', () => {
+    expect(validatePassport('AA123456')).not.toBeNull()
+  })
+  it('rejects the wrong digit count', () => {
+    expect(validatePassport('АА12345')).not.toBeNull()
+    expect(validatePassport('12345678')).not.toBeNull()
+  })
+})
+
 // ─── resolveValidationRule ────────────────────────────────────────────────────
 
 function f(partial: Partial<FormField>): FormField {
@@ -97,8 +147,18 @@ describe('resolveValidationRule', () => {
   it('infers inn from tax_number id', () => {
     expect(resolveValidationRule(f({ id: 'tax_number' }))).toBe('inn')
   })
+  it('infers passport from id', () => {
+    expect(resolveValidationRule(f({ id: 'spouse_passport_series' }))).toBe('passport')
+  })
+  it('infers name from *_name ids', () => {
+    expect(resolveValidationRule(f({ id: 'spouse_last_name' }))).toBe('name')
+    expect(resolveValidationRule(f({ id: 'maiden_name' }))).toBe('name')
+  })
+  it('infers name from patronymic', () => {
+    expect(resolveValidationRule(f({ id: 'respondent_patronymic' }))).toBe('name')
+  })
   it('returns null for an unrelated text field', () => {
-    expect(resolveValidationRule(f({ id: 'plaintiff_last_name' }))).toBeNull()
+    expect(resolveValidationRule(f({ id: 'registered_address' }))).toBeNull()
   })
   it('does not infer rules for non-text/phone types', () => {
     expect(resolveValidationRule(f({ id: 'some_email', type: 'choice' }))).toBeNull()
@@ -114,7 +174,7 @@ describe('validateValue', () => {
     expect(validateValue(f({ id: 'plaintiff_email' }), null)).toBeNull()
   })
   it('returns null when no rule applies', () => {
-    expect(validateValue(f({ id: 'plaintiff_last_name' }), 'не email')).toBeNull()
+    expect(validateValue(f({ id: 'registered_address' }), 'будь-який текст 123')).toBeNull()
   })
   it('returns an error message for an invalid email field', () => {
     expect(validateValue(f({ id: 'plaintiff_email' }), 'garbage')).not.toBeNull()

@@ -43,6 +43,9 @@ export function FormFieldRenderer({ field, answers, onChange, forceShowError = f
   const formatError = validateValue(field, value)
   const showError = !!formatError && (touched || forceShowError)
   const inputErrorClass = showError ? ' border-red-400 ring-2 ring-red-100' : ''
+  // Hard caps to stop a "wall of text" reaching the legal document.
+  const TEXT_MAX = field.maxLength ?? 200
+  const TEXTAREA_MAX = field.maxLength ?? 2000
 
   return (
     <AnimatePresence initial={false}>
@@ -82,6 +85,7 @@ export function FormFieldRenderer({ field, answers, onChange, forceShowError = f
                 value={(value as string) ?? ''}
                 onChange={(e) => onChange(field.id, e.target.value)}
                 onBlur={() => setTouched(true)}
+                maxLength={TEXT_MAX}
               />
             )}
 
@@ -128,6 +132,7 @@ export function FormFieldRenderer({ field, answers, onChange, forceShowError = f
                 placeholder={field.placeholder}
                 value={(value as string) ?? ''}
                 onChange={(e) => onChange(field.id, e.target.value)}
+                maxLength={TEXTAREA_MAX}
               />
             )}
 

@@ -13,7 +13,7 @@
 
 import type { FormField } from '../types/form'
 
-export type ValidationRule = 'email' | 'phone' | 'inn'
+export type ValidationRule = 'email' | 'phone' | 'inn' | 'name' | 'passport'
 
 // ── Individual validators ─────────────────────────────────────────────────────
 
@@ -51,12 +51,43 @@ export function validateInn(value: string): string | null {
   return control === Number(digits[9]) ? null : 'Некоректний ІПН (не сходиться контрольна цифра)'
 }
 
+/**
+ * Person name. Allows Cyrillic letters, spaces, hyphens (double-barrelled
+ * surnames) and apostrophe variants — rejects Latin letters, digits and any
+ * punctuation/symbols (e.g. the trailing `"` in `ыуйцу"`). We can't tell
+ * gibberish from a real name without a dictionary, so we only block clearly
+ * non-name characters that would otherwise land in a court document.
+ */
+const NAME_RE = /^[Ѐ-ӿ'ʼ’\s-]+$/
+const HAS_CYRILLIC = /[Ѐ-ӿ]/
+
+export function validateName(value: string): string | null {
+  const v = value.trim()
+  if (!NAME_RE.test(v) || !HAS_CYRILLIC.test(v)) {
+    return 'Лише літери (без цифр і символів)'
+  }
+  return null
+}
+
+/**
+ * Ukrainian passport: either the old book format — 2 Cyrillic letters + 6
+ * digits (e.g. АА123456) — or an ID-card record number of 9 digits. Spaces are
+ * ignored.
+ */
+export function validatePassport(value: string): string | null {
+  const v = value.replace(/\s/g, '')
+  const ok = /^[Ѐ-ӿ]{2}\d{6}$/.test(v) || /^\d{9}$/.test(v)
+  return ok ? null : 'Некоректний паспорт (АА123456 або 9 цифр)'
+}
+
 // ── Rule resolution + dispatch ────────────────────────────────────────────────
 
 const VALIDATORS: Record<ValidationRule, (v: string) => string | null> = {
   email: validateEmail,
   phone: validatePhoneUA,
   inn: validateInn,
+  name: validateName,
+  passport: validatePassport,
 }
 
 /**
@@ -73,6 +104,10 @@ export function resolveValidationRule(field: FormField): ValidationRule | null {
   if (/email|e_mail/.test(id)) return 'email'
   if (/phone|tel(?:ephone)?|mobile/.test(id)) return 'phone'
   if (/tax_number|\bipn\b|\binn\b|rnokpp/.test(id)) return 'inn'
+  if (/passport/.test(id)) return 'passport'
+  // Person-name fields only — match known suffixes, not institutional *_name
+  // ids (e.g. tcc_name). Anything else can opt in via explicit `validation`.
+  if (/(^|_)(first|last|middle|maiden|given)_name$/.test(id) || /patronymic/.test(id)) return 'name'
   return null
 }
 

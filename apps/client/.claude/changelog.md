@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-06-20 (session 40) — extend form validation: names (Cyrillic), passport, max-length (#81 cont.)
+**Status:** COMMITTED (client-only) · branch `feature/form-validation-names`
+**Why:** Sergey's live test showed garbage like `ыуйцу"` in a name field would land in a court document. Extends #81's email/phone/ІПН validation to the remaining "simple field" classes.
+**What happened:**
+- **Name** (`validateName`, rule `name`): Cyrillic letters + spaces + hyphen + apostrophe variants only — rejects Latin, digits and punctuation (catches the trailing `"`). Inferred for `first/last/middle/maiden_name` + `patronymic` (tightened from a generic `name$` so institutional `*_name` like `tcc_name` is NOT caught — those can opt in via explicit `validation`).
+- **Passport** (`validatePassport`, rule `passport`): old book format (2 Cyrillic + 6 digits, e.g. АА123456) or a 9-digit ID-card number; inferred from `passport` in the id.
+- **Max-length**: `maxLength?` added to `FormField`; `FormField.tsx` applies a hard cap (default text 200 / textarea 2000) so a "wall of text" can't reach the document. Verified all `text` fields are short (names/addresses/numbers); all long free-text fields are already `textarea`.
+- Same inline-error + submit-gate plumbing as #81 (no new wiring).
+**Files:** `apps/client/src/lib/validators.ts` (+name/passport), `apps/client/src/lib/__tests__/validators.test.ts` (+15 tests), `apps/client/src/types/form.ts` (`maxLength`, rule union), `apps/client/src/components/form/FormField.tsx` (maxLength caps).
+**Tests:** client vitest 147/147 ✅ (+15) · tsc clean.
+
 ### 2026-06-20 (session 40) — bot /stop handler (#82) + idempotent webhook dedup (#83) — deployed + live-verified
 **Status:** DEPLOYED + live-verified · branch `feature/form-bot-hardening` · main-bot 44→47 nodes
 **Why:** Two robustness gaps surfaced by the friend's session-39 test. `/stop` had no handler (5 chars, not a greeting/off-topic keyword → flowed to the AI Agent and landed on Send Help — wrong reply + wasted Groq call). And Telegram re-delivers an update on a non-fast-200 (e.g. session 39's 500), causing the SAME message to be processed twice.

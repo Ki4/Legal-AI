@@ -289,9 +289,15 @@ export interface FieldDiff {
 export function diffFormVsTemplate(form: FormConfig, a: TemplateAnalysis): FieldDiff {
   const fieldIds = new Set((form.steps ?? []).map((s) => s.id))
 
-  // A field is used if referenced directly, or if it sources a referenced computed key.
+  // A field is used if: referenced directly; OR it sources a referenced computed key;
+  // OR its id collides with a referenced computed key (e.g. a `has_children` form field
+  // whose value the engine recomputes from children_details — the template names it, so
+  // it's not "unused", though the form answer is shadowed; see IMPROVEMENTS).
   const used = new Set<string>()
-  for (const id of fieldIds) if (a.fieldRefs.includes(id)) used.add(id)
+  const computedRoots = new Set(a.computedRefs.map((r) => r.split('.')[0]))
+  for (const id of fieldIds) {
+    if (a.fieldRefs.includes(id) || computedRoots.has(id)) used.add(id)
+  }
   for (const ref of a.computedRefs) {
     const sources = DERIVED_SOURCES[ref] ?? DERIVED_SOURCES[ref.split('.')[0]]
     if (sources) for (const s of sources) if (fieldIds.has(s)) used.add(s)
@@ -405,4 +411,38 @@ export function serviceHealth(i: HealthInput): ServiceHealth {
   if (red.length) return { level: 'red', reasons: red.concat(amber) }
   if (amber.length) return { level: 'amber', reasons: amber }
   return { level: 'green', reasons: ['Шаблон, поля та цитати узгоджені'] }
+}
+
+// ───────────────────────────── One-shot bundler ──────────────────────────────
+
+export interface ServiceAnalysis {
+  analysis: TemplateAnalysis
+  diff: FieldDiff
+  health: ServiceHealth
+}
+
+/**
+ * Analyze a whole service in one call — used by both the catalog (structural health,
+ * staleCitations=[]) and the detail page (full health with stale/changed citations).
+ */
+export function analyzeService(
+  form: FormConfig | null | undefined,
+  template: string | null | undefined,
+  generationMode: string | null,
+  staleCitations: string[] = [],
+): ServiceAnalysis {
+  const safeForm: FormConfig = form && Array.isArray(form.steps)
+    ? form
+    : { service_id: '', title: '', tabs: [], steps: [] }
+  const analysis = analyzeTemplate(template ?? '')
+  const diff = diffFormVsTemplate(safeForm, analysis)
+  const health = serviceHealth({
+    generationMode,
+    hasTemplate: analysis.hasTemplate,
+    diff,
+    brokenShowIf: collectBrokenShowIf(safeForm),
+    emptyLabelFields: collectEmptyLabelFields(safeForm),
+    staleCitations,
+  })
+  return { analysis, diff, health }
 }

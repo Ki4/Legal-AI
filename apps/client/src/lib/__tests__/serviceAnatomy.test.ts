@@ -13,6 +13,7 @@ import {
   serviceHealth,
   fieldTypeLabel,
   lawCodeFromUrl,
+  analyzeService,
 } from '../serviceAnatomy'
 import { divorceFormConfig } from '../../data/divorceFormConfig'
 import { alimonyChangeFormConfig } from '../../data/alimonyChangeFormConfig'
@@ -194,6 +195,34 @@ describe('serviceHealth', () => {
 
   it('legacy js mode is not red for missing template, but amber', () => {
     expect(serviceHealth({ generationMode: 'js', hasTemplate: false, diff: clean, brokenShowIf: [], emptyLabelFields: [], staleCitations: [] }).level).toBe('amber')
+  })
+})
+
+describe('analyzeService — one-shot bundler', () => {
+  it('alimony-change real service → not red, zero unmatched', () => {
+    const r = analyzeService(alimonyChangeFormConfig, tpl('alimony-change'), 'hybrid')
+    expect(r.diff.unmatchedPlaceholders).toEqual([])
+    expect(r.health.level).not.toBe('red') // amber: AI-fed fields aren't in the template
+  })
+
+  it('a form field whose id collides with a computed key counts as used', () => {
+    const form: FormConfig = {
+      service_id: 'x', title: 'X', tabs: [{ id: 't', label: 'T' }],
+      steps: [{ id: 'has_children', tab: 't', type: 'boolean', label: 'Є діти' }],
+    }
+    const r = analyzeService(form, '{{#if has_children}}є{{/if}}', 'template')
+    expect(r.diff.unusedFields).toEqual([])
+  })
+
+  it('null form / empty template → red (no template), no crash', () => {
+    const r = analyzeService(null, '', 'template')
+    expect(r.health.level).toBe('red')
+    expect(r.diff.usedFields).toEqual([])
+  })
+
+  it('staleCitations push health to amber', () => {
+    const r = analyzeService(alimonyChangeFormConfig, tpl('alimony-change'), 'hybrid', ['ст.192 СК'])
+    expect(r.health.level).toBe('amber')
   })
 })
 

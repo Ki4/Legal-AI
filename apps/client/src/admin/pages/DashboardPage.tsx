@@ -10,6 +10,8 @@ import {
   isPublishedFor,
   STATUS_META,
 } from '../../lib/serviceStatus'
+import { analyzeService } from '../../lib/serviceAnatomy'
+import type { FormConfig } from '../../types/form'
 
 interface Service {
   id: string
@@ -19,7 +21,15 @@ interface Service {
   icon: string
   price: number
   status: ServiceStatus
-  form_config: { steps?: unknown[]; tabs?: unknown[] } | null
+  generation_mode: string | null
+  document_template: string | null
+  form_config: FormConfig | null
+}
+
+const HEALTH_DOT: Record<'green' | 'amber' | 'red', { dot: string; title: string }> = {
+  green: { dot: 'bg-emerald-400', title: 'Готова — шаблон і поля узгоджені' },
+  amber: { dot: 'bg-amber-400',   title: 'Є зауваження — відкрий, щоб побачити деталі' },
+  red:   { dot: 'bg-red-400',     title: 'Потребує уваги — шаблон/поля не узгоджені' },
 }
 
 interface AbstentionStats {
@@ -45,7 +55,7 @@ export function DashboardPage() {
 
     supabase
       .from('services')
-      .select('id, slug, title, description, icon, price, status, form_config')
+      .select('id, slug, title, description, icon, price, status, generation_mode, document_template, form_config')
       .eq('lawyer_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -194,6 +204,8 @@ export function DashboardPage() {
             {services.map((svc) => {
               const fieldCount = svc.form_config?.steps?.length ?? 0
               const tabCount   = svc.form_config?.tabs?.length  ?? 0
+              const health = analyzeService(svc.form_config, svc.document_template, svc.generation_mode).health
+              const hd = HEALTH_DOT[health.level]
               return (
                 <div
                   key={svc.id}
@@ -217,6 +229,7 @@ export function DashboardPage() {
                   </button>
 
                   <div className="flex items-center gap-3 text-xs text-slate-500">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${hd.dot}`} title={hd.title} />
                     <span>📋 {fieldCount} полів</span>
                     <span>•</span>
                     <span>🗂 {tabCount} табів</span>

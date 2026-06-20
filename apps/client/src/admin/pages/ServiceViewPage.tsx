@@ -49,6 +49,8 @@ export function ServiceViewPage() {
   const [svc, setSvc] = useState<ServiceRow | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [staleCodes, setStaleCodes] = useState<Set<string>>(new Set())
+  const [pendingChanges, setPendingChanges] = useState<{ law_title: string }[]>([])
 
   useEffect(() => {
     if (!supabase || !user || !id) return
@@ -70,14 +72,33 @@ export function ServiceViewPage() {
   const brokenShowIf = useMemo(() => collectBrokenShowIf(form), [form])
   const emptyLabels = useMemo(() => collectEmptyLabelFields(form), [form])
 
+  // Stale / changed legal citations (G3): law_chunks.is_stale + pending law_change_log.
+  useEffect(() => {
+    if (!supabase || !svc) return
+    const codes = [...new Set(analysis.citations.map((l) => lawCodeFromUrl(l.url)))]
+    if (codes.length) {
+      supabase.from('law_chunks').select('law_code').eq('is_stale', true).in('law_code', codes)
+        .then(({ data }) => setStaleCodes(new Set((data ?? []).map((r) => r.law_code as string))))
+    }
+    supabase.from('law_change_log').select('law_title').eq('action', 'flagged').contains('affected_services', [svc.slug])
+      .then(({ data }) => setPendingChanges((data ?? []) as { law_title: string }[]))
+  }, [svc, analysis])
+
+  const staleCitations = useMemo(() => {
+    const labels = new Set<string>()
+    for (const law of analysis.citations) if (staleCodes.has(lawCodeFromUrl(law.url))) labels.add(law.title)
+    for (const c of pendingChanges) labels.add(c.law_title)
+    return [...labels]
+  }, [analysis.citations, staleCodes, pendingChanges])
+
   const health = useMemo(() => serviceHealth({
     generationMode: svc?.generation_mode ?? null,
     hasTemplate: analysis.hasTemplate,
     diff,
     brokenShowIf,
     emptyLabelFields: emptyLabels,
-    staleCitations: [], // enriched in G3 from law_chunks / law_change_log
-  }), [svc?.generation_mode, analysis.hasTemplate, diff, brokenShowIf, emptyLabels])
+    staleCitations,
+  }), [svc?.generation_mode, analysis.hasTemplate, diff, brokenShowIf, emptyLabels, staleCitations])
 
   if (loading) {
     return (
@@ -171,8 +192,8 @@ export function ServiceViewPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <AnatomyBox title="Використовуються" tone="ok" items={diff.usedFields}
                         hint="форма питає → документ друкує" />
-            <AnatomyBox title="Не використовуються" tone="warn" items={diff.unusedFields}
-                        hint="форма питає, документ ігнорує" />
+            <AnatomyBox title="Не в шаблоні" tone="warn" items={diff.unusedFields}
+                        hint="форма питає, шаблон не друкує (могло живити AI)" />
             <AnatomyBox title="Бракує у формі" tone="bad" items={diff.unmatchedPlaceholders}
                         hint="документ чекає дані, форма не питає" />
           </div>
@@ -183,22 +204,36 @@ export function ServiceViewPage() {
           <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6">
             <h2 className="text-sm font-bold text-white uppercase tracking-wide mb-1">🔗 Закони</h2>
             <p className="text-xs text-slate-500 mb-4">Статті, на які посилається документ.</p>
+            {pendingChanges.length > 0 && (
+              <button onClick={() => navigate('/law-changes')}
+                      className="w-full text-left mb-4 px-3 py-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-300 hover:bg-amber-500/15 transition-colors">
+                ⚠ Закон цієї послуги змінено ({pendingChanges.map((c) => c.law_title).join(', ')}) — переглянь у «Зміни законів» →
+              </button>
+            )}
             <div className="space-y-3">
-              {analysis.citations.map((law) => (
-                <div key={law.url}>
-                  <div className="text-xs font-semibold text-slate-300 mb-1.5">{law.title}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {law.articles.map((a) => (
-                      <a key={a}
-                         href={`https://zakon.rada.gov.ua/laws/show/${lawCodeFromUrl(law.url)}#n${a}`}
-                         target="_blank" rel="noreferrer"
-                         className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-xs font-medium hover:bg-slate-700 hover:text-white transition-colors">
-                        ст. {a}
-                      </a>
-                    ))}
+              {analysis.citations.map((law) => {
+                const stale = staleCodes.has(lawCodeFromUrl(law.url))
+                return (
+                  <div key={law.url}>
+                    <div className="text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-2">
+                      {law.title}
+                      {stale && <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 text-[10px] font-medium">застаріло</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {law.articles.map((a) => (
+                        <a key={a}
+                           href={`https://zakon.rada.gov.ua/laws/show/${lawCodeFromUrl(law.url)}#n${a}`}
+                           target="_blank" rel="noreferrer"
+                           className={`px-2 py-0.5 rounded-md text-xs font-medium transition-colors ${stale
+                             ? 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20'
+                             : 'bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white'}`}>
+                          ст. {a}
+                        </a>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
         )}
@@ -257,7 +292,7 @@ function FieldLine({ field, form, used }: { field: FormField; form: FormConfig; 
         <span className="text-sm text-white">{field.label || <span className="text-amber-400 italic">без підпису</span>}</span>
         {field.required && <span className="text-red-400 text-xs" title="Обов'язкове">*</span>}
         <span className="text-[11px] text-slate-500 px-1.5 py-0.5 bg-slate-900 rounded">{fieldTypeLabel(field.type)}</span>
-        {!used && <span className="text-[11px] text-amber-400/80" title="Документ не використовує це поле">⚠ не в документі</span>}
+        {!used && <span className="text-[11px] text-amber-400/80" title="Шаблон документа не друкує це поле (могло живити AI)">⚠ не в шаблоні</span>}
       </div>
       {field.options && field.options.length > 0 && (
         <div className="mt-1.5 flex flex-wrap gap-1">

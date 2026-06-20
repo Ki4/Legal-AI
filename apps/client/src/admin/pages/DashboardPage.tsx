@@ -200,17 +200,21 @@ export function DashboardPage() {
                   className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4
                              hover:border-slate-700 transition-colors"
                 >
-                  <div className="flex items-start gap-3">
+                  <button
+                    onClick={() => navigate(`/services/${svc.id}`)}
+                    className="flex items-start gap-3 text-left group/header"
+                    title="Переглянути анатомію послуги"
+                  >
                     <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xl flex-shrink-0">
                       {svc.icon || '⚖️'}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white text-sm truncate">{svc.title || 'Без назви'}</h3>
+                      <h3 className="font-semibold text-white text-sm truncate group-hover/header:text-blue-400 transition-colors">{svc.title || 'Без назви'}</h3>
                       <p className="text-slate-500 text-xs mt-0.5 line-clamp-2">
                         {svc.description || 'Опис не вказано'}
                       </p>
                     </div>
-                  </div>
+                  </button>
 
                   <div className="flex items-center gap-3 text-xs text-slate-500">
                     <span>📋 {fieldCount} полів</span>
@@ -253,7 +257,7 @@ export function DashboardPage() {
                       👁
                     </a>
                     <button
-                      onClick={() => navigate(`/services/${svc.id}`)}
+                      onClick={() => navigate(`/services/${svc.id}/edit`)}
                       className="p-1.5 text-slate-500 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
                       title="Редагувати"
                     >

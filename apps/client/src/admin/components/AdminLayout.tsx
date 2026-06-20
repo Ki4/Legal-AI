@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 const NAV = [
   { to: '/services',    icon: '⚖️', label: 'Мої послуги' },
   { to: '/notes',       icon: '💬', label: 'Коментарі' },
+  { to: '/requests',    icon: '📝', label: 'Заявки' },
   { to: '/law-changes', icon: '📋', label: 'Зміни законів' },
 ]
 

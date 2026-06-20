@@ -11,7 +11,7 @@
 ---
 
 ### 2026-06-20 (session 42) — service-mirror Slice 3: заявка на послугу (`service_requests` + Storage) (#66)
-**Status:** COMMITTED · branch `feature/service-mirror-requests` · ⚠️ потребує застосування migration 026
+**Status:** MERGED (`a0ce654`) + live-verified · branch deleted · migration 026 applied · **issue #66 closed**
 **Why:** Слайс 3 спеки — замикає петлю intake. Слайс 1 дав юристу «бачити» послугу, слайс 2 — коментувати наявну; слайс 3 дозволяє замовити **нову** послугу, якої ще немає в каталозі: назва + опис + закони + **приклад готового документа**, який юрист завантажує. Приклад = фактичний бриф на майбутній шаблон; з 5-10 таких заявок розробник бачить закономірності → проєктує білдер не наосліп.
 **What happened:**
 - `supabase/migrations/026_service_requests.sql` (NEW) — таблиця `service_requests` (id, title, description, laws_text, example_file_path, status open|done, requested_by_email, created_at) + індекс open-inbox. RLS authenticated SELECT/INSERT/UPDATE, DELETE → service_role (патерн 025/013). **+ приватний Storage bucket `service-examples`** (public=false, 10 МБ, allowed_mime PDF/DOC/DOCX) через `INSERT INTO storage.buckets … ON CONFLICT DO UPDATE` + 2 storage RLS-політики (authenticated INSERT/SELECT по `bucket_id`).

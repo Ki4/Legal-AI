@@ -1,35 +1,35 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-20 (session 42 — service-mirror слайс 2 ЗМЕРЖЕНО в main + слайс 3 (заявка на послугу `service_requests` + Storage) реалізовано на гілці `feature/service-mirror-requests`, чекає migration 026. Знайдено+виправлено передіснуючу поломку `tsc -b` на main. #66 лишається на live-перевірці.)
+> Updated: 2026-06-21 (session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 42 (2026-06-20) — service-mirror слайс 3: заявка на послугу (`service_requests` + Storage) (#66)
+## 🆕 Session 42 (2026-06-21) — service-mirror слайс 3: заявка на послугу (`service_requests` + Storage) — ЗАВЕРШЕНО, #66 закрито
 
 ### Головне — стан ЗАРАЗ
-- **Слайс 2 ЗМЕРЖЕНО в main + запушено** (`36ce66f`) на початку сесії (migration 025 застосована Сергієм). Гілку `feature/service-mirror-comments` видалено. Issue #66 оновлено коментарем.
-- **Слайс 3 — на гілці `feature/service-mirror-requests`** (НЕ змержено): таблиця `service_requests` + приватний bucket `service-examples` + сторінка «📝 Заявки». **Чекає застосування migration 026** Сергієм → потім merge.
-- **Тести: client 186/186 ✅** (+11 serviceRequestFile). `tsc -b` clean, `npm run build` (TWA) + `build:admin` зелені.
-- **Виправлено передіснуючу поломку білду на main:** `tsc -b` падав (exit 2) зі слайсу 1 — `serviceAnatomy.test.ts` імпортує `node:*`, а `tsconfig.app.json` не мав `"node"` у types. Додано → білд-gate знову зелений (фікс їде в гілці слайсу 3).
+- **main чистий + запушено** (`a0ce654`). Слайси 2 (`36ce66f`) і 3 (`a0ce654`) ЗМЕРЖЕНО, обидві гілки видалено. **Issue #66 ЗАКРИТО** — service-mirror готовий по всіх 3 слайсах.
+- **Migration 025 + 026 застосовані** Сергієм (Success). Bucket `service-examples` живий.
+- **Слайс 3 e2e-верифіковано наживо:** форма → upload у приватний bucket → insert+рендер в інбоксі → автор/дата → **signed URL відкрив PDF у новому табі** ✅. Тестовий запис «йцу» прибрано (рядок DELETE у SQL Editor; файл — через Storage UI, бо `DELETE FROM storage.objects` блокує тригер `protect_delete` — див. memory `reference-supabase-storage`).
+- **Тести: client 186/186 ✅** (+11). `tsc -b` clean, `npm run build` + `build:admin` зелені.
 
 ### Що зроблено
-1. **Merge слайсу 2** (коментарі `service_notes`) в main, push, видалення гілки, коментар у #66.
-2. **Слайс 3:**
-   - `supabase/migrations/026_service_requests.sql` — таблиця + RLS (authenticated S/I/U, DELETE→service_role) + bucket `service-examples` (private, 10 МБ, PDF/DOC/DOCX) + 2 storage RLS-політики.
+1. **Merge слайсу 2** (коментарі `service_notes`) в main, push, видалення гілки.
+2. **Слайс 3** (гілка `feature/service-mirror-requests`, змержена):
+   - `supabase/migrations/026_service_requests.sql` — таблиця + RLS (authenticated S/I/U, DELETE→service_role) + приватний bucket `service-examples` (10 МБ, PDF/DOC/DOCX) + 2 storage RLS-політики.
    - `src/lib/serviceRequestFile.ts` — чисті `validateExampleFile` + `buildExamplePath` (11 тестів).
-   - `src/admin/pages/ServiceRequestsPage.tsx` — composer (назва/опис/закони/файл) + інбокс + signed URL (60s) для прикладу.
+   - `src/admin/pages/ServiceRequestsPage.tsx` — composer (назва/опис/закони/файл) + інбокс + signed URL (60s).
    - роут `/requests` + нав «📝 Заявки».
-3. `tsconfig.app.json` — `"types": [..., "node"]` (фікс білду).
+3. **Фікс білду:** `tsconfig.app.json` `"types": [..., "node"]` — `tsc -b` падав (exit 2) зі слайсу 1 (тест імпортує `node:*`); session 41 проскочила бо vitest/`vite build` не типчекають.
 
-### 🔴 Наступний крок
-1. **Сергій застосовує migration 026** (таблиця + bucket + storage-політики; звірити Results) → потім **merge `feature/service-mirror-requests`** в main.
-2. **Live-перевірка слайсу 3** (ручна, потребує застосовану міграцію + логін): подати заявку з PDF/DOCX → рядок в інбоксі + «📄 Приклад документа» відкриває signed URL; не-PDF/DOC або >10 МБ → інлайн-помилка. (Те саме лишилось і для слайсів 1-2 — read-only огляд у браузері з адмін-логіном.)
-3. **service-mirror (#66) завершено по слайсах 1-3** — лишається закрити issue після live-перевірки. Далі — фідбек юриста → майбутній білдер (north-star IMPROVEMENTS #84).
-4. **#67** — фікс divorce-шаблону (Variant B) з Ольгою (Tier-2, 263 parity-тести).
-5. ⏰ Backlog Ольги (~2026-06-25): флип alimony-change, 2 зміни законів, CRON schedule, exception_if sign-off.
+### 🔴 Наступний крок (нова сесія)
+1. **service-mirror завершено й закрито** — нагальних завдань по ньому немає. Далі по north-star: збирати реальні заявки/фідбек юриста → з закономірностей проєктувати білдер (IMPROVEMENTS #84).
+2. **UX-борг (дрібний, не блокує):** кнопка-дія «✓ Вирішено» в інбоксах заявок/коментарів читається як статус-бейдж — за бажанням ясніший підпис (торкнеться слайсу 2 теж).
+3. **#67** — фікс divorce-шаблону (Variant B) з Ольгою (Tier-2, 263 parity-тести).
+4. ⏰ Backlog Ольги (~2026-06-25): флип alimony-change, 2 зміни законів, CRON schedule, exception_if sign-off.
 
 ### Запуск середовища
 - Адмінка: `cd apps/client && npm run dev:admin` → `http://localhost:5174` (логін Supabase з `.env.local`). Тести: `npx vitest run`. Білд: `npm run build` + `npm run build:admin`.
+- **Storage:** видаляти файли з bucket лише через Dashboard/Storage API (не SQL — тригер `protect_delete`).
 
 ---
 

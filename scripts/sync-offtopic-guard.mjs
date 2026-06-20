@@ -138,12 +138,12 @@ ensureNode({ id: 'guard-paused-if', name: 'Paused?', type: 'n8n-nodes-base.if', 
 ensureNode(tgReply('guard-pause-reply', 'Pause Reply', [-180, 2120], '=Я зробив невелику паузу 🙏\nПовертайтесь трохи згодом — або одразу оберіть послугу нижче 👇'));
 ensureNode({ id: 'guard-switch', name: 'Guard Switch', type: 'n8n-nodes-base.switch', typeVersion: 3.4, position: [200, 2060],
   parameters: { rules: { values: [
-    { conditions: { options: { caseSensitive: true, typeValidation: 'strict', version: 3 }, conditions: [{ id: 'g0', leftValue: "={{ $('Off-topic Guard').item.json._guard_action }}", rightValue: 'proceed', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' } },
-    { conditions: { options: { caseSensitive: true, typeValidation: 'strict', version: 3 }, conditions: [{ id: 'g1', leftValue: "={{ $('Off-topic Guard').item.json._guard_action }}", rightValue: 'clarify', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' } },
-    { conditions: { options: { caseSensitive: true, typeValidation: 'strict', version: 3 }, conditions: [{ id: 'g2', leftValue: "={{ $('Off-topic Guard').item.json._guard_action }}", rightValue: 'offtopic', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' } },
+    { conditions: { options: { caseSensitive: true, typeValidation: 'strict', version: 3 }, conditions: [{ id: 'g0', leftValue: '={{ $json._guard_action }}', rightValue: 'proceed', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' } },
+    { conditions: { options: { caseSensitive: true, typeValidation: 'strict', version: 3 }, conditions: [{ id: 'g1', leftValue: '={{ $json._guard_action }}', rightValue: 'clarify', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' } },
+    { conditions: { options: { caseSensitive: true, typeValidation: 'strict', version: 3 }, conditions: [{ id: 'g2', leftValue: '={{ $json._guard_action }}', rightValue: 'offtopic', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' } },
   ] }, options: {} } });
 ensureNode(tgReply('guard-clarify', 'Clarify Reply', [440, 2240], '=Бачу, що питання юридичне 🤝\nПоки я готую саме розлучення та аліменти. Опишіть свою ситуацію кількома словами або оберіть нижче 👇'));
-ensureNode(tgReply('guard-offtopic-reply', 'Off-topic Reply', [440, 2060], "={{ $('Off-topic Guard').item.json._guard_text }}"));
+ensureNode(tgReply('guard-offtopic-reply', 'Off-topic Reply', [440, 2060], '={{ $json._guard_text }}'));
 
 // ── 6. wiring ─────────────────────────────────────────────────────────────────
 setConn('Skip AI?', { main: [
@@ -157,8 +157,14 @@ setConn('Paused?', { main: [
   [{ node: 'Send Typing', type: 'main', index: 0 }],
 ] });
 setConn('Edit Fields', { main: [[{ node: 'Off-topic Guard', type: 'main', index: 0 }]] });
-setConn('Off-topic Guard', { main: [[{ node: 'Update Rate Limit', type: 'main', index: 0 }]] });
-setConn('Update Rate Limit', { main: [[{ node: 'Guard Switch', type: 'main', index: 0 }]] });
+// Off-topic Guard fans out: Guard Switch (routing, reads $json directly) + Update
+// Rate Limit as a parallel LEAF (DB write side-effect). Earlier the Supabase node
+// sat BETWEEN them and broke item-pairing → Guard Switch matched no rule → silence.
+setConn('Off-topic Guard', { main: [[
+  { node: 'Guard Switch', type: 'main', index: 0 },
+  { node: 'Update Rate Limit', type: 'main', index: 0 },
+]] });
+setConn('Update Rate Limit', { main: [[]] });
 setConn('Guard Switch', { main: [
   [{ node: 'Switch', type: 'main', index: 0 }],
   [{ node: 'Clarify Reply', type: 'main', index: 0 }],

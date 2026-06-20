@@ -1819,6 +1819,11 @@
       "main": [
         [
           {
+            "node": "Guard Switch",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Update Rate Limit",
             "type": "main",
             "index": 0
@@ -1875,13 +1880,7 @@
     },
     "Update Rate Limit": {
       "main": [
-        [
-          {
-            "node": "Guard Switch",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     }
   },

@@ -1,6 +1,37 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-19 (session 39 — велика Telegram-сесія: UX polish #65 + 👀-реакція + copy + slash-меню + onboarding-фікси + off-topic guard #78 з eval та БД. Усе живо, мерж у main, запушено)
+> Updated: 2026-06-20 (session 40 — загартування форми й бота за фідбеком тестера: валідація полів форми #81 + /stop #82 + дедуп webhook #83. Усе живо, мерж у main, запушено, Vercel задеплоєний + Сергій підтвердив наживо)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 40 (2026-06-20) — загартування форми й бота: валідація #81 + /stop #82 + дедуп webhook #83
+
+### Головне — стан ЗАРАЗ
+- **Усе змержено в main + запушено в origin** (`21cf4de`). main чистий.
+- **Клієнт задеплоєний на Vercel** (`legal-twa-xi.vercel.app`, бандл `index-BrmC-de1.js` містить рядки валідації) — **Сергій підтвердив наживо**.
+- **main-bot 44 → 47 нод**, active, задеплоєний + live-verified.
+- **Тести:** root vitest 1056/1056 ✅ (+7 dedup) · client 147/147 ✅ (+39 валідатори).
+- Фокус сесії = 3 пункти з backlog session 39 (фідбек друга-тестувальника). Усі ✅.
+
+### Що зроблено
+1. **#81 — валідація полів форми (TWA)** [DONE, live]: `apps/client/src/lib/validators.ts` (NEW) — email, телефон +380, ІПН (10 цифр + контрольна), **імена** (лише кирилиця/апостроф/дефіс — ловить `ыуйцу"`), **паспорт** (АА123456 / 9 цифр), **max-length** (text 200 / textarea 2000). Правило з `field.validation` або виводиться з id/типу (без міграції Supabase). Inline-помилка на blur + блокування сабміту + банер «Перевірте формат полів». Реалізовано у 2 заходи (базові 3 типи → потім імена/паспорт/довжина за фідбеком Сергія на live-формі). 39 unit-тестів.
+2. **#82 — /stop** [DONE, live exec 148/151]: нова `Is Stop?` IF перехоплює `/stop` ДО Pre-filter (existing-user гілка) → `Stop Reply` (ввічливе «Гаразд 👌 я завжди тут» + кнопки). Не чіпає Pre-filter (щоб не конфліктувати з іншими патчерами). `/stop` у «/» меню. Патчер `scripts/sync-bot-stop-command.mjs`.
+3. **#83 — дедуп webhook за update_id** [DONE, live exec 150]: нода `Dedup Update` (перша: `Telegram Trigger → Dedup Update → Normalize`) дропає повторний update_id через n8n global static data (TTL 5хв); дубль → `return []` → стоп. Pure-ядро `n8n/templates/dedup-update.js` (7 тестів), jsCode GENERATED з шаблону. Fail-open на відсутній update_id. Патчер `scripts/sync-webhook-dedup.mjs`.
+
+### Як перевіряв
+- **Форма:** 147 unit-тестів + curl продакшн-бандла (рядки валідації присутні) + Сергій бачить помилку на live-формі.
+- **Бот:** прямий webhook POST у локальний n8n + executions API з тимчасовим тестовим identity (прибраний після). exec 148 `…→ Is Stop? → Stop Reply` (впав лише на синтетичному чаті → 2 очікувані admin-алерти «chat not found»), exec 150 дубль → стоп без side-effects, exec 151 новий id → обробляється. Connection-integrity guard (47 рефів валідні).
+
+### 🔴 Наступний крок / backlog
+1. **Olga backlog (~2026-06-25)** — launch-блокери: флип `alimony-change` → active, 2 зміни законів (СК/ЦПК), CRON `schedule:`, sign-off `exception_if`.
+2. **#78 future** — escalation-лесенка off-topic (timeout→тиждень→3міс→бан, `pause_level`, migration 025) + hybrid-кеш.
+3. **#79** AI-вартість в адмінці · **#80** opt-in «повідомити коли зʼявиться послуга» (GDPR) · **#77** PDF/DOCX export.
+4. Стратегічне: **GraphRAG** (v2.1), кастомний домен (#76).
+
+### Запуск середовища
+- n8n live (Docker, up 46+ год) + ngrok (`rosy-caution-progeny.ngrok-free.dev`, помирає із закриттям сесії).
+- Деплой бота: `node scripts/sync-bot-stop-command.mjs && node scripts/sync-webhook-dedup.mjs && node scripts/deploy-workflow.mjs main-bot` (+ `node scripts/set-bot-commands.mjs` для меню). **ПРАВИЛО:** після кожного деплою main-bot — реальний webhook-тест.
+- Клієнт: деплоїться автоматично на Vercel при пуші в `origin/main`.
 
 ---
 

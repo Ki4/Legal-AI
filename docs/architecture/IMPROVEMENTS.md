@@ -1160,18 +1160,16 @@ Groq API key зберігається як n8n credential `Groq HTTP Auth` (то
 - **Пріоритет:** 🟡 якість (юр-документ потребує валідних даних) — до публічного запуску.
 
 ---
-### 82. 🟡 /stop + команди життєвого циклу бота
+### 82. ✅ /stop + команди життєвого циклу бота (DONE session 40)
 
-- **Що:** `setMyCommands` зареєстрував `/start /menu /help` (session 39, `scripts/set-bot-commands.mjs`). `/stop` НЕ оброблений — падає в Send Help (друг натиснув `/stop` → exec 110 → Send Help).
-- **Як:** визначити семантику `/stop` (для нас немає підписок поки — або ввічливе «гаразд, я тут, напишіть будь-коли», або відписка від сповіщень коли зʼявиться #80) + окрема гілка-обробник у Pre-filter/Route; зареєструвати `/stop` у меню разом із обробником.
-- **Пріоритет:** 🟡.
+- **Що:** `setMyCommands` зареєстрував `/start /menu /help` (session 39, `scripts/set-bot-commands.mjs`). `/stop` НЕ оброблений — падав у Send Help (друг натиснув `/stop` → exec 110 → Send Help).
+- **Зроблено (session 40):** нова `Is Stop?` IF перехоплює `/stop` на existing-user гілці ДО Pre-filter (не чіпає класифікатор Pre-filter — щоб не конфліктувати з іншими патчерами) → `Stop Reply` (ввічливе «Гаразд 👌 я завжди тут» + кнопки послуг, без підписок поки). `/stop` додано в «/» меню. Патчер `scripts/sync-bot-stop-command.mjs`. Live-verified (exec 148/151). **Майбутнє:** реальна відписка від сповіщень — коли зʼявиться #80.
 
 ---
-### 83. 🟡 Ідемпотентний webhook — дедуп за update_id (захист від дублів Telegram)
+### 83. ✅ Ідемпотентний webhook — дедуп за update_id (DONE session 40)
 
 - **Що:** Telegram ПОВТОРЮЄ доставку апдейта, якщо не отримав швидкий `200` (напр., під час помилки — як 500 у session 39). Це призводить до дубльованої обробки одного й того ж повідомлення.
-- **Важливо:** двійне привітання, яке бачив Сергій, — це НЕ цей баг (то був onboarding-флоу, `exec 105` = ОДНЕ виконання Welcome+Show Menu, не два). Але дубль-доставка — реальний окремий клас бага. Слепий `Wait(1s)` НЕ дедуплікує — лише затримує те саме виконання.
-- **Як:** на старті флоу зберігати оброблені `update_id` (Supabase невелика таблиця або n8n static data з TTL) і пропускати дублі. Telegram-тригер вже має `200` одразу, тож головний ризик — ретраї саме при помилках.
-- **Пріоритет:** 🟡 перед реальним трафіком.
+- **Зроблено (session 40):** нода `Dedup Update` (перша у флоу: `Telegram Trigger → Dedup Update → Normalize`) дропає повторний `update_id` через n8n global static data як TTL-мапу (5 хв); дубль → `return []` → флоу зупиняється. Pure-ядро `dedupUpdate()` у `n8n/templates/dedup-update.js` (7 unit-тестів), jsCode ноди GENERATED з шаблону (anti-drift). Fail-open на відсутній update_id. Патчер `scripts/sync-webhook-dedup.mjs`. Live-verified: дубль → exec лише `Telegram Trigger → Dedup Update`, нуль side-effects.
+- **Нотатка:** двійне привітання, яке бачив Сергій, — це НЕ цей баг (то був onboarding-флоу, `exec 105`). Слепий `Wait(1s)` НЕ дедуплікує.
 
 ---

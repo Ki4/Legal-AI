@@ -6,7 +6,8 @@ import { isVisible } from '../lib/conditions'
 import {
   loadDraft, saveDraft,
   countVisible, countAnswered, countRequired, countRequiredAnswered,
-  validateForm as validateFormUtil, findFirstErrorTab as findFirstErrorTabUtil,
+  validateForm as validateFormUtil, validateFormats as validateFormatsUtil,
+  findFirstErrorTab as findFirstErrorTabUtil,
   isAnswered, clearStaleAnswers,
 } from '../lib/form-utils'
 import { hapticSuccess, hapticError, hapticImpact, showBackButton, hideBackButton } from '../lib/telegram'
@@ -26,6 +27,8 @@ export function DynamicLegalFormBuilder({ config, serviceSlug, onSubmit, loading
   const [submitting, setSubmitting] = useState(false)
   const [direction, setDirection] = useState<1 | -1>(1)
   const [validationErrors, setValidationErrors] = useState<string[]>([])
+  const [formatErrors, setFormatErrors] = useState<{ label: string; message: string }[]>([])
+  const [submitAttempted, setSubmitAttempted] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -52,7 +55,8 @@ export function DynamicLegalFormBuilder({ config, serviceSlug, onSubmit, loading
       return next
     })
     if (validationErrors.length > 0) setValidationErrors([])
-  }, [config.steps, serviceSlug, validationErrors.length])
+    if (formatErrors.length > 0) setFormatErrors([])
+  }, [config.steps, serviceSlug, validationErrors.length, formatErrors.length])
 
   function goToTab(idx: number) {
     if (idx < 0 || idx >= totalTabs) return
@@ -115,8 +119,11 @@ export function DynamicLegalFormBuilder({ config, serviceSlug, onSubmit, loading
 
   async function handleSubmit() {
     const errors = validateForm()
-    if (errors.length > 0) {
+    const fmtErrors = validateFormatsUtil(config, answers)
+    if (errors.length > 0 || fmtErrors.length > 0) {
       setValidationErrors(errors)
+      setFormatErrors(fmtErrors)
+      setSubmitAttempted(true)
       hapticError()
       const errorTab = findFirstErrorTab()
       if (errorTab >= 0) goToTab(errorTab)
@@ -124,6 +131,8 @@ export function DynamicLegalFormBuilder({ config, serviceSlug, onSubmit, loading
       return
     }
     setValidationErrors([])
+    setFormatErrors([])
+    setSubmitAttempted(false)
     setSubmitting(true)
     hapticSuccess()
     try {
@@ -169,14 +178,28 @@ export function DynamicLegalFormBuilder({ config, serviceSlug, onSubmit, loading
       </div>
 
       {/* Validation errors banner */}
-      {validationErrors.length > 0 && (
+      {(validationErrors.length > 0 || formatErrors.length > 0) && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-2.5 flex-shrink-0">
-          <p className="text-xs font-semibold text-red-700 mb-1">
-            Заповніть обов'язкові поля ({validationErrors.length}):
-          </p>
-          <p className="text-xs text-red-600 line-clamp-2">
-            {validationErrors.slice(0, 5).join(', ')}{validationErrors.length > 5 ? ` та ще ${validationErrors.length - 5}...` : ''}
-          </p>
+          {validationErrors.length > 0 && (
+            <>
+              <p className="text-xs font-semibold text-red-700 mb-1">
+                Заповніть обов'язкові поля ({validationErrors.length}):
+              </p>
+              <p className="text-xs text-red-600 line-clamp-2">
+                {validationErrors.slice(0, 5).join(', ')}{validationErrors.length > 5 ? ` та ще ${validationErrors.length - 5}...` : ''}
+              </p>
+            </>
+          )}
+          {formatErrors.length > 0 && (
+            <>
+              <p className={`text-xs font-semibold text-red-700 mb-1${validationErrors.length > 0 ? ' mt-2' : ''}`}>
+                Перевірте формат полів ({formatErrors.length}):
+              </p>
+              <p className="text-xs text-red-600 line-clamp-2">
+                {formatErrors.slice(0, 5).map(e => e.label).join(', ')}{formatErrors.length > 5 ? ` та ще ${formatErrors.length - 5}...` : ''}
+              </p>
+            </>
+          )}
         </div>
       )}
 
@@ -204,6 +227,7 @@ export function DynamicLegalFormBuilder({ config, serviceSlug, onSubmit, loading
                 field={field}
                 answers={answers}
                 onChange={handleChange}
+                forceShowError={submitAttempted}
               />
             ))}
           </motion.div>

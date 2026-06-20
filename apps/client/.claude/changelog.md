@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-20 (session 42) — service-mirror Slice 3: заявка на послугу (`service_requests` + Storage) (#66)
+**Status:** COMMITTED · branch `feature/service-mirror-requests` · ⚠️ потребує застосування migration 026
+**Why:** Слайс 3 спеки — замикає петлю intake. Слайс 1 дав юристу «бачити» послугу, слайс 2 — коментувати наявну; слайс 3 дозволяє замовити **нову** послугу, якої ще немає в каталозі: назва + опис + закони + **приклад готового документа**, який юрист завантажує. Приклад = фактичний бриф на майбутній шаблон; з 5-10 таких заявок розробник бачить закономірності → проєктує білдер не наосліп.
+**What happened:**
+- `supabase/migrations/026_service_requests.sql` (NEW) — таблиця `service_requests` (id, title, description, laws_text, example_file_path, status open|done, requested_by_email, created_at) + індекс open-inbox. RLS authenticated SELECT/INSERT/UPDATE, DELETE → service_role (патерн 025/013). **+ приватний Storage bucket `service-examples`** (public=false, 10 МБ, allowed_mime PDF/DOC/DOCX) через `INSERT INTO storage.buckets … ON CONFLICT DO UPDATE` + 2 storage RLS-політики (authenticated INSERT/SELECT по `bucket_id`).
+- `apps/client/src/lib/serviceRequestFile.ts` (NEW) — чисті хелпери: `validateExampleFile` (порожній/>10МБ/тип; fallback на розширення коли браузер лишив порожній MIME для .docx) + `buildExamplePath` (storage-safe ключ `requests/<uid>_<санітизована-назва>.<ext>`, кирилиця/пробіли → `_`, fallback `file`). 11 тестів.
+- `apps/client/src/admin/pages/ServiceRequestsPage.tsx` (NEW) — сторінка `Заявки`: composer (назва/опис/закони/📎 приклад) + інбокс (фільтр «лише відкриті» + лічильник, toggle open↔done). Файл: upload у bucket → `example_file_path` у рядку; «📄 Приклад документа» → `createSignedUrl(60s)` → новий таб. Інлайн-валідація типу/розміру до сабміту.
+- Роут `/requests` + пункт навігації «📝 Заявки» (`AdminApp.tsx`, `AdminLayout.tsx`).
+- **Знайдено й виправлено передіснуючу поломку білду на main:** `tsc -b` (а отже `npm run build`) падав з кодом 2 — слайс-1 тест `serviceAnatomy.test.ts` імпортує `node:fs/url/path`, а `tsconfig.app.json` мав `"types": ["vite/client"]` (без `"node"`); session 41 проскочила бо vitest і `vite build` не типчекають. Додано `"node"` у types (`@types/node` уже в devDeps) → `tsc -b` exit 0, обидва `npm run build`/`build:admin` зелені.
+**Files:** `supabase/migrations/026_service_requests.sql` (NEW), `apps/client/src/lib/serviceRequestFile.ts` (NEW) + `__tests__/serviceRequestFile.test.ts` (NEW, 11), `apps/client/src/admin/pages/ServiceRequestsPage.tsx` (NEW), `AdminApp.tsx` (роут), `AdminLayout.tsx` (нав), `tsconfig.app.json` (types +node), `specs/features/service-mirror/validation.md`, `specs/roadmap.md`.
+**Tests:** client vitest **186/186** ✅ (+11) · `tsc -b` clean · `npm run build` (TWA) + `build:admin` ✅. **⚠️ Перед використанням наживо:** застосувати migration 026 (таблиця + bucket + storage-політики) — до того запити/завантаження падатимуть. Live-перевірка в браузері — ручним кроком (потребує застосовану міграцію + логін).
+
 ### 2026-06-20 (session 41) — service-mirror Slice 2: коментарі юриста (`service_notes`) (#66)
 **Status:** COMMITTED (client + migration) · branch `feature/service-mirror-comments` · ⚠️ потребує застосування migration 025
 **Why:** Слайс 2 спеки — канал зворотного зв'язку. Дзеркало (слайс 1) дало юристу «бачити» послугу; тепер він пише «що добре / погано / незручно» прямо в адмінці, а розробник (Сергій) читає й діє. Це intake, що перетворює «подивись» на «скажи, чого бракує» → майбутній білдер.

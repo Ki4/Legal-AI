@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-06-20 (session 41) — service-mirror Slice 2: коментарі юриста (`service_notes`) (#66)
+**Status:** COMMITTED (client + migration) · branch `feature/service-mirror-comments` · ⚠️ потребує застосування migration 025
+**Why:** Слайс 2 спеки — канал зворотного зв'язку. Дзеркало (слайс 1) дало юристу «бачити» послугу; тепер він пише «що добре / погано / незручно» прямо в адмінці, а розробник (Сергій) читає й діє. Це intake, що перетворює «подивись» на «скажи, чого бракує» → майбутній білдер.
+**What happened:**
+- `supabase/migrations/025_service_notes.sql` (NEW) — таблиця `service_notes` (id, `service_slug` FK→services(slug) ON DELETE CASCADE, author_email, body, status open|done, created_at) + 2 індекси (per-service, open-inbox). RLS: SELECT/INSERT/UPDATE для `authenticated` (юрист читає/створює/закриває), DELETE — service_role only (патерн migration 013). Прив'язка по `slug` (стабільний натуральний ключ).
+- `apps/client/src/admin/components/ServiceNotes.tsx` (NEW) — панель на сторінці перегляду: composer (textarea + «Додати») + список нотаток зі статусом, toggle open↔done. Оптимістичні апдейти.
+- `apps/client/src/admin/pages/NotesInboxPage.tsx` (NEW) — dev-інбокс усіх коментарів по всіх послугах (фільтр «лише відкриті» + лічильник), лінк на сторінку послуги, toggle. Новий пункт навігації «💬 Коментарі» + роут `/notes`.
+- Інтегровано в `ServiceViewPage` (секція внизу).
+**Files:** `supabase/migrations/025_service_notes.sql` (NEW), `apps/client/src/admin/components/ServiceNotes.tsx` (NEW), `apps/client/src/admin/pages/NotesInboxPage.tsx` (NEW), `ServiceViewPage.tsx`, `AdminApp.tsx` (роут), `AdminLayout.tsx` (нав).
+**Tests:** client vitest 175/175 ✅ (без нових — слайс це CRUD+UI) · tsc clean · vite build (TWA + admin) ✅. **⚠️ Перед використанням наживо:** застосувати migration 025 (`supabase db push` або SQL Editor) — до того запити до `service_notes` падатимуть (таблиці немає).
+
 ### 2026-06-20 (session 41) — service-mirror Slice 1 (G1-G3): read-only admin анатомія послуги (#66)
 **Status:** COMMITTED (client-only, Vercel auto-builds) · branch `feature/service-mirror`
 **Why:** Реалізація слайса 1 спеки service-mirror — показати юристу «що є»: форма як є + анатомія документа + health + закони. Read-only → ризик 🟢, нічого не пише в `services`, не чіпає генерацію.

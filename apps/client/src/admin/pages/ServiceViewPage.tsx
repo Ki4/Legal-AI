@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { AdminLayout } from '../components/AdminLayout'
+import { ServiceNotes } from '../components/ServiceNotes'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FormConfig, FormField } from '../../types/form'
@@ -258,6 +259,9 @@ export function ServiceViewPage() {
             })}
           </div>
         </section>
+
+        {/* Lawyer feedback (slice 2) */}
+        <ServiceNotes serviceSlug={svc.slug} authorEmail={user?.email} />
       </div>
     </AdminLayout>
   )

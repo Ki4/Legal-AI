@@ -8,6 +8,7 @@ import { ResetPasswordPage }  from './pages/ResetPasswordPage'
 import { DashboardPage }      from './pages/DashboardPage'
 import { ServiceEditPage }    from './pages/ServiceEditPage'
 import { ServiceViewPage }    from './pages/ServiceViewPage'
+import { NotesInboxPage }     from './pages/NotesInboxPage'
 import { LawChangeLogPage }   from './pages/LawChangeLogPage'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -42,6 +43,7 @@ export function AdminApp() {
       <Route path="services/new" element={<AdminGuard><ServiceEditPage /></AdminGuard>} />
       <Route path="services/:id/edit" element={<AdminGuard><ServiceEditPage /></AdminGuard>} />
       <Route path="services/:id" element={<AdminGuard><ServiceViewPage /></AdminGuard>} />
+      <Route path="notes" element={<AdminGuard><NotesInboxPage /></AdminGuard>} />
       <Route path="law-changes" element={<AdminGuard><LawChangeLogPage /></AdminGuard>} />
       <Route path="*" element={<Navigate to="/services" replace />} />
     </Routes>

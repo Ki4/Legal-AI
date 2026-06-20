@@ -1,34 +1,46 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-19 (session 39 — Telegram bot UX polish #65: alive-layer + menu buttons + morph-to-card progress + failure parity — задеплоєно живо, мерж у main)
+> Updated: 2026-06-19 (session 39 — велика Telegram-сесія: UX polish #65 + 👀-реакція + copy + slash-меню + onboarding-фікси + off-topic guard #78 з eval та БД. Усе живо, мерж у main, запушено)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
 
-## 🆕 Session 39 (2026-06-19) — Telegram bot UX polish bundle (#65)
+## 🆕 Session 39 (2026-06-19) — велика Telegram-сесія: UX polish + off-topic guard
 
 ### Головне — стан ЗАРАЗ
-- **Гілка `feature/bot-ux-polish` змержена в main**, issue **#65 closed**. Обидва workflow задеплоєні живо (main-bot 31 нод, form-submit 43 ноди).
-- **1020 root vitest ✅ (+1).** Live-перевірено через execs 88–97 (реальні сабміти + тапи).
-- **Фокус:** «зробити Telegram-бота приємним/гладким» — одним бандлом (Сергій просив не дробити).
+- **Усе змержено в main + запушено в origin.** main-bot **44 ноди**, form-submit 43 — обидва задеплоєні живо. Issue **#65 closed**.
+- **БД ПОЧИЩЕНА** (profiles/identities/cases = 0) на прохання Сергія для тестів нового юзера. Нова таблиця **`bot_rate_limit`** (migration 024, застосована Сергієм).
+- Тестували **двоє реальних людей** (друг + Станіслав uid 557550357) — кожен виявив реальні баги, усі полагоджені.
 
-### Що зроблено (UX-шари, всі через ідемпотентні патчери + live deploy)
-1. **L1 «бот ожив»** (`scripts/sync-bot-ux-polish.mjs`): `answerCallbackQuery` (тост «Гаразд ✍️», прибирає крутіння годинника на тапі — це був реальний баг: callback ніхто не відповідав) + `sendChatAction: typing` перед AI-диспетчером. Live-баг: `sendChatAction` — це resource `message`, не `chat` (404 на першому деплої, виправлено за сорсом ноди).
-2. **Кнопки-послуги** в `Show Menu` і `Welcome New User` (тап замість набору) — reuse `confirm_service_{id}`.
-3. **L3 прогрес → морф-у-картку** (`scripts/sync-form-submit-ux.mjs`): ОДНЕ повідомлення морфить `⏳ Готую → 📝 Формую → ✅ картка` з inline-кнопками [📄 Відкрити](url)+[➕ Нова послуга](callback). Прогрес-ноди — fan-out ЛИСТЯ off success-output + `onError:continue` → не чіпають hardened (#56/#59) ланцюг. Бар і 3-крокову версію Сергій відкинув як «різкі»; Telegram НЕ вміє fade на edit, тож рішення = константна шапка (без «стрибка») + менше підмін.
-4. **Картка СБОЮ (A)** піднята до рівня успіху (`format-gen-failure.js`+`sync-user-error-feedback.mjs`): HTML, заголовок послуги, копіюваний `<code>` № кейса, кнопка «➕ Інша послуга».
-5. **ID кейса (C):** прибрано з картки УСПІХУ (UUID = шум коли все ОК; підтримка знайде по Telegram-id), показується копіюваним лише на СБОЇ.
-6. **Тест-харнес:** `scripts/test-webhook.mjs` сам був зламаний після #56 — тепер форжить валідний `init_data` ботовим токеном (дозволяє ганяти L3 без ручного заповнення форми).
-7. **Інфра-діагностика (НЕ баг коду):** реальні тапи Сергія не доходили — `getWebhookInfo` показав 404+pending; корінь — **ngrok був offline** (`ERR_NGROK_3200`). Перезапустив тунель. **Чекліст запуску: Docker + ngrok + `getWebhookInfo`.**
+### Що зроблено (хронологічно, всі через ідемпотентні патчери + live deploy + webhook-тест)
 
-### 🔴 Наступний крок / відкладено
-1. ~~**Реакція 🙏** на перше повідомлення~~ — ✅ **ЗРОБЛЕНО** (session 39 cont., Сергій дав «так»). `Global Config`-нода з токеном (injected at deploy, repo тримає плейсхолдер) на новоюзерній гілці + `React First Msg` HTTP-лист (`setMessageReaction` 🙏) off Welcome New User. main-bot 33 ноди, задеплоєно. API-виклик перевірено live (`{"ok":true}`); повний new-user flow тригериться лише реальним новим юзером (harmless-by-design, onError continue).
-2. **IMPROVEMENTS #77** — формати документа (PDF/DOCX export, send-as-file) + стилістика — коли візьмемось за стиль/збереження. Кнопка PDF на картці зарезервована.
-3. **⏰ Backlog Ольги (~2026-06-25):** CRON `schedule:`, 2 зміни законів (СК/ЦПК), sign-off `exception_if`, прод-флип `alimony-change` — не торкались.
+**A. UX polish bundle #65** (`sync-bot-ux-polish.mjs` / `sync-form-submit-ux.mjs` / `sync-user-error-feedback.mjs`):
+- `answerCallbackQuery` (тост, прибрав вічне крутіння годинника на тапі — реальний баг) + `sendChatAction: typing`. Live-баг: sendChatAction = resource `message`, не `chat`.
+- Кнопки-послуги в Show Menu + Welcome.
+- form-submit: прогрес-генерації **морфить в одну картку** (⏳→📝→✅ + inline [Відкрити]/[Нова послуга]); картка СБОЮ піднята до рівня успіху; № кейса лише на сбої (копіюваний `<code>`).
+- **👀-реакція** на перше повідомлення нового юзера (`setMessageReaction`, raw HTTP, токен через `Global Config`-ноду; 🙏→👀 як нейтральне). 
+- **Copy polish** (LAYER 5): 6 текстів переписані, прибрано старий `_is_new` 🙏-префікс; кнопки в Send Help; Service Unavailable — без апсейлу, лише «← До меню».
+- `scripts/test-webhook.mjs` полагоджено (форжить підписаний `init_data` після #56). `scripts/set-bot-commands.mjs` — **slash-меню** `/start /menu /help`.
+
+**B. Onboarding-фікси** (з тесту друга):
+- **Двійне привітання нового юзера** — діагноз через `exec 105` (ОДНЕ виконання Welcome+Show Menu = onboarding-флоу, НЕ дубль Telegram). Фікс: `Greeting: is new?` IF — новий юзер на /start отримує лише Welcome.
+
+**C. Off-topic guard #78** (`sync-offtopic-guard.mjs` + `scripts/eval/` + `docs/architecture/bot-offtopic-guard.md`):
+- Класифікатор тепер віддає `topic` (clear/legal_unclear/off_topic). **Eval-набір** (`scripts/eval/bot-classification.cases.json` + `run-classification-eval.mjs`, оффлайн Groq): **93% / 100% на абьюзі**, 0 ложних штрафів.
+- Лесенка (тільки off_topic; юридичне → reset): 1 м'яко / 2 попередження / 3 натяк / **4+ пауза ~15хв** (AI не зовемо). legal_unclear → тепле уточнення.
+- **Стан у Supabase `bot_rate_limit`** (ключ = Telegram id): `Cooldown Read` → `Off-topic Guard` → `Update Rate Limit` (fan-out ЛИСТ) + `Guard Switch`. Рядок сідається при онбордингу (`Init Rate Limit`). Перейшли зі static-data на БД на прохання Сергія (видно в адмінці, #79).
+- **2 баги полагоджені**: (1) `setConn('X', to(Y))` без обгортки `{main:}` → malformed connection → **500 на всі апдейти** (Global Config wiring); (2) **Станіслав: текст → тиша** — `Update Rate Limit` стояв МІЖ Off-topic Guard і Guard Switch → ламав item-pairing → Switch не матчив правило (DB-запис проходив, reply — ні). Фікс: Update Rate Limit як паралельний лист, Switch читає `$json`.
+
+### 🔴 Наступний крок / відкладено (нові IMPROVEMENTS цієї сесії)
+1. **#77** формати документа (PDF/DOCX export) + стилістика — коли візьмемось за збереження.
+2. **#78 (future)** — **escalation-лесенка** (Сергій): timeout зараз → тиждень → 3 міс → бан (додати `pause_level`, migration 025). + **hybrid-кеш** (static-data + БД) як оптимізація. Деталі в спеці. **+ нюанс:** Pre-filter ловить off-topic КЛЮЧОВІ слова (погода/рецепт) ДО AI → вони НЕ рахуються в лічильник (абьюз — рахується).
+3. **#79** видимість вартості AI в адмінці · **#80** opt-in «повідомити коли зʼявиться послуга» (GDPR) · **#81** валідація полів форм (email/телефон/ІПН) · **#82** /stop + команди · **#83** дедуп webhook за update_id.
+4. **⏰ Backlog Ольги (~2026-06-25):** CRON `schedule:`, 2 зміни законів, `exception_if` sign-off, флип `alimony-change`.
 
 ### Запуск середовища
-- n8n live (Docker) + **ngrok** (`rosy-caution-progeny.ngrok-free.dev → :5678`) — піднятий цю сесію у фоні; перезапуск: `ngrok http 5678 --domain=rosy-caution-progeny.ngrok-free.dev`.
-- Деплой: `node scripts/sync-bot-ux-polish.mjs && node scripts/deploy-workflow.mjs main-bot`; `node scripts/sync-form-submit-ux.mjs && node scripts/sync-user-error-feedback.mjs && node scripts/deploy-workflow.mjs form-submit`.
-- Live-тест генерації без форми: `node scripts/test-webhook.mjs 4` (форжить підписаний init_data на uid 236581343).
+- n8n live (Docker) + **ngrok** (`rosy-caution-progeny.ngrok-free.dev → :5678`) — піднятий цю сесію у фоні (помре із закриттям сесії; для своїх тестів тримати в своєму терміналі). **Чекліст: Docker + ngrok + `getWebhookInfo`.**
+- Деплой бота: `node scripts/sync-bot-ux-polish.mjs && node scripts/sync-offtopic-guard.mjs && node scripts/deploy-workflow.mjs main-bot` (порядок важливий: guard володіє `Skip AI?`).
+- **ПРАВИЛО:** після кожного деплою main-bot — гнати реальне webhook-повідомлення (не лише API/DB-чек), бо обидва баги цієї сесії проскочили саме так. + валідувати connections.
+- Live-тест генерації без форми: `node scripts/test-webhook.mjs 4`.
 
 ---
 

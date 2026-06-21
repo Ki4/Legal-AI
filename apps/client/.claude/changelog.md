@@ -10,6 +10,19 @@
 
 ---
 
+### 2026-06-21 (session 43) — divorce: майно/борги без порожніх плейсхолдерів (Variant B, #67)
+**Status:** COMMITTED · branch `fix/divorce-property-debt-variant-b` · ⚠️ **НЕ змержено / НЕ задеплоєно** — чекає wording sign-off Ольги, потім merge + `upload-document-template.mjs divorce`
+**Why:** Дзеркало (service-mirror #66) виявило реальний прод-баг: divorce-шаблон друкував `{{property_details}}` / `{{debt_details}}`, але форма ці поля ніколи не питає (є лише `has_joint_property`/`property_dispute`/`debt_claim`) → у проді рендерилось `________`, а ПРОШУ просив суд «визнати 1/2 частку ________» / «розподілити борги ________» — нісенітниця для суду. Рішення Сергія (Variant B): деталі майна/боргів — предмет окремого позову, тож divorce-документ їх **не ділить** і не друкує плейсхолдерів.
+**What happened:**
+- **Тіло документа:** майно з `property_dispute='none'` → «Спір щодо його поділу між сторонами відсутній; вимога про поділ майна не є предметом цього позову.» (гілка `separate` — без змін); борги → «Між сторонами наявні спільні боргові зобов'язання. Вимога про їх розподіл не є предметом цього позову та може бути вирішена за домовленістю сторін або в окремому провадженні.» Жодних `________`.
+- **ПРОШУ:** прибрано пункти поділу майна та розподілу боргів (суд не може присудити поділ неконкретизованого майна). Нумерація пунктів 5+ спростилась: діти (5) → аліменти (5/6) → графік побачень (5/6/7, завжди останній) — складні if-ланцюжки майна/боргів видалено.
+- **Додатки:** прибрано рядки про правовстановлюючі документи на майно та кредитні договори (поділ відкладено → не додаються до цього позову).
+- **Цитати:** ст.65 СК (єдина її згадка — вимога розподілу боргів) прибрана з `divorce.citations.json` + extractor-тесту (citation-coverage guard змусив синхронізувати).
+- **Паритет:** legacy-білдер `divorce-document.js` оновлено дзеркально (263 parity-тести лишились зеленими); golden `scenario-3.txt` регенеровано (engine===builder звірено перед записом).
+- `serviceAnatomy.test.ts`: divorce тепер `unmatchedPlaceholders === []` (gap закрито, як alimony-change).
+**Files:** `n8n/templates/services/divorce.document.txt`, `n8n/templates/divorce-document.js`, `n8n/templates/services/divorce.citations.json`, `n8n/templates/__tests__/{divorce-template-parity,divorce-document,divorce-children-visitation}.test.js`, `scripts/lib/__tests__/citations.test.mjs`, `apps/client/src/lib/__tests__/serviceAnatomy.test.ts`, `test-data/divorce/expected/scenario-3.txt` (regen).
+**Tests:** root vitest **1110/1110** ✅ · client **186/186** ✅ · `tsc -b` clean. **Gate перед проддеплоєм:** Ольга підтверджує формулювання (checklist item 1 issue #67), далі merge + заливка шаблону в Supabase + live form-submit smoke.
+
 ### 2026-06-20 (session 42) — service-mirror Slice 3: заявка на послугу (`service_requests` + Storage) (#66)
 **Status:** MERGED (`a0ce654`) + live-verified · branch deleted · migration 026 applied · **issue #66 closed**
 **Why:** Слайс 3 спеки — замикає петлю intake. Слайс 1 дав юристу «бачити» послугу, слайс 2 — коментувати наявну; слайс 3 дозволяє замовити **нову** послугу, якої ще немає в каталозі: назва + опис + закони + **приклад готового документа**, який юрист завантажує. Приклад = фактичний бриф на майбутній шаблон; з 5-10 таких заявок розробник бачить закономірності → проєктує білдер не наосліп.

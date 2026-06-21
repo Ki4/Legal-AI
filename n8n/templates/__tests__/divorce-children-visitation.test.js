@@ -96,20 +96,24 @@ describe('visitation schedule (ст.157 СК) — agreed', () => {
     expect(text).toMatch(/6\. Визначити графік участі у вихованні та спілкуванні з дитиною того з батьків, хто проживає окремо, відповідно до ст\.157 Сімейного кодексу України: кожні вихідні з пʼятниці по неділю\./)
   })
 
-  it('is numbered 9 (last) when residence + alimony + property + debt are all also present', () => {
+  it('is numbered 7 (last) when residence + alimony are present; property/debt add no ПРОШУ items (Variant B, #67)', () => {
     const text = render({
       ...BASE_ANSWERS,
       alimony_claim: true, alimony_amount: 'percent',
-      has_joint_property: true, property_dispute: 'together', property_details: 'квартира',
-      debt_claim: true, debt_details: 'кредит № 1',
+      has_joint_property: true, property_dispute: 'none',
+      debt_claim: true,
       visitation_dispute: 'none',
       visitation_schedule_text: 'кожні вихідні',
     }, BASE_AI)
     expect(text).toMatch(/5\. Визначити місце проживання/)
     expect(text).toMatch(/6\. Стягнути з відповідача/)
-    expect(text).toMatch(/7\. Визнати за позивачем право/)
-    expect(text).toMatch(/8\. Розподілити між сторонами/)
-    expect(text).toMatch(/9\. Визначити графік участі у вихованні/)
+    // Variant B: property/debt division is deferred to a separate suit — no ПРОШУ demand
+    expect(text).not.toMatch(/Визнати за позивачем право на 1\/2/)
+    expect(text).not.toMatch(/Розподілити між сторонами спільні боргові/)
+    expect(text).toMatch(/7\. Визначити графік участі у вихованні/)
+    // body acknowledges property/debt but defers division (no ________ placeholders)
+    expect(text).toContain('вимога про поділ майна не є предметом цього позову')
+    expect(text).toContain('Вимога про їх розподіл не є предметом цього позову')
   })
 
   it('renders even when the residence item itself is disputed (visitation is independently gated)', () => {

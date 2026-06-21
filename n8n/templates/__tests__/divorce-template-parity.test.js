@@ -273,15 +273,13 @@ describe('parity: individual branch toggles', () => {
     'court fee exempt: unknown reason (placeholders)': { court_fee_exempt: 'yes', court_fee_exempt_reason: 'other' },
     'court fee exempt: reason missing (placeholders)': { court_fee_exempt: 'yes' },
 
-    'property details ending with period (no double period)': {
-      has_joint_property: true, property_dispute: 'together',
-      property_details: 'квартира за адресою м. Одеса, вул. Дерибасівська, 5.',
-    },
-    'property together but details empty (placeholder + period)': {
-      has_joint_property: true, property_dispute: 'together', property_details: '',
-    },
-    'debt details ending with period': { debt_claim: true, debt_details: 'кредитний договір № 123 від 01.01.2020.' },
-    'debt claim but details empty (placeholder + period)': { debt_claim: true, debt_details: '' },
+    // Variant B (#67): property/debt are acknowledged but division is deferred —
+    // no inline details, no ПРОШУ demand. These check engine===builder parity for
+    // the new deferral branches.
+    'property, no dispute (Variant B: defer)': { has_joint_property: true, property_dispute: 'none' },
+    'property, dispute separate': { has_joint_property: true, property_dispute: 'separate' },
+    'debt claim (Variant B: defer)': { debt_claim: true },
+    'property + debt together (Variant B)': { has_joint_property: true, property_dispute: 'none', debt_claim: true },
   }
 
   for (const [label, patch] of Object.entries(cases)) {

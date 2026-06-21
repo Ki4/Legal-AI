@@ -298,6 +298,7 @@ ALTER TABLE services ADD COLUMN needs_law_review BOOLEAN DEFAULT false;
 ## 💳 Монетизація та партнери
 
 ### 5. Відсутні `lawyer_type` і `revenue_share_percent`
+- **⚠️ Статус (session 44):** GitHub-issue #23 (це #5) **закрито** — тримаємо як ідею ТУТ, а не як активний work-unit (рішення Сергія). Revenue-модель (партнер/інфлюенсер revenue-share) переглядається в `project_strategy_v2` — `project_business_model.md` помічений legacy; до фінального рішення по монетизації це лишається ідеєю в бэклозі, заведемо свіжий issue коли модель стане конкретною.
 - **Зараз:** Всі юристи рівні, немає поділу "партнер" vs "інфлюенсер"
 - **Як краще:**
   ```sql

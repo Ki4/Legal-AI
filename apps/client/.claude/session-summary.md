@@ -1,6 +1,24 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-21 (session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
+> Updated: 2026-06-22 (session 44 — issue-гігієна: закрито #3/#8/#23 як superseded, решта backlog лишена; деталі нижче. ⚠️ session 43 (divorce #67) тримається held на гілці `fix/divorce-property-debt-variant-b` — її лог приїде в main при мерджі. | session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 44 (2026-06-22) — issue-гігієна: чистка backlog-issues (bulk-import 2026-06-07)
+
+### Головне — стан ЗАРАЗ
+- **Фокус:** прибрати з GitHub Issues ідеї-бэклог, що порушують політику CLAUDE.md (IMPROVEMENTS = бэклог ідей never-closed, Issues = work-units). Закривали content-driven — ТІЛЬКИ superseded (переписані/перекриті пізнішим пунктом IMPROVEMENTS або вже зробленою роботою), не за датою.
+- **Закрито 3 issue:** **#3** [#36] valid_from/valid_to (перекрито `is_stale` #29/#11, s.34) · **#8** [#27] prompt-versioning (застаріло після doc-engine #34; LLM-крок → #54) · **#23** [#5] монетизація lawyer_type/revenue_share (рішення Сергія: тримати лише як ідею в IMPROVEMENTS #5, не як issue).
+- **Лишено відкритими 12:** #5,#10,#13,#15,#16,#19,#20,#21,#22,#24,#26 — актуальні + окремі, нічим не перекриті. **#22 (портфоліо)** лишено свідомо — це матеріал для LinkedIn/пошуку роботи Сергія, не продукт.
+- **IMPROVEMENTS #36/#27/#5 розмічені** статус-пометками, щоб ідеї не загубились після закриття issue.
+- **Гілка `chore/issue-hygiene-session-44`** змержена в main + запушено (doc-only, нуль ризику).
+- **Доска тепер:** #67 (held під Olga) · #33 (Olga-трекер) · + 11 backlog-ідей.
+- ⚠️ Гілка #67 `fix/divorce-property-debt-variant-b` (лог session 43) — без змін, далі held під wording sign-off Ольги; її лог приїде в main при мерджі.
+
+### 🔴 Наступний крок
+1. **Завтра (Сергій):** косметика адмінки — прийде з ідеями + дизайном. Нова сесія, новий фокус (1 сесія = 1 фокус).
+2. **#67** — чекає фідбек Ольги по формулюваннях → merge + deploy (`upload-document-template.mjs divorce` + live smoke).
+3. ⏰ Backlog Ольги (~2026-06-25): флип alimony-change, 2 зміни законів (СК/ЦПК), CRON `schedule:`, exception_if sign-off.
 
 ---
 

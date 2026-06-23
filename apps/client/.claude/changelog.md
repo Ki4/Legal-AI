@@ -36,6 +36,16 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.5) — law-change-impact G3: детерм. критик + промпти L3/L4
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Захист від галюцинацій навколо єдиного недетерм. кроку (L3 Groq). Критик звіряє чернетку з ground truth; провал → abstention (чернетки немає, лишається diff).
+**Що зроблено:**
+- `n8n/templates/law-change-groundedness.js` (L4a, без LLM) — кожен `slug` ∈ scope, кожна цитована стаття ∈ (diff ∪ scope.norms), кожен `evidence` ∈ diff дослівно → інакше RED → abstain. Перевіряє і prose (summary/hypothesis).
+- `n8n/prompts/law-change-digest.txt` (L3) — strict-JSON промпт: лише наданий diff як джерело, enum-констрейнт на статті/послуги, evidence дослівно, severity ≤ стеля scope, «невпевнений → коротше».
+- `n8n/prompts/law-change-critic.txt` (L4b) — незалежний дорадчий критик → AMBER на непідкріплені diff-ом інтерпретації.
+**Tests:** `law-change-groundedness.test.js` (6) — clean pass; RED на out-of-scope slug / out-of-set статтю / невірний evidence / prose-цитату; scope.norms як валідна цитата.
+**Next:** G4 (UI-картка «AI-чернетка» в панелі «Зміни законів» + типи). n8n-workflow JSON (дайджест) — інтеграція в редакторі n8n із цих готових нод/промптів.
+
 ### 2026-06-23 (session 45, ч.4) — law-change-impact G2: scope + юридична severity (детерм.)
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** L2 — детермінований розрахунок «які послуги зачеплено + наскільки серйозно» без LLM. Severity **юридична, не попит** (закриває зауваження viz-сесії 45). LLM (L3) пропонує свою, але обмежений цією стелею згори.

@@ -2,7 +2,7 @@
 // in light/dark. Route /design, no auth. Pages compose from src/admin/ui; add here when a new
 // component lands. Mirrors the «Бібліотека» section of the .dc.html canvas.
 import { Plus, Trash2, Eye, Pencil, Search } from 'lucide-react'
-import { Button, IconButton, Badge, Chip, Label, Input, Textarea, Card, SectionLabel } from '../ui'
+import { Button, IconButton, Badge, Chip, Label, Input, Textarea, Card, SectionLabel, ReviewItem } from '../ui'
 import { ServiceCard } from '../components/ServiceCard'
 import { ThemeToggle } from '../theme/ThemeToggle'
 
@@ -102,6 +102,21 @@ export function DesignKitPage() {
                   <div className="flex flex-wrap gap-1.5"><Chip tone="missing">debt_details</Chip></div>
                 </div>
               </div>
+            </div>
+          </Card>
+
+
+          {/* Review queue */}
+          <Card className="p-6 lg:col-span-2">
+            <SectionLabel>Черга на ревʼю</SectionLabel>
+            <p className="text-[12.5px] text-inkMute mt-2 mb-4">Єдиний патерн для коментарів, заявок і змін законів. «Вирішено» — очевидна дія, а не бейдж.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <ReviewItem
+                title="Стягнення аліментів" timestamp="2 дні тому"
+                body="Уточнити формулювання щодо розміру аліментів у відсотках від доходу."
+                onResolve={() => {}} onOpen={() => {}}
+              />
+              <ReviewItem title="Розірвання шлюбу" resolved onReopen={() => {}} />
             </div>
           </Card>
         </div>

@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { Briefcase, MessageSquare, FileText, ClipboardList, Landmark, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from '../theme/ThemeToggle'
 
 const NAV = [
-  { to: '/services',    icon: '⚖️', label: 'Мої послуги' },
-  { to: '/notes',       icon: '💬', label: 'Коментарі' },
-  { to: '/requests',    icon: '📝', label: 'Заявки' },
-  { to: '/law-changes', icon: '📋', label: 'Зміни законів' },
+  { to: '/services',    icon: Briefcase,     label: 'Мої послуги' },
+  { to: '/notes',       icon: MessageSquare, label: 'Коментарі' },
+  { to: '/requests',    icon: FileText,      label: 'Заявки' },
+  { to: '/law-changes', icon: ClipboardList, label: 'Зміни законів' },
 ]
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -39,10 +40,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       `}>
         {/* Logo */}
         <div className="px-5 py-5 border-b border-line flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🏛</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-[30px] h-[30px] rounded-lg bg-[#0E4D6E] text-white flex items-center justify-center flex-shrink-0">
+              <Landmark size={17} strokeWidth={1.7} />
+            </div>
             <div>
-              <div className="text-sm font-bold text-ink">Legal AI</div>
+              <div className="text-sm font-bold text-ink leading-tight">Legal AI</div>
               <div className="text-xs text-inkMute">Admin Panel</div>
             </div>
           </div>
@@ -54,7 +57,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {NAV.map(({ to, icon, label }) => (
+          {NAV.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -66,7 +69,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                    : 'text-inkSoft hover:text-ink hover:bg-paperAlt'}`
               }
             >
-              <span>{icon}</span>
+              <Icon size={18} strokeWidth={1.7} className="flex-shrink-0" />
               <span>{label}</span>
             </NavLink>
           ))}
@@ -82,7 +85,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             onClick={handleSignOut}
             className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-inkSoft hover:text-ink hover:bg-paperAlt transition-colors"
           >
-            <span>🚪</span>
+            <LogOut size={17} strokeWidth={1.7} className="flex-shrink-0" />
             <span>Вийти</span>
           </button>
         </div>

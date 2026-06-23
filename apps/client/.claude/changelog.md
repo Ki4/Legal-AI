@@ -36,6 +36,16 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.11) — DS: ReviewItem (черга на ревʼю) + Lucide-сайдбар; звірено з chat+brief
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Отримав повний експорт Claude Design (zip): README + `chats/chat1.md` (інтент) + `.dc.html` + `admin-ux-brief.md`. Прочитав інтент — **1-в-1** з тим, що будуємо (тепле тло #FAF9F5, синій #2563EB, Geist; дизайн-система + граф зв'язків). Добив два компоненти канви, яких бракувало в бібліотеці.
+**Що зроблено:**
+- **`ui/ReviewItem`** — єдиний інбокс-патерн (коментарі/заявки/зміни законів). «Позначити вирішеним» — **явна кнопка**, не бейдж (фікс UX-боргу session 42, прямо названий у брифі §3); resolved-стан (затемнення + «Відкрити знову»). На `/design`.
+- **`AdminLayout`** — Lucide-іконки замість емодзі (Briefcase/MessageSquare/FileText/ClipboardList; лого — Landmark-плитка #0E4D6E; вихід — LogOut). Структуру навігації лишено (як просить бриф §4).
+**Verify:** tsc/eslint clean; `/design` знято — «Черга на ревʼю» рендериться як канва.
+**Бандл-факти:** доп. `.dc.html`-екранів немає (один файл); шрифти — Geist з CDN (мій self-host коректний); `project/uploads/` — лише референси (бриф + скріни старої тёмної адмінки).
+**Next:** скласти решту сторінок із бібліотеки — ServiceView, 3 інбокси (на `ReviewItem`), ServiceEdit; Lucide-іконки в їхньому тілі.
+
 ### 2026-06-23 (session 45, ч.10) — Admin design-system: бібліотека компонентів (`ui/`) + вітрина `/design`
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Сергій запропонував (правильно) спершу зібрати **систему компонентів**, а сторінки потім **складати з неї** і добирати, чого бракує. Це канонічний DS-підхід.

@@ -20,6 +20,28 @@
 **Files:** `apps/client/src/admin/viz/theme.ts` (NEW), `viz/demoData.ts` (NEW), `viz/icons.tsx` (NEW), `viz/views/{CatalogGraph,ServiceDetail,TechnicalView,FormBranching,Prioritization}.tsx` (NEW), `apps/client/src/admin/pages/VizLabPage.tsx` (NEW), `apps/client/src/admin/AdminApp.tsx` (роут `/viz-lab` + null-guard).
 **Tests:** `tsc -b` clean · `npm run build:admin` ✅ · eslint clean · усі 5 видів відрендерено й знято скриншоти (Playwright) — рендеряться коректно.
 
+### 2026-06-23 (session 45, ч.2) — Tier-2 спека `law-change-impact` (агент «що змінилось»)
+**Status:** SPEC ONLY (без коду фічі) · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Після прототипу viz-lab Сергій обрав фічу №1 — агент, що при зміні закону **попередньо**
+описує юристу *що саме змінилось у тексті* і *як це впливає на кожну послугу*, замість сьогоднішнього
+сліпого «щось у СК змінилось, перевір вручну». Це єдиний реальний юр-ризик циклу (проґавлена зміна
+закону) і ідеально лягає на ескалаційну філософію (AI чернетка → підпис Олі). Tier 2, бо зачіпає
+юр-коректність + додає LLM-крок у раніше детермінований моніторинг → підхід треба затвердити ДО коду.
+**Архітектура (узгоджена з наявним кодом, survey субагентом):** дві стадії, поважаючи конвенцію
+«LLM лише в n8n». Монітор (Node, наявний CRON) робить L0-детект + **L1 детермінований diff редакцій**
+(стара з `law_documents.full_text` поки не stale, нова з rada) — знімок у новий рядок `law_change_log`,
+`ai_status='pending'`. n8n workflow `law-change-digest` добирає pending → L2 scope (`service_slugs` +
+обхід `law_relations`, severity = **юридична**, не попит) → L3 Groq (strict JSON, enum-констрейнт) →
+L4 критики + **abstention** → пише `ai_summary`/`ai_impact`/`ai_confidence`. Картка «AI-чернетка» в
+панелі «Зміни законів» (read-only, джерело rada, «Вставити в нотатку»); `notes`/рішення — людський SSoT.
+**Деградація ≥ сьогодні:** будь-яка помилка/abstention → лишається детермінований diff + флип, ніколи
+галюцинація. Migration 027 додає `article_diffs`/`ai_*` колонки.
+**Files (NEW):** `specs/features/law-change-impact/{plan,requirements,validation}.md`.
+**Files (touched):** `specs/roadmap.md` (рядок у v2.2 HITL), `docs/architecture/IMPROVEMENTS.md`
+(#87–#90 — viz-lab follow-ups: підграф по послузі, bubble overlap+семантика, живі дані+health, масштаб),
+`apps/client/.claude/changelog.md`.
+**Next:** реалізація за G1→G5 (Sonnet за готовою спекою); відкрити tracking-issue на старті коду.
+
 ### 2026-06-22 (session 44) — issue-гігієна: закрито #3/#8/#23 як superseded
 **Status:** MERGED (`chore/issue-hygiene-session-44` → main) · doc-only, нуль змін коду
 **Why:** Сесія-старт показала 15 backlog-issues, масово залитих 2026-06-07, що порушують політику CLAUDE.md (IMPROVEMENTS = бэклог ідей never-closed, GitHub Issues = work-units). Рішення Сергія: чистити content-driven — закривати лише ті, що переписані/перекриті пізнішим пунктом IMPROVEMENTS або вже зробленою роботою; решту актуальних лишити.

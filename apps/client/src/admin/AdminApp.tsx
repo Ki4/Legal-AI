@@ -12,6 +12,7 @@ import { NotesInboxPage }     from './pages/NotesInboxPage'
 import { ServiceRequestsPage } from './pages/ServiceRequestsPage'
 import { LawChangeLogPage }   from './pages/LawChangeLogPage'
 import { VizLabPage }         from './pages/VizLabPage'
+import { DesignKitPage }      from './pages/DesignKitPage'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -51,6 +52,7 @@ export function AdminApp() {
       <Route path="law-changes" element={<AdminGuard><LawChangeLogPage /></AdminGuard>} />
       {/* viz-lab: standalone visualization prototype gallery (demo data, no auth needed) */}
       <Route path="viz-lab" element={<VizLabPage />} />
+      <Route path="design" element={<DesignKitPage />} />
       <Route path="*" element={<Navigate to="/services" replace />} />
     </Routes>
   )

@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Plus, Briefcase } from 'lucide-react'
 import { AdminLayout } from '../components/AdminLayout'
+import { ServiceCard } from '../components/ServiceCard'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
   type ServiceStatus,
   toServiceStatus,
-  statusActions,
   isPublishedFor,
-  STATUS_META,
 } from '../../lib/serviceStatus'
 import { analyzeService } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
@@ -135,9 +135,9 @@ export function DashboardPage() {
           <button
             onClick={() => navigate('/services/new')}
             className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 bg-brand hover:bg-brand/90
-                       text-white text-sm font-semibold rounded-xl transition-colors"
+                       text-white text-sm font-semibold rounded-[10px] shadow-card transition-colors"
           >
-            <span className="text-lg leading-none">+</span>
+            <Plus size={16} strokeWidth={2} />
             <span className="hidden sm:inline">Нова послуга</span>
           </button>
         </div>
@@ -184,7 +184,9 @@ export function DashboardPage() {
         {/* Empty */}
         {!loading && services.length === 0 && (
           <div className="text-center py-24">
-            <div className="text-5xl mb-4">⚖️</div>
+            <div className="inline-flex w-14 h-14 rounded-2xl bg-brand/10 text-brand items-center justify-center mb-4">
+              <Briefcase size={26} strokeWidth={1.6} />
+            </div>
             <h3 className="text-lg font-semibold text-ink mb-2">Ще немає послуг</h3>
             <p className="text-inkMute text-sm mb-6 max-w-xs mx-auto">
               Створіть першу юридичну послугу — налаштуйте форму і AI-промпт для документу
@@ -207,84 +209,22 @@ export function DashboardPage() {
               const health = analyzeService(svc.form_config, svc.document_template, svc.generation_mode).health
               const hd = HEALTH_DOT[health.level]
               return (
-                <div
+                <ServiceCard
                   key={svc.id}
-                  className="bg-paper border border-line rounded-2xl p-5 flex flex-col gap-4
-                             hover:border-lineStrong transition-colors"
-                >
-                  <button
-                    onClick={() => navigate(`/services/${svc.id}`)}
-                    className="flex items-start gap-3 text-left group/header"
-                    title="Переглянути анатомію послуги"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-paperAlt flex items-center justify-center text-xl flex-shrink-0">
-                      {svc.icon || '⚖️'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-ink text-sm truncate group-hover/header:text-brand transition-colors">{svc.title || 'Без назви'}</h3>
-                      <p className="text-inkMute text-xs mt-0.5 line-clamp-2">
-                        {svc.description || 'Опис не вказано'}
-                      </p>
-                    </div>
-                  </button>
-
-                  <div className="flex items-center gap-3 text-xs text-inkMute">
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${hd.dot}`} title={hd.title} />
-                    <span>📋 {fieldCount} полів</span>
-                    <span>•</span>
-                    <span>🗂 {tabCount} табів</span>
-                    {svc.price > 0 && <><span>•</span><span>💰 {svc.price}₴</span></>}
-                  </div>
-
-                  <div className="flex items-center gap-2 pt-1 border-t border-line">
-                    {/* Status badge (read-only) */}
-                    <span
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${STATUS_META[svc.status].badge}`}
-                    >
-                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_META[svc.status].dot}`} />
-                      {STATUS_META[svc.status].label}
-                    </span>
-
-                    {/* Lifecycle actions */}
-                    {statusActions(svc.status).map((action) => (
-                      <button
-                        key={action.to}
-                        onClick={() => changeStatus(svc, action.to)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors
-                          ${action.variant === 'primary'
-                            ? 'bg-brand/10 text-brand hover:bg-brand/25'
-                            : 'bg-paperAlt text-inkSoft hover:bg-paperAlt'}`}
-                      >
-                        {action.label}
-                      </button>
-                    ))}
-
-                    <div className="flex-1" />
-
-                    <a
-                      href={`/?service=${svc.slug}`}
-                      target="_blank"
-                      className="p-1.5 text-inkMute hover:text-ink hover:bg-paperAlt rounded-lg transition-colors"
-                      title="Переглянути форму"
-                    >
-                      👁
-                    </a>
-                    <button
-                      onClick={() => navigate(`/services/${svc.id}/edit`)}
-                      className="p-1.5 text-inkMute hover:text-ink hover:bg-paperAlt rounded-lg transition-colors"
-                      title="Редагувати"
-                    >
-                      ✏️
-                    </button>
-                    <button
-                      onClick={() => deleteService(svc.id)}
-                      className="p-1.5 text-inkMute hover:text-danger hover:bg-danger/10 rounded-lg transition-colors"
-                      title="Видалити"
-                    >
-                      🗑
-                    </button>
-                  </div>
-                </div>
+                  title={svc.title}
+                  description={svc.description}
+                  fields={fieldCount}
+                  tabs={tabCount}
+                  price={svc.price}
+                  healthDot={hd.dot}
+                  healthTitle={hd.title}
+                  status={svc.status}
+                  formHref={`/?service=${svc.slug}`}
+                  onOpen={() => navigate(`/services/${svc.id}`)}
+                  onEdit={() => navigate(`/services/${svc.id}/edit`)}
+                  onDelete={() => deleteService(svc.id)}
+                  onStatus={(to) => changeStatus(svc, to)}
+                />
               )
             })}
           </div>

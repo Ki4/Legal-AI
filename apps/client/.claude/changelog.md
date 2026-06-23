@@ -36,6 +36,17 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.10) — Admin design-system: бібліотека компонентів (`ui/`) + вітрина `/design`
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій запропонував (правильно) спершу зібрати **систему компонентів**, а сторінки потім **складати з неї** і добирати, чого бракує. Це канонічний DS-підхід.
+**Що зроблено:**
+- **`src/admin/ui/`** — примітиви в стилі канви: `Button` (primary/secondary/ghost/danger), `IconButton` (+`bare`), `Badge` (status-пілюля, тони ok/warn/danger/brand/neutral), `Chip` (field, used/extra/missing), `Field` (`Label`/`Input`/`Textarea` з м'яким focus-ring), `Card`+`SectionLabel`; barrel `index.ts`.
+- **`components/ServiceCard.tsx`** — композитна картка послуги за спекою канви (icon-tile + health-крапка + футер: статус-пілюля + lifecycle + Lucide eye/pencil/trash, hover-підйом).
+- **`pages/DesignKitPage.tsx`** + роут **`/design`** (без auth, як viz-lab) — жива вітрина всіх компонентів у світлій/тёмній. Дзеркало розділу «Бібліотека» з `.dc.html`.
+- **`DashboardPage`** — перша сторінка, **зібрана з бібліотеки** (ServiceCard + Lucide-іконки замість емодзі в шапці/empty-state).
+**Verify:** tsc/eslint clean; `/design` знято в обох темах (рендериться 1-в-1 як канва).
+**Next:** Lucide-сайдбар (`AdminLayout`), і решта сторінок — складати з `ui/`, додаючи компоненти за потреби.
+
 ### 2026-06-23 (session 45, ч.9) — Admin design-system: Geist + канва-тінь + soft-blue nav (фундамент мови)
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Сергій: одних кольорів мало — треба **дизайн-мова** канви Claude Design (`.dc.html`), а не лише палітра. Перший крок — глобальні речі з найбільшим ефектом на відчуття: шрифт Geist, м'якша тінь карток, soft-blue активний пункт навігації (канва прямо каже «структуру сайдбара лишаємо», активний — м'яка синя плашка, не важка заливка).

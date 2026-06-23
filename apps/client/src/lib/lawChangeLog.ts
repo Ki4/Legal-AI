@@ -20,6 +20,14 @@ export interface LawChangeLogRow {
   reviewed_by: string | null
   reviewed_at: string | null
   notes: string | null
+  // ─── law-change-impact agent (migration 027) ───────────────────────────────
+  article_diffs: ArticleDiffs | null // deterministic L1 diff (ground truth)
+  ai_summary: string | null          // L3 plain-language draft; null until digest / when abstained
+  ai_impact: AiImpactItem[] | null   // L3 per-service hypotheses
+  ai_confidence: number | null       // 0..1
+  ai_status: AiStatus
+  ai_model: string | null
+  ai_generated_at: string | null
 }
 
 export function isLawChangeAction(value: unknown): value is LawChangeAction {
@@ -100,4 +108,57 @@ export function reviewActions(current: LawChangeAction): ReviewAction[] {
 export function formatRevision(oldDate: string | null, newDate: string | null): string {
   const to = newDate || '?'
   return oldDate ? `${oldDate} → ${to}` : `→ ${to}`
+}
+
+// ─── law-change-impact agent (migration 027) ─────────────────────────────────
+// Read model for the AI "what changed" draft shown above the lawyer's notes. The agent
+// writes only the ai_* columns + article_diffs; the lawyer's `notes`/`action` stay the SSoT.
+
+export type AiStatus = 'pending' | 'drafted' | 'abstained' | 'error'
+export type Severity = 'high' | 'medium' | 'low'
+
+/** One per-service impact hypothesis (L3 output). */
+export interface AiImpactItem {
+  slug: string
+  severity: Severity
+  confidence: number
+  articles: string[]
+  hypothesis: string
+  evidence?: string
+}
+
+/** One changed-article hunk of the deterministic diff (L1). */
+export interface ArticleDiffHunk {
+  article_num: string | null
+  op: 'added' | 'removed' | 'changed'
+  removed: string[]
+  added: string[]
+}
+
+/** The deterministic revision diff snapshot (law_change_log.article_diffs). */
+export interface ArticleDiffs {
+  level: 'law' | 'article'
+  law_code: string | null
+  changed_articles: string[]
+  hunks: ArticleDiffHunk[]
+  source_url: string | null
+  captured_at: string
+  truncated: boolean
+}
+
+/** Coerce an unknown DB value into a safe ai_status (defaults to 'pending'). */
+export function toAiStatus(value: unknown): AiStatus {
+  return value === 'drafted' || value === 'abstained' || value === 'error' ? value : 'pending'
+}
+
+/** Severity → Ukrainian label + tailwind colours (legal risk, not demand). */
+export const SEVERITY_META: Record<Severity, { label: string; dot: string; text: string }> = {
+  high:   { label: 'високий ризик', dot: 'bg-red-400',    text: 'text-red-400' },
+  medium: { label: 'середній',      dot: 'bg-amber-400',  text: 'text-amber-400' },
+  low:    { label: 'низький',       dot: 'bg-slate-400',  text: 'text-slate-400' },
+}
+
+/** Confidence as a 0–100% string, or null when absent. */
+export function confidencePct(c: number | null): string | null {
+  return c == null ? null : `${Math.round(c * 100)}%`
 }

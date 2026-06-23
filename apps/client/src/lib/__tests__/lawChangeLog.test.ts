@@ -7,6 +7,9 @@ import {
   reviewActions,
   formatRevision,
   ACTION_META,
+  toAiStatus,
+  confidencePct,
+  SEVERITY_META,
 } from '../lawChangeLog'
 
 describe('isLawChangeAction', () => {
@@ -92,5 +95,39 @@ describe('ACTION_META', () => {
     expect(ACTION_META.flagged.label).toBeTruthy()
     expect(ACTION_META.reviewed.label).toBeTruthy()
     expect(ACTION_META.dismissed.label).toBeTruthy()
+  })
+})
+
+describe('toAiStatus', () => {
+  it('passes through valid statuses', () => {
+    expect(toAiStatus('drafted')).toBe('drafted')
+    expect(toAiStatus('abstained')).toBe('abstained')
+    expect(toAiStatus('error')).toBe('error')
+    expect(toAiStatus('pending')).toBe('pending')
+  })
+
+  it('defaults unknown / missing values to pending', () => {
+    expect(toAiStatus(undefined)).toBe('pending')
+    expect(toAiStatus('garbage')).toBe('pending')
+  })
+})
+
+describe('confidencePct', () => {
+  it('renders a 0–100% label', () => {
+    expect(confidencePct(0.7)).toBe('70%')
+    expect(confidencePct(1)).toBe('100%')
+  })
+  it('returns null when confidence is absent', () => {
+    expect(confidencePct(null)).toBeNull()
+  })
+})
+
+describe('SEVERITY_META', () => {
+  it('has a label + colours for every severity', () => {
+    for (const s of ['high', 'medium', 'low'] as const) {
+      expect(SEVERITY_META[s].label).toBeTruthy()
+      expect(SEVERITY_META[s].dot).toMatch(/^bg-/)
+      expect(SEVERITY_META[s].text).toMatch(/^text-/)
+    }
   })
 })

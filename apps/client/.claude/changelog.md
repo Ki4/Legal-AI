@@ -36,6 +36,15 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.6) — law-change-impact G4: UI-картка «AI-чернетка»
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** L5 handoff — юрист бачить чернетку агента над своїми нотатками в панелі «Зміни законів» і вирішує. Read-only; `notes`/рішення лишаються людським SSoT.
+**Що зроблено:**
+- `lib/lawChangeLog.ts` — типи нових колонок (`AiStatus`, `AiImpactItem`, `ArticleDiffs`, розширено `LawChangeLogRow`) + хелпери `toAiStatus`/`confidencePct`/`SEVERITY_META`.
+- `admin/pages/LawChangeLogPage.tsx` — `AiDraftCard` над `notes`: бейдж впевненості / «утримався», summary, вплив по послугах (severity-крапка + slug + гіпотеза + чіпи статей), `DiffDetails` (сирий diff + лінк «Звірити з rada»), кнопка «Вставити в нотатку», дисклеймер. Select розширено новими колонками; **graceful** до migration 027 (помилка select → null → порожній список, без краша).
+**Tests:** `lawChangeLog.test.ts` +5 (toAiStatus/confidencePct/SEVERITY_META). UI **191 passed**, `tsc`/eslint clean, `build:admin` ✅.
+**Лишилось (інтеграція в редакторі n8n, не код-артефакт):** workflow `law-change-digest` (Schedule → добір pending → L2 scope RPC → L3 Groq HTTP → L4 critic Code → запис ai_*). Усі ноди/промпти готові (G2/G3) для копіпасту. Картку «вживу» видно після apply 027 + першого прогону дайджесту.
+
 ### 2026-06-23 (session 45, ч.5) — law-change-impact G3: детерм. критик + промпти L3/L4
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Захист від галюцинацій навколо єдиного недетерм. кроку (L3 Groq). Критик звіряє чернетку з ground truth; провал → abstention (чернетки немає, лишається diff).

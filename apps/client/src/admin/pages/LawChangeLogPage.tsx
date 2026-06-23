@@ -5,12 +5,16 @@ import { useAuth } from '../hooks/useAuth'
 import {
   type LawChangeAction,
   type LawChangeLogRow,
+  type ArticleDiffs,
   toLawChangeAction,
+  toAiStatus,
   isPending,
   pendingCount,
   reviewActions,
   formatRevision,
+  confidencePct,
   ACTION_META,
+  SEVERITY_META,
   DETECTED_BY_LABEL,
 } from '../../lib/lawChangeLog'
 
@@ -31,10 +35,15 @@ export function LawChangeLogPage() {
     if (!supabase || !user) return
     supabase
       .from('law_change_log')
-      .select('id, law_slug, law_title, old_revision_date, new_revision_date, detected_at, detected_by, affected_services, action, reviewed_by, reviewed_at, notes')
+      .select('id, law_slug, law_title, old_revision_date, new_revision_date, detected_at, detected_by, affected_services, action, reviewed_by, reviewed_at, notes, article_diffs, ai_summary, ai_impact, ai_confidence, ai_status, ai_model, ai_generated_at')
       .order('detected_at', { ascending: false })
       .then(({ data }) => {
-        const list = (data ?? []).map((r) => ({ ...r, action: toLawChangeAction(r.action) })) as LawChangeLogRow[]
+        // Pre-migration-027 the select errors → data is null → graceful empty list (no crash).
+        const list = (data ?? []).map((r) => ({
+          ...r,
+          action: toLawChangeAction(r.action),
+          ai_status: toAiStatus(r.ai_status),
+        })) as LawChangeLogRow[]
         setRows(list)
         setLoading(false)
       })
@@ -156,6 +165,12 @@ export function LawChangeLogPage() {
                   </div>
                 )}
 
+                {/* AI draft (law-change-impact agent) — read-only; lawyer decides */}
+                <AiDraftCard
+                  row={row}
+                  onInsert={(text) => setNotesDraft((d) => ({ ...d, [row.id]: text }))}
+                />
+
                 {/* Notes */}
                 <textarea
                   value={notesDraft[row.id] ?? row.notes ?? ''}
@@ -192,5 +207,97 @@ export function LawChangeLogPage() {
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+// ─── AI draft card (law-change-impact agent) ─────────────────────────────────
+// Read-only. Shows the agent's PRELIMINARY "what changed + per-service impact" above the
+// lawyer's notes. The lawyer decides — "Вставити в нотатку" only seeds the editable draft.
+// Renders for drafted/abstained rows; pending/error rows show nothing here (just the diff).
+function AiDraftCard({ row, onInsert }: { row: LawChangeLogRow; onInsert: (text: string) => void }) {
+  if (row.ai_status !== 'drafted' && row.ai_status !== 'abstained') return null
+  const abstained = row.ai_status === 'abstained'
+  const pct = confidencePct(row.ai_confidence)
+  const impact = row.ai_impact ?? []
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs font-semibold text-slate-300">
+          🤖 {abstained ? 'AI утримався' : 'AI-чернетка'}
+        </span>
+        {!abstained && pct && (
+          <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 text-[11px] font-medium">
+            впевненість {pct}
+          </span>
+        )}
+      </div>
+
+      {abstained ? (
+        <p className="text-sm text-slate-400">
+          AI утримався від висновку — потрібен ручний аналіз. Нижче — точний текст змін.
+        </p>
+      ) : (
+        <>
+          {row.ai_summary && <p className="text-sm text-slate-200">{row.ai_summary}</p>}
+          {impact.length > 0 && (
+            <ul className="mt-2.5 space-y-2">
+              {impact.map((it) => (
+                <li key={it.slug} className="flex items-start gap-2 text-xs">
+                  <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-shrink-0 ${SEVERITY_META[it.severity].dot}`} />
+                  <div className="min-w-0">
+                    <span className="font-semibold text-slate-200">{it.slug}</span>
+                    <span className={`ml-1.5 ${SEVERITY_META[it.severity].text}`}>{SEVERITY_META[it.severity].label}</span>
+                    {it.articles.length > 0 && (
+                      <span className="ml-1.5 text-slate-500 font-mono">ст. {it.articles.join(', ')}</span>
+                    )}
+                    {it.hypothesis && <span className="block text-slate-400 mt-0.5">{it.hypothesis}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+
+      {row.article_diffs && <DiffDetails diffs={row.article_diffs} />}
+
+      <div className="flex flex-wrap items-center gap-3 mt-3">
+        {!abstained && row.ai_summary && (
+          <button
+            onClick={() => onInsert(row.ai_summary as string)}
+            className="px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-800 text-slate-300 hover:bg-slate-700"
+          >
+            Вставити в нотатку
+          </button>
+        )}
+        <span className="text-[11px] text-slate-600">Попередня оцінка AI. Рішення — за юристом.</span>
+      </div>
+    </div>
+  )
+}
+
+// Collapsible raw diff (ground truth) + a link to verify against the rada revision.
+function DiffDetails({ diffs }: { diffs: ArticleDiffs }) {
+  return (
+    <details className="mt-2.5">
+      <summary className="text-xs text-slate-500 cursor-pointer select-none">
+        Текст змін (diff){diffs.truncated ? ' · обрізано' : ''}
+      </summary>
+      <div className="mt-2 space-y-2">
+        {diffs.source_url && (
+          <a href={diffs.source_url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline">
+            Звірити з редакцією rada ↗
+          </a>
+        )}
+        {diffs.hunks.map((h, i) => (
+          <div key={i} className="rounded-md bg-slate-900 border border-slate-800 p-2 font-mono text-[11px] leading-snug overflow-x-auto">
+            {h.article_num && <div className="text-slate-500 mb-1">ст. {h.article_num}</div>}
+            {h.removed.map((l, j) => <div key={`r${j}`} className="text-red-400/80 whitespace-pre-wrap">− {l}</div>)}
+            {h.added.map((l, j) => <div key={`a${j}`} className="text-green-400/80 whitespace-pre-wrap">+ {l}</div>)}
+          </div>
+        ))}
+      </div>
+    </details>
   )
 }

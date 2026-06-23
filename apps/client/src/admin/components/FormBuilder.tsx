@@ -47,45 +47,45 @@ interface FieldRowProps {
 function FieldRow({ field, index, total, onEdit, onDelete, onMove, onClone }: FieldRowProps) {
   const typeInfo = FIELD_TYPES.find((t) => t.value === field.type)
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-slate-800 rounded-xl border border-slate-700 hover:border-slate-600 transition-colors group">
+    <div className="flex items-center gap-3 px-4 py-3 bg-paperAlt rounded-xl border border-lineStrong hover:border-lineStrong transition-colors group">
       <span className="text-base">{typeInfo?.icon ?? '📄'}</span>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-white truncate">
-          {field.label || <span className="text-slate-500 italic">Без назви</span>}
-          {field.required && <span className="text-red-400 ml-1 text-xs">*</span>}
+        <div className="text-sm font-medium text-ink truncate">
+          {field.label || <span className="text-inkMute italic">Без назви</span>}
+          {field.required && <span className="text-danger ml-1 text-xs">*</span>}
         </div>
-        <div className="text-xs text-slate-500 flex items-center gap-2">
+        <div className="text-xs text-inkMute flex items-center gap-2">
           <span>{typeInfo?.label}</span>
-          <span className="font-mono text-slate-600">{field.id}</span>
-          {field.show_if && <span className="text-yellow-500">⚡ умова</span>}
+          <span className="font-mono text-inkMute">{field.id}</span>
+          {field.show_if && <span className="text-warn">⚡ умова</span>}
         </div>
       </div>
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           disabled={index === 0}
           onClick={() => onMove(index, index - 1)}
-          className="p-1.5 text-slate-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+          className="p-1.5 text-inkSoft hover:text-ink disabled:opacity-20 disabled:cursor-not-allowed"
           title="Вгору"
         >▲</button>
         <button
           disabled={index === total - 1}
           onClick={() => onMove(index, index + 1)}
-          className="p-1.5 text-slate-400 hover:text-white disabled:opacity-20 disabled:cursor-not-allowed"
+          className="p-1.5 text-inkSoft hover:text-ink disabled:opacity-20 disabled:cursor-not-allowed"
           title="Вниз"
         >▼</button>
         <button
           onClick={() => onClone(field)}
-          className="p-1.5 text-slate-400 hover:text-green-400"
+          className="p-1.5 text-inkSoft hover:text-ok"
           title="Дублювати"
         >📋</button>
         <button
           onClick={() => onEdit(field)}
-          className="p-1.5 text-slate-400 hover:text-blue-400"
+          className="p-1.5 text-inkSoft hover:text-brand"
           title="Редагувати"
         >✏️</button>
         <button
           onClick={() => onDelete(field.id)}
-          className="p-1.5 text-slate-400 hover:text-red-400"
+          className="p-1.5 text-inkSoft hover:text-danger"
           title="Видалити"
         >🗑</button>
       </div>
@@ -128,19 +128,19 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
   const showIf = f.show_if as SingleCondition | undefined
 
   return (
-    <div className="bg-slate-800 border border-blue-500/40 rounded-xl p-5 space-y-4">
+    <div className="bg-paperAlt border border-brand/40 rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between mb-1">
-        <h4 className="text-sm font-bold text-white">Редагування поля</h4>
-        <button onClick={onCancel} className="text-slate-400 hover:text-white text-lg leading-none">×</button>
+        <h4 className="text-sm font-bold text-ink">Редагування поля</h4>
+        <button onClick={onCancel} className="text-inkSoft hover:text-ink text-lg leading-none">×</button>
       </div>
 
       {/* Type */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Тип поля</label>
+        <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Тип поля</label>
         <select
           value={f.type}
           onChange={(e) => setF((p) => ({ ...p, type: e.target.value as FieldType, options: [] }))}
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
         >
           {FIELD_TYPES.map((t) => (
             <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
@@ -150,23 +150,23 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
 
       {/* Label (primary — field ID auto-generates from this) */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Підпис *</label>
+        <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Підпис *</label>
         <input
           value={f.label}
           onChange={(e) => handleLabelChange(e.target.value)}
           placeholder="Прізвище позивача"
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
         />
       </div>
 
       {/* Tab selector */}
       {tabs.length > 1 && (
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Таб</label>
+          <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Таб</label>
           <select
             value={f.tab}
             onChange={(e) => setF((p) => ({ ...p, tab: e.target.value }))}
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
           >
             {tabs.map((t) => (
               <option key={t.id} value={t.id}>{t.label}</option>
@@ -178,30 +178,30 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
       {/* Placeholder */}
       {!['boolean', 'date'].includes(f.type) && (
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Плейсхолдер</label>
+          <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Плейсхолдер</label>
           <input
             value={f.placeholder ?? ''}
             onChange={(e) => setF((p) => ({ ...p, placeholder: e.target.value }))}
             placeholder="Іванов"
-            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
           />
         </div>
       )}
 
       {/* Hint */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Підказка (hint)</label>
+        <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Підказка (hint)</label>
         <input
           value={f.hint ?? ''}
           onChange={(e) => setF((p) => ({ ...p, hint: e.target.value }))}
           placeholder="Коротке пояснення для користувача"
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+          className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
         />
       </div>
 
       {/* Legal explanation */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+        <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">
           Правова пояснення (розгортається)
         </label>
         <textarea
@@ -209,21 +209,21 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
           onChange={(e) => setF((p) => ({ ...p, explanation: e.target.value }))}
           placeholder="Детальна юридична довідка для клієнта..."
           rows={2}
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+          className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand resize-none"
         />
       </div>
 
       {/* Options (choice/multicheck) */}
       {needsOptions && (
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Варіанти відповіді</label>
+          <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Варіанти відповіді</label>
           <div className="space-y-2 mb-2">
             {(f.options ?? []).map((opt, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="flex-1 text-sm text-white bg-slate-700 px-3 py-1.5 rounded-lg">{opt.label}</span>
+                <span className="flex-1 text-sm text-ink bg-paperAlt px-3 py-1.5 rounded-lg">{opt.label}</span>
                 <button
                   onClick={() => setF((p) => ({ ...p, options: p.options?.filter((_, j) => j !== i) }))}
-                  className="text-slate-400 hover:text-red-400 text-xs px-2"
+                  className="text-inkSoft hover:text-danger text-xs px-2"
                 >✕</button>
               </div>
             ))}
@@ -234,11 +234,11 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
               onChange={(e) => setOptionInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addOption())}
               placeholder="Додати варіант..."
-              className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+              className="flex-1 px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
             />
             <button
               onClick={addOption}
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg"
+              className="px-3 py-2 bg-brand hover:bg-brand/90 text-white text-sm rounded-lg"
             >+ Додати</button>
           </div>
         </div>
@@ -246,10 +246,10 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
 
       {/* Conditional show_if */}
       <div>
-        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+        <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">
           Показувати якщо... (необов'язково)
         </label>
-        <p className="text-xs text-slate-600 mb-2">
+        <p className="text-xs text-inkMute mb-2">
           Наприклад: показувати «Кількість дітей» тільки якщо «Є діти» = true
         </p>
         <div className="flex gap-2">
@@ -262,7 +262,7 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
                 : { ...p, show_if: undefined }
               )
             }}
-            className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+            className="flex-1 px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
           >
             <option value="">— не використовувати —</option>
             {allFields.filter((af) => af.id !== f.id).map((af) => (
@@ -276,7 +276,7 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
                 onChange={(e) =>
                   setF((p) => ({ ...p, show_if: { ...showIf, operator: e.target.value as '==' | '!=' } }))
                 }
-                className="w-24 px-2 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                className="w-24 px-2 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
               >
                 <option value="==">дорівнює</option>
                 <option value="!=">не дорівнює</option>
@@ -289,7 +289,7 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
                   setF((p) => ({ ...p, show_if: { ...showIf, value: val } }))
                 }}
                 placeholder="true / false / текст"
-                className="w-32 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500"
+                className="w-32 px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand"
               />
             </>
           )}
@@ -303,9 +303,9 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
             type="checkbox"
             checked={f.required ?? false}
             onChange={(e) => setF((p) => ({ ...p, required: e.target.checked }))}
-            className="w-4 h-4 accent-blue-500"
+            className="w-4 h-4 accent-brand"
           />
-          <span className="text-sm text-slate-300">Обов'язкове</span>
+          <span className="text-sm text-inkSoft">Обов'язкове</span>
         </label>
       </div>
 
@@ -313,21 +313,21 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
       <div>
         <button
           onClick={() => setShowTechnical(!showTechnical)}
-          className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+          className="text-xs text-inkMute hover:text-inkSoft transition-colors"
         >
           {showTechnical ? '▼' : '▶'} Технічні деталі
         </button>
         {showTechnical && (
           <div className="mt-2 space-y-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-500 mb-1">
-                ID поля <span className="font-normal text-slate-600">— використовується в show_if та AI-промпті</span>
+              <label className="block text-xs font-semibold text-inkMute mb-1">
+                ID поля <span className="font-normal text-inkMute">— використовується в show_if та AI-промпті</span>
               </label>
               <input
                 value={f.id}
                 onChange={(e) => setF((p) => ({ ...p, id: e.target.value.toLowerCase().replace(/\s+/g,'_') }))}
                 placeholder="field_id"
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 font-mono"
+                className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-lg text-ink text-sm focus:outline-none focus:border-brand font-mono"
               />
             </div>
           </div>
@@ -337,13 +337,13 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
       <div className="flex gap-2 pt-1">
         <button
           onClick={() => onSave(f)}
-          className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg transition-colors"
+          className="flex-1 py-2 bg-brand hover:bg-brand/90 text-white text-sm font-semibold rounded-lg transition-colors"
         >
           Зберегти поле
         </button>
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-slate-400 hover:text-white text-sm rounded-lg hover:bg-slate-700 transition-colors"
+          className="px-4 py-2 text-inkSoft hover:text-ink text-sm rounded-lg hover:bg-paperAlt transition-colors"
         >
           Скасувати
         </button>
@@ -452,16 +452,16 @@ export function FormBuilder({ config, onChange }: Props) {
       {/* Service meta */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Назва послуги</label>
+          <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Назва послуги</label>
           <input
             value={config.title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Розлучення за згодою"
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500"
+            className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-xl text-ink text-sm focus:outline-none focus:border-brand"
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Ідентифікатор (URL)</label>
+          <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Ідентифікатор (URL)</label>
           <div className="relative">
             <input
               value={config.service_id}
@@ -471,18 +471,18 @@ export function FormBuilder({ config, onChange }: Props) {
               }}
               placeholder="rozluchennya_za_zgodoyu"
               readOnly={!slugManual}
-              className={`w-full px-3 py-2 pr-8 bg-slate-800 border border-slate-700 rounded-xl text-sm font-mono focus:outline-none focus:border-blue-500 transition-colors
-                ${slugManual ? 'text-white' : 'text-slate-400'}`}
+              className={`w-full px-3 py-2 pr-8 bg-paperAlt border border-lineStrong rounded-xl text-sm font-mono focus:outline-none focus:border-brand transition-colors
+                ${slugManual ? 'text-ink' : 'text-inkSoft'}`}
             />
             <button
               onClick={() => setSlugManual(!slugManual)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-inkMute hover:text-ink text-xs"
               title={slugManual ? 'Повернути автоматичний' : 'Редагувати вручну'}
             >
               {slugManual ? '🔄' : '✏️'}
             </button>
           </div>
-          <p className="text-xs text-slate-600 mt-1">Автоматично з назви. Використовується в посиланні на форму</p>
+          <p className="text-xs text-inkMute mt-1">Автоматично з назви. Використовується в посиланні на форму</p>
         </div>
       </div>
 
@@ -494,8 +494,8 @@ export function FormBuilder({ config, onChange }: Props) {
               onClick={() => setActiveTab(tab.id)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
                 ${activeTab === tab.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                  ? 'bg-brand text-white'
+                  : 'bg-paperAlt text-inkSoft hover:text-ink'}`}
             >
               {tab.label}
               <span className="ml-1.5 text-xs opacity-60">
@@ -505,7 +505,7 @@ export function FormBuilder({ config, onChange }: Props) {
             {config.tabs.length > 1 && (
               <button
                 onClick={() => deleteTab(tab.id)}
-                className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-xs rounded-full
+                className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-danger text-white text-xs rounded-full
                            items-center justify-center hidden group-hover/tab:flex leading-none"
               >×</button>
             )}
@@ -520,15 +520,15 @@ export function FormBuilder({ config, onChange }: Props) {
               onChange={(e) => setNewTabLabel(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') addTab(); if (e.key === 'Escape') setAddingTab(false) }}
               placeholder="Назва табу"
-              className="px-3 py-1.5 bg-slate-800 border border-blue-500 rounded-lg text-white text-sm w-32 focus:outline-none"
+              className="px-3 py-1.5 bg-paperAlt border border-brand rounded-lg text-ink text-sm w-32 focus:outline-none"
             />
-            <button onClick={addTab} className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg">OK</button>
-            <button onClick={() => setAddingTab(false)} className="px-2 py-1.5 text-slate-400 hover:text-white text-sm">✕</button>
+            <button onClick={addTab} className="px-3 py-1.5 bg-brand text-white text-sm rounded-lg">OK</button>
+            <button onClick={() => setAddingTab(false)} className="px-2 py-1.5 text-inkSoft hover:text-ink text-sm">✕</button>
           </div>
         ) : (
           <button
             onClick={() => setAddingTab(true)}
-            className="px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:text-white border border-dashed border-slate-700 hover:border-slate-500 transition-colors"
+            className="px-3 py-1.5 rounded-lg text-sm text-inkMute hover:text-ink border border-dashed border-lineStrong hover:border-lineStrong transition-colors"
           >
             + Таб
           </button>
@@ -539,8 +539,8 @@ export function FormBuilder({ config, onChange }: Props) {
       <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
         {tabFields.length === 0 && !editingField && (
           <div className="text-center py-12 space-y-3">
-            <p className="text-slate-400 text-sm font-medium">Як створити форму:</p>
-            <div className="text-slate-500 text-xs space-y-1">
+            <p className="text-inkSoft text-sm font-medium">Як створити форму:</p>
+            <div className="text-inkMute text-xs space-y-1">
               <p>1. Введіть назву послуги вгорі</p>
               <p>2. Додайте таби (наприклад: Позивач, Відповідач, Шлюб)</p>
               <p>3. В кожному табі додайте поля натиснувши кнопку нижче</p>
@@ -590,8 +590,8 @@ export function FormBuilder({ config, onChange }: Props) {
       {!editingField && (
         <button
           onClick={addField}
-          className="mt-3 w-full py-2.5 border border-dashed border-slate-600 hover:border-blue-500
-                     text-slate-400 hover:text-white text-sm rounded-xl transition-colors"
+          className="mt-3 w-full py-2.5 border border-dashed border-lineStrong hover:border-brand
+                     text-inkSoft hover:text-ink text-sm rounded-xl transition-colors"
         >
           + Додати поле
         </button>

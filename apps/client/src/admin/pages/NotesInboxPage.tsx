@@ -49,22 +49,22 @@ export function NotesInboxPage() {
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white">Коментарі</h1>
-            <p className="text-slate-400 text-xs md:text-sm mt-1 hidden sm:block">Фідбек юриста по всіх послугах.</p>
+            <h1 className="text-xl md:text-2xl font-bold text-ink">Коментарі</h1>
+            <p className="text-inkSoft text-xs md:text-sm mt-1 hidden sm:block">Фідбек юриста по всіх послугах.</p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer select-none">
-            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="accent-blue-600 w-4 h-4" />
-            <span>Лише відкриті{openCount > 0 && <span className="ml-1 text-amber-400 font-semibold">({openCount})</span>}</span>
+          <label className="flex items-center gap-2 text-sm text-inkSoft cursor-pointer select-none">
+            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="accent-brand w-4 h-4" />
+            <span>Лише відкриті{openCount > 0 && <span className="ml-1 text-warn font-semibold">({openCount})</span>}</span>
           </label>
         </div>
 
-        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-slate-900 border border-slate-800 rounded-2xl animate-pulse" />)}</div>}
+        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-paper border border-line rounded-2xl animate-pulse" />)}</div>}
 
         {!loading && visible.length === 0 && (
           <div className="text-center py-24">
             <div className="text-5xl mb-4">💬</div>
-            <h3 className="text-lg font-semibold text-white mb-2">{onlyOpen ? 'Немає відкритих коментарів' : 'Коментарів ще немає'}</h3>
-            <p className="text-slate-500 text-sm">Юрист залишає їх на сторінці перегляду послуги.</p>
+            <h3 className="text-lg font-semibold text-ink mb-2">{onlyOpen ? 'Немає відкритих коментарів' : 'Коментарів ще немає'}</h3>
+            <p className="text-inkMute text-sm">Юрист залишає їх на сторінці перегляду послуги.</p>
           </div>
         )}
 
@@ -72,22 +72,22 @@ export function NotesInboxPage() {
           {visible.map((n) => {
             const svc = services[n.service_slug]
             return (
-              <div key={n.id} className={`bg-slate-900 border border-slate-800 rounded-2xl p-4 ${n.status === 'done' ? 'opacity-60' : ''}`}>
+              <div key={n.id} className={`bg-paper border border-line rounded-2xl p-4 ${n.status === 'done' ? 'opacity-60' : ''}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <button
                     onClick={() => svc && navigate(`/services/${svc.id}`)}
-                    className="text-xs font-semibold text-blue-400 hover:text-blue-300"
+                    className="text-xs font-semibold text-brand hover:text-brand"
                   >
                     {svc?.title ?? n.service_slug} →
                   </button>
                 </div>
-                <div className={`text-sm whitespace-pre-wrap break-words ${n.status === 'done' ? 'line-through text-slate-500' : 'text-slate-200'}`}>{n.body}</div>
-                <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500">
+                <div className={`text-sm whitespace-pre-wrap break-words ${n.status === 'done' ? 'line-through text-inkMute' : 'text-ink'}`}>{n.body}</div>
+                <div className="flex items-center gap-2 mt-2 text-[11px] text-inkMute">
                   <span>{n.author_email ?? 'юрист'}</span>
                   <span>•</span>
                   <span>{fmtDate(n.created_at)}</span>
                   <div className="flex-1" />
-                  <button onClick={() => toggle(n)} className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">
+                  <button onClick={() => toggle(n)} className="px-2 py-0.5 rounded-md bg-paperAlt hover:bg-paperAlt text-inkSoft transition-colors">
                     {n.status === 'open' ? '✓ Вирішено' : '↩ Відкрити'}
                   </button>
                 </div>

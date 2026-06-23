@@ -129,57 +129,57 @@ export function ServiceRequestsPage() {
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white">Заявки на послугу</h1>
-            <p className="text-slate-400 text-xs md:text-sm mt-1 hidden sm:block">Замовте нову послугу й додайте приклад документа.</p>
+            <h1 className="text-xl md:text-2xl font-bold text-ink">Заявки на послугу</h1>
+            <p className="text-inkSoft text-xs md:text-sm mt-1 hidden sm:block">Замовте нову послугу й додайте приклад документа.</p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer select-none">
-            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="accent-blue-600 w-4 h-4" />
-            <span>Лише відкриті{openCount > 0 && <span className="ml-1 text-amber-400 font-semibold">({openCount})</span>}</span>
+          <label className="flex items-center gap-2 text-sm text-inkSoft cursor-pointer select-none">
+            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="accent-brand w-4 h-4" />
+            <span>Лише відкриті{openCount > 0 && <span className="ml-1 text-warn font-semibold">({openCount})</span>}</span>
           </label>
         </div>
 
         {/* Composer */}
-        <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 md:p-6 mb-6">
-          <h2 className="text-sm font-bold text-white uppercase tracking-wide mb-1">➕ Нова заявка</h2>
-          <p className="text-xs text-slate-500 mb-4">Що за послуга, на яких законах тримається, і приклад готового документа.</p>
+        <section className="bg-paper border border-line rounded-2xl p-5 md:p-6 mb-6">
+          <h2 className="text-sm font-bold text-ink uppercase tracking-wide mb-1">➕ Нова заявка</h2>
+          <p className="text-xs text-inkMute mb-4">Що за послуга, на яких законах тримається, і приклад готового документа.</p>
 
           <div className="space-y-3">
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Назва послуги (напр.: Поділ майна подружжя)"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500"
+              className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm text-ink placeholder:text-inkMute focus:outline-none focus:border-brand"
             />
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="Опис: кому потрібно, у якій ситуації…"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm text-ink placeholder:text-inkMute focus:outline-none focus:border-brand resize-none"
             />
             <textarea
               value={lawsText}
               onChange={(e) => setLawsText(e.target.value)}
               rows={2}
               placeholder="Закони / статті (напр.: ст. 60, 70 СК; посилання на zakon.rada)…"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full bg-canvas border border-line rounded-xl px-3 py-2 text-sm text-ink placeholder:text-inkMute focus:outline-none focus:border-brand resize-none"
             />
 
             <div className="flex flex-wrap items-center gap-3">
-              <label className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg cursor-pointer transition-colors">
+              <label className="px-3 py-1.5 bg-paperAlt hover:bg-paperAlt text-ink text-sm font-medium rounded-lg cursor-pointer transition-colors">
                 📎 Приклад документа
                 <input ref={fileInput} type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={pickFile} className="hidden" />
               </label>
-              {file && <span className="text-xs text-slate-400 truncate max-w-[12rem]">{file.name}</span>}
-              <span className="text-[11px] text-slate-600">PDF або DOC/DOCX, до 10 МБ</span>
+              {file && <span className="text-xs text-inkSoft truncate max-w-[12rem]">{file.name}</span>}
+              <span className="text-[11px] text-inkMute">PDF або DOC/DOCX, до 10 МБ</span>
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              {err ? <span className="text-xs text-red-400">{err}</span> : <span />}
+              {err ? <span className="text-xs text-danger">{err}</span> : <span />}
               <button
                 onClick={submit}
                 disabled={saving || !title.trim()}
-                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
+                className="px-4 py-1.5 bg-brand hover:bg-brand/90 disabled:opacity-40 text-white text-sm font-semibold rounded-lg transition-colors"
               >
                 {saving ? 'Надсилаю…' : 'Надіслати заявку'}
               </button>
@@ -188,34 +188,34 @@ export function ServiceRequestsPage() {
         </section>
 
         {/* Inbox */}
-        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-24 bg-slate-900 border border-slate-800 rounded-2xl animate-pulse" />)}</div>}
+        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-24 bg-paper border border-line rounded-2xl animate-pulse" />)}</div>}
 
         {!loading && visible.length === 0 && (
           <div className="text-center py-20">
             <div className="text-5xl mb-4">📝</div>
-            <h3 className="text-lg font-semibold text-white mb-2">{onlyOpen ? 'Немає відкритих заявок' : 'Заявок ще немає'}</h3>
-            <p className="text-slate-500 text-sm">Заповніть форму вище, щоб замовити нову послугу.</p>
+            <h3 className="text-lg font-semibold text-ink mb-2">{onlyOpen ? 'Немає відкритих заявок' : 'Заявок ще немає'}</h3>
+            <p className="text-inkMute text-sm">Заповніть форму вище, щоб замовити нову послугу.</p>
           </div>
         )}
 
         <div className="space-y-3">
           {visible.map((r) => (
-            <div key={r.id} className={`bg-slate-900 border border-slate-800 rounded-2xl p-4 ${r.status === 'done' ? 'opacity-60' : ''}`}>
+            <div key={r.id} className={`bg-paper border border-line rounded-2xl p-4 ${r.status === 'done' ? 'opacity-60' : ''}`}>
               <div className="flex items-start gap-2">
-                <h3 className={`text-sm font-semibold flex-1 ${r.status === 'done' ? 'line-through text-slate-500' : 'text-white'}`}>{r.title}</h3>
-                <button onClick={() => toggle(r)} className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] transition-colors shrink-0">
+                <h3 className={`text-sm font-semibold flex-1 ${r.status === 'done' ? 'line-through text-inkMute' : 'text-ink'}`}>{r.title}</h3>
+                <button onClick={() => toggle(r)} className="px-2 py-0.5 rounded-md bg-paperAlt hover:bg-paperAlt text-inkSoft text-[11px] transition-colors shrink-0">
                   {r.status === 'open' ? '✓ Вирішено' : '↩ Відкрити'}
                 </button>
               </div>
-              {r.description && <p className="text-sm text-slate-300 whitespace-pre-wrap break-words mt-2">{r.description}</p>}
+              {r.description && <p className="text-sm text-inkSoft whitespace-pre-wrap break-words mt-2">{r.description}</p>}
               {r.laws_text && (
-                <p className="text-xs text-slate-400 whitespace-pre-wrap break-words mt-2">
-                  <span className="text-slate-500">Закони: </span>{r.laws_text}
+                <p className="text-xs text-inkSoft whitespace-pre-wrap break-words mt-2">
+                  <span className="text-inkMute">Закони: </span>{r.laws_text}
                 </p>
               )}
-              <div className="flex items-center gap-2 mt-3 text-[11px] text-slate-500">
+              <div className="flex items-center gap-2 mt-3 text-[11px] text-inkMute">
                 {r.example_file_path && (
-                  <button onClick={() => openExample(r.example_file_path!)} className="px-2 py-0.5 rounded-md bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 transition-colors">
+                  <button onClick={() => openExample(r.example_file_path!)} className="px-2 py-0.5 rounded-md bg-brand/10 hover:bg-brand/30 text-brand transition-colors">
                     📄 Приклад документа
                   </button>
                 )}

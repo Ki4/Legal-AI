@@ -25,23 +25,23 @@ export function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏛</div>
-          <h1 className="text-2xl font-bold text-white">Legal AI</h1>
-          <p className="text-slate-400 text-sm mt-1">Відновлення пароля</p>
+          <h1 className="text-2xl font-bold text-ink">Legal AI</h1>
+          <p className="text-inkSoft text-sm mt-1">Відновлення пароля</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div className="bg-paper border border-line rounded-2xl p-6">
           {success ? (
             <div className="space-y-4">
-              <div className="px-4 py-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-400 text-sm">
+              <div className="px-4 py-3 bg-ok/10 border border-ok/20 rounded-xl text-ok text-sm">
                 {success}
               </div>
               <Link
                 to="/login"
-                className="block text-center text-sm text-slate-400 hover:text-white transition-colors"
+                className="block text-center text-sm text-inkSoft hover:text-ink transition-colors"
               >
                 Повернутись до входу
               </Link>
@@ -49,7 +49,7 @@ export function ForgotPasswordPage() {
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">
                   Email
                 </label>
                 <input
@@ -58,14 +58,14 @@ export function ForgotPasswordPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="lawyer@example.com"
                   required
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white
-                             placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500
-                             focus:ring-1 focus:ring-blue-500 transition-colors"
+                  className="w-full px-4 py-3 bg-paperAlt border border-lineStrong rounded-xl text-ink
+                             placeholder-inkMute text-sm focus:outline-none focus:border-brand
+                             focus:ring-1 focus:ring-brand transition-colors"
                 />
               </div>
 
               {error && (
-                <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm">
                   {error}
                 </div>
               )}
@@ -73,7 +73,7 @@ export function ForgotPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed
+                className="w-full py-3 bg-brand hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed
                            text-white font-semibold rounded-xl text-sm transition-colors"
               >
                 {loading ? '⏳ Зачекайте...' : 'Надіслати посилання'}
@@ -81,7 +81,7 @@ export function ForgotPasswordPage() {
 
               <Link
                 to="/login"
-                className="block text-center text-sm text-slate-400 hover:text-white transition-colors"
+                className="block text-center text-sm text-inkSoft hover:text-ink transition-colors"
               >
                 Повернутись до входу
               </Link>

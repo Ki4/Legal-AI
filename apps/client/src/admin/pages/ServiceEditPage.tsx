@@ -156,20 +156,20 @@ export function ServiceEditPage() {
     <AdminLayout>
       <div className="flex flex-col h-[calc(100vh-49px)] md:h-screen overflow-x-hidden">
         {/* Top bar */}
-        <div className="flex items-center gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 border-b border-slate-800 flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-4 px-3 md:px-6 py-3 md:py-4 border-b border-line flex-shrink-0">
           <button
             onClick={() => navigate('/services')}
-            className="text-slate-400 hover:text-white transition-colors text-sm flex-shrink-0"
+            className="text-inkSoft hover:text-ink transition-colors text-sm flex-shrink-0"
           >
             ← Назад
           </button>
-          <div className="text-slate-600 hidden md:block">|</div>
+          <div className="text-inkMute hidden md:block">|</div>
           <div className="flex-1 flex items-center gap-2 min-w-0">
-            <h1 className="text-white font-semibold text-sm truncate">
+            <h1 className="text-ink font-semibold text-sm truncate">
               {isNew ? 'Нова послуга' : config.title || 'Редагування'}
             </h1>
             {isDirty && (
-              <span className="text-xs text-amber-500 flex-shrink-0">●</span>
+              <span className="text-xs text-warn flex-shrink-0">●</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -177,7 +177,7 @@ export function ServiceEditPage() {
             {config.steps.length > 0 && (
               <button
                 onClick={() => setPreviewModal(true)}
-                className="xl:hidden px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm rounded-xl transition-colors flex-shrink-0"
+                className="xl:hidden px-3 py-2 bg-paperAlt hover:bg-paperAlt text-inkSoft text-sm rounded-xl transition-colors flex-shrink-0"
                 title="Переглянути форму"
               >
                 👁
@@ -189,8 +189,8 @@ export function ServiceEditPage() {
               <select
                 value={status}
                 onChange={(e) => { setStatus(e.target.value as ServiceStatus); markDirty() }}
-                className="bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-lg px-2 py-1.5
-                           focus:outline-none focus:border-blue-500 cursor-pointer"
+                className="bg-paperAlt border border-lineStrong text-ink text-sm rounded-lg px-2 py-1.5
+                           focus:outline-none focus:border-brand cursor-pointer"
                 title="Статус послуги. Лише «Активна» показується клієнтам."
               >
                 {SERVICE_STATUSES.map((s) => (
@@ -201,7 +201,7 @@ export function ServiceEditPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-3 md:px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors flex-shrink-0"
+              className="px-3 md:px-5 py-2 bg-brand hover:bg-brand/90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors flex-shrink-0"
             >
               {saving ? '⏳' : saved ? '✅' : '💾'}
               <span className="hidden sm:inline ml-1">
@@ -212,15 +212,15 @@ export function ServiceEditPage() {
         </div>
 
         {/* Tab navigation */}
-        <div className="flex gap-1 px-3 md:px-6 py-2 md:py-3 border-b border-slate-800 flex-shrink-0 overflow-x-auto">
+        <div className="flex gap-1 px-3 md:px-6 py-2 md:py-3 border-b border-line flex-shrink-0 overflow-x-auto">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap
                 ${tab === t.id
-                  ? 'bg-slate-800 text-white'
-                  : 'text-slate-500 hover:text-white hover:bg-slate-800/50'}`}
+                  ? 'bg-paperAlt text-ink'
+                  : 'text-inkMute hover:text-ink hover:bg-paperAlt/50'}`}
             >
               {t.icon} <span className="sm:hidden">{t.short}</span><span className="hidden sm:inline">{t.label}</span>
             </button>
@@ -241,30 +241,30 @@ export function ServiceEditPage() {
             {tab === 'ai' && (
               <div className="max-w-2xl space-y-6">
                 <div>
-                  <h2 className="text-lg font-bold text-white mb-1">AI-промпт для документу</h2>
-                  <p className="text-slate-400 text-sm mb-4">
+                  <h2 className="text-lg font-bold text-ink mb-1">AI-промпт для документу</h2>
+                  <p className="text-inkSoft text-sm mb-4">
                     Цей промпт отримує AI-модель разом з відповідями клієнта. Від нього залежить якість документу.
                   </p>
 
                   {/* Tips */}
-                  <div className="bg-slate-800 rounded-xl p-4 mb-4 space-y-2">
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">💡 Поради для якісного документу</p>
-                    <ul className="text-sm text-slate-300 space-y-1.5">
+                  <div className="bg-paperAlt rounded-xl p-4 mb-4 space-y-2">
+                    <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide">💡 Поради для якісного документу</p>
+                    <ul className="text-sm text-inkSoft space-y-1.5">
                       <li>• Вказуй конкретні статті законів (ст. 71 СКУ, ст. 27 ЦПК)</li>
                       <li>• Опиши структуру документу: вступ, обставини, вимоги, підпис</li>
                       <li>• Додай "Не вигадуй факти — використовуй лише дані клієнта"</li>
                     </ul>
-                    <div className="mt-3 pt-3 border-t border-slate-700">
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Доступні змінні</p>
-                      <p className="text-xs text-slate-500 mb-2">
-                        <code className="text-blue-400">{'{{answers}}'}</code> буде замінено на відповіді клієнта у форматі JSON. Ключ кожного значення — це ID поля з конструктора.
+                    <div className="mt-3 pt-3 border-t border-lineStrong">
+                      <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide mb-1">Доступні змінні</p>
+                      <p className="text-xs text-inkMute mb-2">
+                        <code className="text-brand">{'{{answers}}'}</code> буде замінено на відповіді клієнта у форматі JSON. Ключ кожного значення — це ID поля з конструктора.
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {['{{answers}}', '{{service_slug}}', '{{user_id}}'].map((v) => (
                           <button
                             key={v}
                             onClick={() => { setAiPrompt((p) => p + '\n' + v); markDirty() }}
-                            className="px-2 py-1 bg-slate-700 hover:bg-blue-600/30 text-blue-400 text-xs font-mono rounded transition-colors"
+                            className="px-2 py-1 bg-paperAlt hover:bg-brand/30 text-brand text-xs font-mono rounded transition-colors"
                           >
                             {v}
                           </button>
@@ -277,14 +277,14 @@ export function ServiceEditPage() {
                     value={aiPrompt}
                     onChange={(e) => { setAiPrompt(e.target.value); markDirty() }}
                     rows={16}
-                    className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm
-                               font-mono leading-relaxed focus:outline-none focus:border-blue-500 resize-none"
+                    className="w-full px-4 py-3 bg-paperAlt border border-lineStrong rounded-xl text-ink text-sm
+                               font-mono leading-relaxed focus:outline-none focus:border-brand resize-none"
                   />
                 </div>
 
                 {/* Quality checklist */}
-                <div className="bg-slate-800 rounded-xl p-5">
-                  <p className="text-sm font-semibold text-white mb-3">Чеклист якості документу</p>
+                <div className="bg-paperAlt rounded-xl p-5">
+                  <p className="text-sm font-semibold text-ink mb-3">Чеклист якості документу</p>
                   {[
                     'Промпт містить конкретну роль юриста',
                     'Вказані відповідні статті законів',
@@ -293,8 +293,8 @@ export function ServiceEditPage() {
                     'Вказана юрисдикція (Україна)',
                   ].map((item, i) => (
                     <label key={i} className="flex items-center gap-3 py-1.5 cursor-pointer group">
-                      <input type="checkbox" className="w-4 h-4 accent-blue-500" />
-                      <span className="text-sm text-slate-400 group-hover:text-slate-300">{item}</span>
+                      <input type="checkbox" className="w-4 h-4 accent-brand" />
+                      <span className="text-sm text-inkSoft group-hover:text-inkSoft">{item}</span>
                     </label>
                   ))}
                 </div>
@@ -304,55 +304,55 @@ export function ServiceEditPage() {
             {/* ── SETTINGS ── */}
             {tab === 'settings' && (
               <div className="max-w-lg space-y-5">
-                <h2 className="text-lg font-bold text-white mb-4">Налаштування послуги</h2>
+                <h2 className="text-lg font-bold text-ink mb-4">Налаштування послуги</h2>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Іконка</label>
+                    <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Іконка</label>
                     <input
                       value={icon}
                       onChange={(e) => { setIcon(e.target.value); markDirty() }}
                       placeholder="⚖️"
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-2xl focus:outline-none focus:border-blue-500 text-center"
+                      className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-xl text-ink text-2xl focus:outline-none focus:border-brand text-center"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Ціна (₴)</label>
+                    <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Ціна (₴)</label>
                     <input
                       type="number"
                       value={price}
                       onChange={(e) => { setPrice(Number(e.target.value)); markDirty() }}
                       placeholder="0"
-                      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-xl text-ink text-sm focus:outline-none focus:border-brand"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Опис послуги</label>
+                  <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Опис послуги</label>
                   <textarea
                     value={description}
                     onChange={(e) => { setDesc(e.target.value); markDirty() }}
                     rows={3}
                     placeholder="Короткий опис що отримає клієнт..."
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500 resize-none"
+                    className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-xl text-ink text-sm focus:outline-none focus:border-brand resize-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">Підзаголовок форми</label>
+                  <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Підзаголовок форми</label>
                   <input
                     value={config.subtitle ?? ''}
                     onChange={(e) => { setConfig((c) => ({ ...c, subtitle: e.target.value })); markDirty() }}
                     placeholder="Підготовка позовної заяви..."
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-blue-500"
+                    className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-xl text-ink text-sm focus:outline-none focus:border-brand"
                   />
                 </div>
 
                 {/* URL preview */}
-                <div className="bg-slate-800 rounded-xl p-4">
-                  <p className="text-xs text-slate-500 mb-1 uppercase tracking-wide font-semibold">Посилання на форму</p>
-                  <code className="text-sm text-blue-400 break-all">
+                <div className="bg-paperAlt rounded-xl p-4">
+                  <p className="text-xs text-inkMute mb-1 uppercase tracking-wide font-semibold">Посилання на форму</p>
+                  <code className="text-sm text-brand break-all">
                     https://legal-twa-xi.vercel.app/?service={config.service_id || 'your_slug'}
                   </code>
                 </div>
@@ -361,12 +361,12 @@ export function ServiceEditPage() {
           </div>
 
           {/* Right panel — live preview (desktop only) */}
-          <div className="hidden xl:flex w-96 flex-shrink-0 border-l border-slate-800 flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Превью форми</span>
+          <div className="hidden xl:flex w-96 flex-shrink-0 border-l border-line flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+              <span className="text-xs font-semibold text-inkSoft uppercase tracking-wide">Превью форми</span>
               <button
                 onClick={() => setPreviewAnswerKey((k) => k + 1)}
-                className="text-xs text-slate-500 hover:text-white transition-colors"
+                className="text-xs text-inkMute hover:text-ink transition-colors"
                 title="Скинути відповіді"
               >
                 🔄 Скинути
@@ -384,7 +384,7 @@ export function ServiceEditPage() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-center px-6">
                   <span className="text-4xl mb-3">📋</span>
-                  <p className="text-slate-400 text-sm">Додайте поля у конструкторі щоб побачити превью</p>
+                  <p className="text-inkSoft text-sm">Додайте поля у конструкторі щоб побачити превью</p>
                 </div>
               )}
             </div>
@@ -395,18 +395,18 @@ export function ServiceEditPage() {
       {previewModal && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/60 xl:hidden">
           {/* Modal header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800 flex-shrink-0">
-            <span className="text-sm font-semibold text-white">Превью форми</span>
+          <div className="flex items-center justify-between px-4 py-3 bg-paper border-b border-line flex-shrink-0">
+            <span className="text-sm font-semibold text-ink">Превью форми</span>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPreviewAnswerKey((k) => k + 1)}
-                className="text-xs text-slate-400 hover:text-white px-2 py-1 rounded-lg hover:bg-slate-800 transition-colors"
+                className="text-xs text-inkSoft hover:text-ink px-2 py-1 rounded-lg hover:bg-paperAlt transition-colors"
               >
                 🔄 Скинути
               </button>
               <button
                 onClick={() => setPreviewModal(false)}
-                className="text-slate-400 hover:text-white text-xl leading-none px-1"
+                className="text-inkSoft hover:text-ink text-xl leading-none px-1"
               >
                 ✕
               </button>

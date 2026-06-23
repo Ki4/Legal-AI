@@ -36,6 +36,13 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.8) — Admin design-system: повна раскатка по всіх сторінках
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** «Делай все» — перевести **всю** адмінку на токени (світла канва default + тёмна по перемикачу ☀/☾).
+**Що зроблено:** 14 файлів переведено зі `slate/blue/red/amber/green` на семантичні токени (4 паралельні агенти за строгою таблицею маппінгу). Сторінки: Dashboard, ServiceEdit, ServiceView, ServiceRequests, LawChangeLog (+`AiDraftCard`), NotesInbox, Forgot/Reset. Компоненти: `AdminLayout` (сайдбар), `FormBuilder`, `ServiceNotes`, `Toast`, `AdminApp` (спіннер). `lib/lawChangeLog.ts` — `ACTION_META`/`SEVERITY_META` на токени. **Перемикач ☀/☾ додано в `AdminLayout`** (сайдбар + мобільна шапка) — доступний на всіх сторінках після логіну.
+**Verify:** 0 leftover хардкод-кольорів; tsc/build clean; UI **191 ✓**; токен-скан без опечаток; forgot+login зняті в обох темах (рендеряться коректно). Авторизовані сторінки візуально не знято (нема логіну в контейнері) — Сергій гляне після pull.
+**Нюанси:** `text-white` лишається лише на кольорових кнопках; `bg-white` ×2 у ServiceEdit — навмисне (превʼю клієнтської форми на білому); `slate-700`/`slate-800` обидва → `paperAlt` (кілька hover-станів злилися — дрібниця); pre-existing eslint у `ServiceRequestsPage:52` (не від ретеми).
+
 ### 2026-06-23 (session 45, ч.7) — Admin design-system: токени + перемикач теми + пілот (вхід)
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Сергій хоче всю адмінку у світлій канві (палітра viz-lab) з можливістю перемикати на темну. Замість зашитих кольорів (`bg-slate-900`…) у сотнях місць — **токен-система**: семантичні токени (`canvas/paper/ink/brand/warn`…) як CSS-змінні, один перемикач флипає все. Переходимо **поступово, по сторінці**.

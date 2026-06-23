@@ -39,23 +39,23 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-canvas flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">🏛</div>
-          <h1 className="text-2xl font-bold text-white">Legal AI</h1>
-          <p className="text-slate-400 text-sm mt-1">Новий пароль</p>
+          <h1 className="text-2xl font-bold text-ink">Legal AI</h1>
+          <p className="text-inkSoft text-sm mt-1">Новий пароль</p>
         </div>
 
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div className="bg-paper border border-line rounded-2xl p-6">
           {!ready ? (
-            <div className="text-center text-slate-400 text-sm py-4">
+            <div className="text-center text-inkSoft text-sm py-4">
               Перевірка посилання...
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">
                   Новий пароль
                 </label>
                 <input
@@ -65,14 +65,14 @@ export function ResetPasswordPage() {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white
-                             placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500
-                             focus:ring-1 focus:ring-blue-500 transition-colors"
+                  className="w-full px-4 py-3 bg-paperAlt border border-lineStrong rounded-xl text-ink
+                             placeholder-inkMute text-sm focus:outline-none focus:border-brand
+                             focus:ring-1 focus:ring-brand transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wide">
+                <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">
                   Повторіть пароль
                 </label>
                 <input
@@ -82,14 +82,14 @@ export function ResetPasswordPage() {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white
-                             placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500
-                             focus:ring-1 focus:ring-blue-500 transition-colors"
+                  className="w-full px-4 py-3 bg-paperAlt border border-lineStrong rounded-xl text-ink
+                             placeholder-inkMute text-sm focus:outline-none focus:border-brand
+                             focus:ring-1 focus:ring-brand transition-colors"
                 />
               </div>
 
               {error && (
-                <div className="px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+                <div className="px-4 py-3 bg-danger/10 border border-danger/20 rounded-xl text-danger text-sm">
                   {error}
                 </div>
               )}
@@ -97,7 +97,7 @@ export function ResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed
+                className="w-full py-3 bg-brand hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed
                            text-white font-semibold rounded-xl text-sm transition-colors"
               >
                 {loading ? '⏳ Зачекайте...' : 'Зберегти пароль'}

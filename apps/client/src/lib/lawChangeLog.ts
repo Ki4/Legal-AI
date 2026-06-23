@@ -57,18 +57,18 @@ interface ActionMeta {
 export const ACTION_META: Record<LawChangeAction, ActionMeta> = {
   flagged: {
     label: 'Очікує ревʼю',
-    dot:   'bg-amber-400',
-    badge: 'bg-amber-500/10 text-amber-400',
+    dot:   'bg-warn',
+    badge: 'bg-warn/10 text-warn',
   },
   reviewed: {
     label: 'Переглянуто',
-    dot:   'bg-green-400',
-    badge: 'bg-green-500/10 text-green-400',
+    dot:   'bg-ok',
+    badge: 'bg-ok/10 text-ok',
   },
   dismissed: {
     label: 'Відхилено',
-    dot:   'bg-slate-500',
-    badge: 'bg-slate-800 text-slate-400',
+    dot:   'bg-inkMute',
+    badge: 'bg-paperAlt text-inkMute',
   },
 }
 
@@ -153,9 +153,9 @@ export function toAiStatus(value: unknown): AiStatus {
 
 /** Severity → Ukrainian label + tailwind colours (legal risk, not demand). */
 export const SEVERITY_META: Record<Severity, { label: string; dot: string; text: string }> = {
-  high:   { label: 'високий ризик', dot: 'bg-red-400',    text: 'text-red-400' },
-  medium: { label: 'середній',      dot: 'bg-amber-400',  text: 'text-amber-400' },
-  low:    { label: 'низький',       dot: 'bg-slate-400',  text: 'text-slate-400' },
+  high:   { label: 'високий ризик', dot: 'bg-danger',    text: 'text-danger' },
+  medium: { label: 'середній',      dot: 'bg-warn',  text: 'text-warn' },
+  low:    { label: 'низький',       dot: 'bg-inkMute',  text: 'text-inkMute' },
 }
 
 /** Confidence as a 0–100% string, or null when absent. */

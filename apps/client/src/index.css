@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design-system token palette ──────────────────────────────────────────────
+   Light ("canvas", from viz-lab theme.ts) is the default; dark flips via
+   <html data-theme="dark">. Values are space-separated RGB triplets so Tailwind's
+   `rgb(var(--x) / <alpha-value>)` tokens support opacity (e.g. bg-warn/10). */
+:root {
+  color-scheme: light;
+  --c-canvas: 250 249 245;       /* #FAF9F5 */
+  --c-paper: 255 255 255;        /* #FFFFFF */
+  --c-paper-alt: 251 250 247;    /* #FBFAF7 */
+  --c-line: 236 234 227;         /* #ECEAE3 */
+  --c-line-strong: 224 220 210;  /* #E0DCD2 */
+  --c-ink: 31 30 27;             /* #1F1E1B */
+  --c-ink-soft: 107 104 98;      /* #6B6862 */
+  --c-ink-mute: 155 151 142;     /* #9B978E */
+  --c-brand: 37 99 235;          /* #2563EB */
+  --c-ok: 46 125 91;             /* #2E7D5B */
+  --c-warn: 183 121 31;          /* #B7791F */
+  --c-danger: 188 67 52;         /* #BC4334 */
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-canvas: 2 6 23;            /* slate-950 */
+  --c-paper: 15 23 42;           /* slate-900 */
+  --c-paper-alt: 19 28 46;
+  --c-line: 30 41 59;            /* slate-800 */
+  --c-line-strong: 41 53 72;
+  --c-ink: 226 232 240;          /* slate-200 */
+  --c-ink-soft: 148 163 184;     /* slate-400 */
+  --c-ink-mute: 100 116 139;     /* slate-500 */
+  --c-brand: 96 165 250;         /* blue-400 */
+  --c-ok: 74 222 128;            /* green-400 */
+  --c-warn: 251 191 36;          /* amber-400 */
+  --c-danger: 248 113 113;       /* red-400 */
+}
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;

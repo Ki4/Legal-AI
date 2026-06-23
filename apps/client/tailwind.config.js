@@ -24,6 +24,20 @@ export default {
         },
         surface: '#F8FAFC',
         card: '#FFFFFF',
+        // ── design-system semantic tokens (light default / dark via [data-theme="dark"]) ──
+        // Defined as CSS variables in src/index.css so one toggle flips the whole admin.
+        canvas:     'rgb(var(--c-canvas) / <alpha-value>)',
+        paper:      'rgb(var(--c-paper) / <alpha-value>)',
+        paperAlt:   'rgb(var(--c-paper-alt) / <alpha-value>)',
+        line:       'rgb(var(--c-line) / <alpha-value>)',
+        lineStrong: 'rgb(var(--c-line-strong) / <alpha-value>)',
+        ink:        'rgb(var(--c-ink) / <alpha-value>)',
+        inkSoft:    'rgb(var(--c-ink-soft) / <alpha-value>)',
+        inkMute:    'rgb(var(--c-ink-mute) / <alpha-value>)',
+        brand:      'rgb(var(--c-brand) / <alpha-value>)',
+        ok:         'rgb(var(--c-ok) / <alpha-value>)',
+        warn:       'rgb(var(--c-warn) / <alpha-value>)',
+        danger:     'rgb(var(--c-danger) / <alpha-value>)',
       },
       borderRadius: {
         card: '14px',

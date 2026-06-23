@@ -36,6 +36,18 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.7) — Admin design-system: токени + перемикач теми + пілот (вхід)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій хоче всю адмінку у світлій канві (палітра viz-lab) з можливістю перемикати на темну. Замість зашитих кольорів (`bg-slate-900`…) у сотнях місць — **токен-система**: семантичні токени (`canvas/paper/ink/brand/warn`…) як CSS-змінні, один перемикач флипає все. Переходимо **поступово, по сторінці**.
+**Що зроблено (фундамент, один раз):**
+- `tailwind.config.js` — семантичні токени-кольори через `rgb(var(--c-…) / <alpha-value>)` (підтримка opacity, напр. `bg-warn/10`). Старі `surface`/`card` не чіпав (їх юзає Telegram-клієнт).
+- `src/index.css` — палітра у двох темах: `:root` (світла канва, з theme.ts) + `[data-theme="dark"]` (slate). + `color-scheme` для нативних контролів.
+- `src/admin/theme/{theme.ts,useTheme.ts,ThemeToggle.tsx}` — застосування теми (localStorage, default світла, `<html data-theme>`), хук, перемикач ☀/☾.
+**Пілот:** `src/admin/pages/LoginPage.tsx` переведено на токени + перемикач у кутку. Обидві теми перевірені скриншотами.
+**Поступовість:** перемикач глобальний, але реагують лише переведені сторінки; решта поки slate-тёмні — мігруємо по одній.
+**Tests:** UI 191 ✓, tsc/eslint clean, build:admin ✅.
+**Next:** мігрувати «Зміни законів» (+ карточка AiDraftCard), далі «Мої послуги» та інші. (IMPROVEMENTS #91.)
+
 ### 2026-06-23 (session 45, ч.6) — law-change-impact G4: UI-картка «AI-чернетка»
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** L5 handoff — юрист бачить чернетку агента над своїми нотатками в панелі «Зміни законів» і вирішує. Read-only; `notes`/рішення лишаються людським SSoT.

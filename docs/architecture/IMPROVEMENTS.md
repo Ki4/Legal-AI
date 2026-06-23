@@ -1238,6 +1238,20 @@ Groq API key зберігається як n8n credential `Groq HTTP Auth` (то
 - **Дрилл-сквозь:** вузол графа → реальна сторінка адмінки (редактор послуги / «Зміни законів»).
   Зараз viz — острів.
 
+### 91. 🟡 Admin design-system — раскатка світлої теми по сторінках
+
+- **Контекст:** сесія 45 — введено токен-систему (CSS-змінні `--c-*` у `index.css`, семантичні
+  Tailwind-токени `canvas/paper/ink/brand/...`, `src/admin/theme/` з перемикачем ☀/☾, default
+  світла). Пілот — сторінка входу (`LoginPage`). Палітра — viz-lab `theme.ts`.
+- **Лишилось перевести на токени** (по одній, коміт на сторінку): `LawChangeLogPage` (+ `AiDraftCard`),
+  `DashboardPage` («Мої послуги»), `ServiceEditPage`, `ServiceViewPage`, `NotesInboxPage`,
+  `ServiceRequestsPage`, `LawChangeLogPage`, `ForgotPasswordPage`, `ResetPasswordPage`, `AdminLayout`
+  (сайдбар/шапка), спільні компоненти. Поки не переведені — лишаються slate-тёмними незалежно від
+  перемикача.
+- **Дрібниці:** тінь-токен per-theme (зараз `shadow-card` дає легке гало в тёмній); звірити focus-ring
+  на токені `brand`; винести viz-lab inline-палітру на ті самі CSS-змінні (щоб одне джерело).
+- **Не чіпати:** Telegram-клієнт (`index.html`) — окремий застосунок, своя світла тема (`surface`/`card`).
+
 ### 90. 🔵 viz-lab — масштаб великого графа
 
 - Ручні координати в `demoData.ts` живуть до ~30–50 вузлів. План: авто-layout (dagre/elk) замість

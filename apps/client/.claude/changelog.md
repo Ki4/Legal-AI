@@ -36,6 +36,13 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.4) — law-change-impact G2: scope + юридична severity (детерм.)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** L2 — детермінований розрахунок «які послуги зачеплено + наскільки серйозно» без LLM. Severity **юридична, не попит** (закриває зауваження viz-сесії 45). LLM (L3) пропонує свою, але обмежений цією стелею згори.
+**Що зроблено:** `n8n/templates/law-change-scope.js` (CJS, paste-в-Code-node) — `computeImpactScope` (direct service_slugs / `requires`/`overrides` → high; `clarifies` → medium; `references` → low; max по шляхах; traversal лише по **verified** рёбрах law_relations) + `diffTouchesNumbers` (substantive-токени гроші/%/дата/строк/ПМ → модуляція на щабель). Spec §3.1 уточнено (direct = high, не low — краще над-флагнути).
+**Tests:** `n8n/templates/__tests__/law-change-scope.test.js` (7) — direct+ripple severity, ігнор unverified рёбер, softening, порожній scope.
+**Next:** G3 (детерм. критик groundedness + промпти L3/L4), G4 (UI-картка).
+
 ### 2026-06-23 (session 45, ч.3) — law-change-impact G1: детермінований diff (Node, без LLM)
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · ⚠️ **migration 027 чекає apply (Сергій)**
 **Why:** Перша група агента «що змінилось» — L0/L1: при зміні закону монітор знімає **детермінований diff редакцій** і кладе в `law_change_log`. Це ground truth, який юрист бачить навіть коли AI потім утримається. Без LLM, повністю на Node, повністю в тестах.

@@ -87,11 +87,15 @@ L3 (Groq, **strict JSON**) → після L4 пишеться в `ai_summary` + 
 
 ### 3.1 Severity — юридична, детермінований стеля
 LLM пропонує severity, але **L2-евристика обмежує згори** (закриває зауваження viz-сесії 45,
-де товщина ребра = попит, а не ризик):
-- шлях зв'язку послуги до зміненої статті `requires`/`overrides` → стеля `high`;
-- `clarifies` → стеля `medium`;
-- `references` / лише `service_slugs` без ребра → стеля `low`;
-- модуляція: якщо жоден hunk не зачіпає число/дату/строк (regex) → знизити на один щабель.
+де товщина ребра = попит, а не ризик). Стеля = max по всіх шляхах від зміненої статті до послуги:
+- стаття **напряму** обслуговує послугу (її `service_slugs`) **або** зв'язок `requires`/`overrides` → `high`
+  (краще над-, ніж недо-флагнути зміну до core-статті послуги);
+- `clarifies` → `medium`;
+- `references` → `low`;
+- модуляція: якщо жоден hunk не зачіпає substantive-токен (гроші / % / дата / строк / прожитковий
+  мінімум — regex) → знизити на один щабель;
+- traversal лише по **verified** рёбрах (`verified_by` заповнено) — непідтверджене ребро не дає impact.
+Реалізація: `n8n/templates/law-change-scope.js` (`computeImpactScope` + `diffTouchesNumbers`).
 
 ### 3.2 Enum-констрейнт (критично)
 L3 отримує закриті списки `allowed_articles` (= diff changed-set) і `allowed_slugs` (= L2) і

@@ -1,12 +1,13 @@
 // Layer 1 — Catalog. The full "Що на що впливає" layered graph (law → article → service → document),
 // ported from the design canvas, plus a Structure / Business overlay toggle.
 import { useMemo, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcw, Maximize2 } from 'lucide-react'
 import { C, MONO, KIND_STRIPE, KIND_TINT, KIND_LABEL, HEALTH, uah } from '../theme'
 import type { NodeKind } from '../theme'
 import { KIND_ICON } from '../icons'
 import { NODES, EDGES, CHANGES, serviceById, changeImpact } from '../demoData'
 import type { VizNode, LawChange } from '../demoData'
+import { ServiceFocusGraph } from './ServiceFocusGraph'
 
 const STAGE_W = 1080
 const STAGE_H = 560
@@ -40,6 +41,7 @@ export function CatalogGraph() {
   const [sel, setSel] = useState<string | null>(null)
   const [impact, setImpact] = useState(false)
   const [overlay, setOverlay] = useState<Overlay>('structure')
+  const [focus, setFocus] = useState(false) // drill into the selected service's subgraph
 
   const chain = useMemo(() => (sel ? connectedChain(sel) : null), [sel])
   const hi = impact ? C.impact : C.accent
@@ -61,6 +63,11 @@ export function CatalogGraph() {
   function reset() {
     setSel(null)
     setImpact(false)
+  }
+
+  // Focus mode: when a service is selected, show only its subgraph (separate component).
+  if (focus && svc) {
+    return <ServiceFocusGraph initialServiceId={svc.id} initialOverlay={overlay} onBack={() => setFocus(false)} />
   }
 
   return (
@@ -216,6 +223,12 @@ export function CatalogGraph() {
                 </div>
               )}
 
+              {svc && (
+                <button onClick={() => setFocus(true)} style={focusBtn}>
+                  <Maximize2 size={14} /> Граф лише цієї послуги
+                </button>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
                 <RelList title="Залежить від" items={depends} />
                 <RelList title="Впливає на" items={affects} />
@@ -348,4 +361,9 @@ const ghostBtn: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 7, background: C.surface,
   border: `1px solid ${C.borderStrong}`, borderRadius: 9, padding: '7px 13px',
   fontSize: 12.5, fontWeight: 500, color: C.inkSecondary, cursor: 'pointer',
+}
+const focusBtn: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 8, width: '100%', justifyContent: 'center',
+  background: C.accentTint, border: `1px solid ${C.accentBorder}`, borderRadius: 10,
+  padding: '9px 13px', marginBottom: 18, fontSize: 13, fontWeight: 600, color: C.accent, cursor: 'pointer',
 }

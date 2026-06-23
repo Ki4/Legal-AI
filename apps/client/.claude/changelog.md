@@ -20,6 +20,22 @@
 **Files:** `apps/client/src/admin/viz/theme.ts` (NEW), `viz/demoData.ts` (NEW), `viz/icons.tsx` (NEW), `viz/views/{CatalogGraph,ServiceDetail,TechnicalView,FormBranching,Prioritization}.tsx` (NEW), `apps/client/src/admin/pages/VizLabPage.tsx` (NEW), `apps/client/src/admin/AdminApp.tsx` (роут `/viz-lab` + null-guard).
 **Tests:** `tsc -b` clean · `npm run build:admin` ✅ · eslint clean · усі 5 видів відрендерено й знято скриншоти (Playwright) — рендеряться коректно.
 
+### 2026-06-23 (session 45, ч.3) — viz-lab: focus-режим (граф лише однієї послуги, #87)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · demo-data
+**Why:** Сергій просив на сесії 45 — клік по послузі має малювати граф **лише цієї послуги**
+(окрім загального). Це і відповідь на «що як структура величезна»: фокус на сусідстві вузла
+замість океану.
+**What:** Нова self-contained `ServiceFocusGraph` — підграф «закони → статті цієї послуги →
+послуга → документ», **авто-розкладка** (позиції рахуються з кількості вузлів, без ручних
+координат → чисто за будь-якої к-сті статей; заодно прев'ю масштаб-плану #90). Несе тумблер
+Структура/Бізнес-оверлей, шапку з health+анатомією+попитом+виручкою, перемикач послуг і помітку
+«змінено законом» на статтях із `CHANGES`. У `CatalogGraph` — кнопка «Граф лише цієї послуги» на
+вибраній послузі + гілка рендера у focus (повернення «← Усі послуги»).
+**Files:** `apps/client/src/admin/viz/views/ServiceFocusGraph.tsx` (NEW),
+`apps/client/src/admin/viz/views/CatalogGraph.tsx` (focus entry-point + branch).
+**Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
+(divorce + property focus) рендеряться без pageerror.
+
 ### 2026-06-23 (session 45, ч.2) — Tier-2 спека `law-change-impact` (агент «що змінилось»)
 **Status:** SPEC ONLY (без коду фічі) · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Після прототипу viz-lab Сергій обрав фічу №1 — агент, що при зміні закону **попередньо**

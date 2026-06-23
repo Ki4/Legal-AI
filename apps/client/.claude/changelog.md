@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-06-23 (session 45) — viz-lab: пісочниця прототипів візуалізації послуг
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · demo-data only · route `/viz-lab` (без auth)
+**Why:** Сергію треба якісно показати, *як влаштовані наявні послуги* (а не будувати нові), моніторити вплив змін законів і пріоритизувати за грошима («що чинити першим»). Замість тексту — кликабельна пісочниця, де поруч лежать 5 шарів подачі однієї й тієї ж структури; Сергій тицяє й обирає, що живе. Світла тепло-нейтральна тема взята з його дизайн-канви (палітра винесена в один `theme.ts`, щоб легко правити кольори). Без нових залежностей — усе чистим SVG/inline-стилями (lucide вже стоїть).
+**What happened:**
+- 5 видів: **Каталог** (порт layered-графа «Що на що впливає» + тумблер Структура/Бізнес-оверлей: вузли за health, товщина зв'язку за попитом; панель змін законів рахує виручку під ризиком) · **Послуга детально** (3 макети поруч: пайплайн / радіальний ego-граф / document-blueprint) · **Технічна** (форма→n8n→Supabase→шаблон→PDF з health-крапками) · **Алгоритм форми** (decision-tree розгалужень за `show_if`, видно поля що «бракує у формі») · **Пріоритизація** (bubble попит×health×виручка + сортована таблиця + інсайт «найбільший важіль»).
+- Демо-дані у формі реальних типів (`FormField`/`show_if`, admin `Service`, law_chunks/relations) — свап на живий Supabase тривіальний.
+- **Побіжно виправлено латентний баг:** `AdminApp` useEffect звертався до `supabase!.auth` без перевірки на null → краш усієї адмінки у dev без Supabase-env. Додано `if (!supabase) return`.
+**Files:** `apps/client/src/admin/viz/theme.ts` (NEW), `viz/demoData.ts` (NEW), `viz/icons.tsx` (NEW), `viz/views/{CatalogGraph,ServiceDetail,TechnicalView,FormBranching,Prioritization}.tsx` (NEW), `apps/client/src/admin/pages/VizLabPage.tsx` (NEW), `apps/client/src/admin/AdminApp.tsx` (роут `/viz-lab` + null-guard).
+**Tests:** `tsc -b` clean · `npm run build:admin` ✅ · eslint clean · усі 5 видів відрендерено й знято скриншоти (Playwright) — рендеряться коректно.
+
 ### 2026-06-22 (session 44) — issue-гігієна: закрито #3/#8/#23 як superseded
 **Status:** MERGED (`chore/issue-hygiene-session-44` → main) · doc-only, нуль змін коду
 **Why:** Сесія-старт показала 15 backlog-issues, масово залитих 2026-06-07, що порушують політику CLAUDE.md (IMPROVEMENTS = бэклог ідей never-closed, GitHub Issues = work-units). Рішення Сергія: чистити content-driven — закривати лише ті, що переписані/перекриті пізнішим пунктом IMPROVEMENTS або вже зробленою роботою; решту актуальних лишити.

@@ -36,6 +36,16 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.9) — Admin design-system: Geist + канва-тінь + soft-blue nav (фундамент мови)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій: одних кольорів мало — треба **дизайн-мова** канви Claude Design (`.dc.html`), а не лише палітра. Перший крок — глобальні речі з найбільшим ефектом на відчуття: шрифт Geist, м'якша тінь карток, soft-blue активний пункт навігації (канва прямо каже «структуру сайдбара лишаємо», активний — м'яка синя плашка, не важка заливка).
+**Що зроблено:**
+- **Geist** (self-hosted через `@fontsource/geist-sans`+`geist-mono`, latin+cyrillic, ваги 400/500/600/700 + mono 400/500) — імпорт у `admin/main.tsx`, бандлиться локально (без рантайм-CDN). `tailwind.config`: `font-sans`=Geist, `font-mono`=Geist Mono.
+- **Тінь карток** → канва-значення (`shadow-card` `0 1px 3px rgba(31,30,27,.04)`, `card-hover` `0 4px 16px rgba(31,30,27,.06)`).
+- **Навігація**: активний пункт `bg-brand/10 text-brand` (м'яка плашка) замість важкого `bg-brand text-white`.
+**Verify:** build бандлить woff2 (latin+cyrillic); login-скрин підтверджує Geist (`getComputedStyle h1 → Geist`) + м'якшу тінь; tsc/build clean.
+**Лишилось (наступний етап — ребілд сторінок на компоненти канви):** Lucide-іконки замість емодзі (сайдбар/картки), картка послуги за спекою канви (icon-tile + health-крапка + футер зі статус-пілюлею + icon-кнопки), статус-пілюлі, чипи полів, type-scale H1/H2/секція. Це окремий захід по сторінці. (IMPROVEMENTS #91.)
+
 ### 2026-06-23 (session 45, ч.8) — Admin design-system: повна раскатка по всіх сторінках
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** «Делай все» — перевести **всю** адмінку на токени (світла канва default + тёмна по перемикачу ☀/☾).

@@ -44,11 +44,12 @@ export default {
         btn: '12px',
       },
       boxShadow: {
-        card: '0 2px 12px rgba(0,0,0,0.07)',
-        'card-hover': '0 4px 20px rgba(37,99,235,0.12)',
+        card: '0 1px 3px rgba(31,30,27,0.04)',
+        'card-hover': '0 4px 16px rgba(31,30,27,0.06)',
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'SF Pro Display', 'Segoe UI', 'sans-serif'],
+        sans: ['Geist', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        mono: ['Geist Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
       },
     },
   },

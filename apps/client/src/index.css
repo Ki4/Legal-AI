@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Geist (design-system typeface) is self-hosted via @fontsource — imported in
+   src/admin/main.tsx (latin + cyrillic, weights 400/500/600/700 + mono 400/500). */
+
 /* ── Design-system token palette ──────────────────────────────────────────────
    Light ("canvas", from viz-lab theme.ts) is the default; dark flips via
    <html data-theme="dark">. Values are space-separated RGB triplets so Tailwind's

@@ -142,6 +142,21 @@ describe('applyLawChange (live)', () => {
     expect(inserts[0].old_revision_date).toBe('2020-01-01');
   });
 
+  it('records article_diffs and ai_status=pending on the audit row (law-change-impact)', async () => {
+    const { client, inserts } = mockClient(makeServices());
+    const diff = { level: 'article', law_code: '2947-14', changed_articles: ['182'], hunks: [] };
+    await applyLawChange(client, { law: FAMILY_CODE, newDate: '2026-03-04', articleDiffs: diff });
+    expect(inserts[0].article_diffs).toEqual(diff);
+    expect(inserts[0].ai_status).toBe('pending');
+  });
+
+  it('defaults article_diffs to null when none is provided', async () => {
+    const { client, inserts } = mockClient(makeServices());
+    await applyLawChange(client, { law: FAMILY_CODE, newDate: '2026-03-04' });
+    expect(inserts[0].article_diffs).toBeNull();
+    expect(inserts[0].ai_status).toBe('pending');
+  });
+
   it('still logs and marks RAG content stale when no service depends on the law', async () => {
     const { client, inserts, patches } = mockClient(makeServices());
     const orphan = { slug: 'orphan', title: 'Orphan', url: 'https://zakon.rada.gov.ua/laws/show/9999-99' };

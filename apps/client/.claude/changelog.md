@@ -36,6 +36,19 @@
 **Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
 (divorce + property focus) рендеряться без pageerror.
 
+### 2026-06-23 (session 45, ч.3) — law-change-impact G1: детермінований diff (Node, без LLM)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · ⚠️ **migration 027 чекає apply (Сергій)**
+**Why:** Перша група агента «що змінилось» — L0/L1: при зміні закону монітор знімає **детермінований diff редакцій** і кладе в `law_change_log`. Це ground truth, який юрист бачить навіть коли AI потім утримається. Без LLM, повністю на Node, повністю в тестах.
+**Що зроблено:**
+- `supabase/migrations/027_law_change_impact_fields.sql` — додає `article_diffs jsonb` + `ai_*` колонки (`ai_summary/ai_impact/ai_confidence/ai_status/ai_model/ai_generated_at`) у `law_change_log`. Additive (ADD COLUMN IF NOT EXISTS), `ai_status` CHECK pending|drafted|abstained|error + partial-index на pending-чергу. **Apply вручну в Supabase SQL Editor.**
+- `scripts/lib/law-text.mjs` — `fetchLawText` (повний текст rada, реюз retry/backoff з rada.mjs) + чисті `htmlToText`/`extractArticles` (розбивка за «Стаття N»).
+- `scripts/lib/law-diff.mjs` — чистий LCS line-diff без залежностей + `buildArticleDiffs` (поартикульно, з фолбеком на law-level; cap 32КБ → `truncated`).
+- `scripts/lib/law-impact.mjs` — `captureLawDiff` (оркестрація: стара з `law_documents.full_text` поки не stale + нова з rada → diff). Fail-soft: будь-яка дірка → null, монітор іде як сьогодні.
+- `scripts/lib/law-change.mjs` — `applyLawChange` пише `article_diffs` + `ai_status='pending'`; `check-law-updates.mjs` знімає diff **до** `is_stale`.
+**Tests:** +3 файли / +21 тест (`law-text`, `law-diff`, `law-impact`, `law-change`). Повний Node-прогон **945 passed**, 0 регресій.
+**⚠️ Ordering:** 027 треба застосувати в Supabase **до merge в main** — інакше insert монітора впаде на неіснуючих колонках (до merge прод-монітор на старому коді, не ламається).
+**Next:** G2 (scope/severity), G3 (критик + промпти), G4 (UI-картка).
+
 ### 2026-06-23 (session 45, ч.2) — Tier-2 спека `law-change-impact` (агент «що змінилось»)
 **Status:** SPEC ONLY (без коду фічі) · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Після прототипу viz-lab Сергій обрав фічу №1 — агент, що при зміні закону **попередньо**

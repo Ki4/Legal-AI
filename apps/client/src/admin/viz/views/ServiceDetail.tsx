@@ -44,7 +44,7 @@ export function ServiceDetail({ service }: { service?: VizService } = {}) {
         />
       </div>
 
-      <div style={card}>
+      <div style={service ? { overflowX: 'auto' } : { ...card, overflowX: 'auto' }}>
         {variant === 'pipeline' && <Pipeline svc={svc} />}
         {variant === 'radial' && <Radial svc={svc} />}
         {variant === 'blueprint' && <Blueprint svc={svc} />}
@@ -69,7 +69,7 @@ function Pipeline({ svc }: { svc: VizService }) {
       </Band>
       <Connector />
       <Band title={svc.title} sub={`форма · ${svc.counts.total} полів · ${svc.tabs.length} ${svc.tabs.length === 1 ? 'блок' : 'таби'}`} health={svc.health}>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(tabs.length, 4)}, 1fr)`, gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12, alignItems: 'start' }}>
           {tabs.map((t) => (
             <div key={t.id} style={{ border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, background: C.surfaceAlt }}>
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: C.muted, marginBottom: 9 }}>{t.label}</div>
@@ -174,7 +174,7 @@ function NodePill({ node }: { node: VizNode }) {
 function FieldChip({ chip }: { chip: VizFieldChip }) {
   const m = MAP_COLOR[chip.map]
   return (
-    <span style={{ fontFamily: MONO, fontSize: 11.5, color: m.fg, background: m.bg, border: `1px solid ${m.bd}`, padding: '4px 9px', borderRadius: 7 }}>
+    <span style={{ fontFamily: MONO, fontSize: 11.5, color: m.fg, background: m.bg, border: `1px solid ${m.bd}`, padding: '4px 9px', borderRadius: 7, maxWidth: '100%', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
       {chip.id.length < 24 ? chip.id : chip.label}
     </span>
   )
@@ -182,7 +182,7 @@ function FieldChip({ chip }: { chip: VizFieldChip }) {
 
 function Band({ title, sub, health, children }: { title: string; sub: string; health?: Health; children: React.ReactNode }) {
   return (
-    <div style={{ width: '100%', maxWidth: 760, border: `1px solid ${C.border}`, borderRadius: 14, background: C.surface, padding: 18, boxShadow: '0 1px 2px rgba(31,30,27,.04)' }}>
+    <div style={{ width: '100%', border: `1px solid ${C.border}`, borderRadius: 14, background: C.surface, padding: 18, boxShadow: '0 1px 2px rgba(31,30,27,.04)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}>
         {health && <span style={{ width: 9, height: 9, borderRadius: 999, background: HEALTH[health].dot, flex: 'none' }} />}
         <span style={{ fontSize: 14, fontWeight: 600 }}>{title}</span>

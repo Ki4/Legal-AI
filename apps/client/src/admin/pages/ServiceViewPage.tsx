@@ -183,7 +183,7 @@ export function ServiceViewBody({
 
   return (
     <AdminLayout>
-      <div className="relative max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+      <div className="relative max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
         {/* Top bar */}
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/services')}

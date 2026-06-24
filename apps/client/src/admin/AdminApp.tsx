@@ -11,7 +11,7 @@ import { ServiceViewPage }    from './pages/ServiceViewPage'
 import { NotesInboxPage }     from './pages/NotesInboxPage'
 import { ServiceRequestsPage } from './pages/ServiceRequestsPage'
 import { LawChangeLogPage }   from './pages/LawChangeLogPage'
-import { VizLabPage }         from './pages/VizLabPage'
+import { MapPage }            from './pages/MapPage'
 import { DesignKitPage }      from './pages/DesignKitPage'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
@@ -50,8 +50,7 @@ export function AdminApp() {
       <Route path="notes" element={<AdminGuard><NotesInboxPage /></AdminGuard>} />
       <Route path="requests" element={<AdminGuard><ServiceRequestsPage /></AdminGuard>} />
       <Route path="law-changes" element={<AdminGuard><LawChangeLogPage /></AdminGuard>} />
-      {/* viz-lab: standalone visualization prototype gallery (demo data, no auth needed) */}
-      <Route path="viz-lab" element={<VizLabPage />} />
+      <Route path="map" element={<AdminGuard><MapPage /></AdminGuard>} />
       <Route path="design" element={<DesignKitPage />} />
       <Route path="*" element={<Navigate to="/services" replace />} />
     </Routes>

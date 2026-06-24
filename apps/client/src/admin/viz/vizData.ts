@@ -34,6 +34,7 @@ export interface VizService {
   tabs: FormTab[]
   fields: VizFieldChip[]
   articles: VizNode[]            // kind 'art' — derived from template citations
+  citations: { slug: string; title: string; articles: string[] }[] // laws→articles, for the catalog graph
   doc: VizNode | null           // kind 'doc'
   counts: { used: number; extra: number; missing: number; total: number }
   requestsPerMonth: number | null // null = no analytics source (kept out of structural views)
@@ -111,6 +112,7 @@ export function liveServiceToViz(row: ServiceRowLike): VizService {
     tabs,
     fields,
     articles,
+    citations: analysis.citations.map((l) => ({ slug: l.slug, title: l.title, articles: l.articles.map(String) })),
     doc,
     counts: {
       used: diff.usedFields.length,
@@ -126,6 +128,26 @@ export function liveServiceToViz(row: ServiceRowLike): VizService {
 const NODE_MAP: Record<string, VizNode> = Object.fromEntries(NODES.map((n) => [n.id, n]))
 const demoArticles = (id: string) => EDGES.filter(([, t]) => t === id).map(([f]) => NODE_MAP[f]).filter((n) => n?.kind === 'art')
 const demoDoc = (id: string) => EDGES.filter(([f]) => f === id).map(([, t]) => NODE_MAP[t]).find((n) => n?.kind === 'doc') ?? null
+
+// Hardcoded citations per demo service, mirroring the demo law→article EDGES, so the catalog
+// graph layout can be exercised (and screenshotted) without live Supabase.
+const DEMO_CITATIONS: Record<string, VizService['citations']> = {
+  divorce: [
+    { slug: 'sk', title: 'Сімейний кодекс України', articles: ['110', '60', '70', '180'] },
+    { slug: 'cpk', title: 'Цивільний процесуальний кодекс України', articles: ['175'] },
+    { slug: 'psz', title: 'Про судовий збір', articles: ['4'] },
+  ],
+  alimony: [
+    { slug: 'sk', title: 'Сімейний кодекс України', articles: ['180', '182'] },
+    { slug: 'cpk', title: 'Цивільний процесуальний кодекс України', articles: ['175'] },
+    { slug: 'psz', title: 'Про судовий збір', articles: ['4'] },
+  ],
+  property: [
+    { slug: 'sk', title: 'Сімейний кодекс України', articles: ['60', '70'] },
+    { slug: 'cpk', title: 'Цивільний процесуальний кодекс України', articles: ['175'] },
+    { slug: 'psz', title: 'Про судовий збір', articles: ['4'] },
+  ],
+}
 
 function demoVizServices(): VizService[] {
   return DEMO_SERVICES.map((s) => {
@@ -143,10 +165,85 @@ function demoVizServices(): VizService[] {
     }
     return {
       id: s.id, slug: s.slug, title: s.title, icon: null, status: 'active', health: s.health, price: s.price,
-      tabs, fields, articles: demoArticles(s.id), doc: demoDoc(s.id),
+      tabs, fields, articles: demoArticles(s.id), citations: DEMO_CITATIONS[s.id] ?? [], doc: demoDoc(s.id),
       counts: s.fields, requestsPerMonth: s.requestsPerMonth,
     }
   })
+}
+
+// ─── Catalog graph: services → laid-out law→article→service→document graph ─────
+// The demo NODES were hand-positioned; here we auto-lay-out from real data. Four fixed columns
+// (geometry ported from the demo stage); nodes even-spaced down each column, documents aligned
+// to their service's row. Edge crossings from shared articles (e.g. ст.175 → 3 services) are
+// inherent and accepted — this is readable, not crossing-minimal.
+export interface VizGraph { nodes: VizNode[]; edges: [string, string][]; stageHeight: number }
+
+const COL = {
+  law: { x: 8, w: 185 },
+  art: { x: 248, w: 205 },
+  srv: { x: 508, w: 200 },
+  doc: { x: 760, w: 165 },
+} as const
+const NODE_H = { law: 66, art: 60, srv: 84, doc: 62 } as const
+const TOP = 24
+const GAP = 26
+
+/** Pure: build the catalog graph (nodes with coordinates + directed edges) from VizServices. */
+export function buildCatalogGraph(services: VizService[]): VizGraph {
+  const laws: VizNode[] = []
+  const arts: VizNode[] = []
+  const srvs: VizNode[] = []
+  const docs: VizNode[] = []
+  const seenLaw = new Set<string>()
+  const seenArt = new Set<string>()
+  const edgeSet = new Set<string>()
+  const edges: [string, string][] = []
+  const addEdge = (from: string, to: string) => {
+    const k = `${from}|${to}`
+    if (!edgeSet.has(k)) { edgeSet.add(k); edges.push([from, to]) }
+  }
+
+  for (const s of services) {
+    for (const law of s.citations) {
+      if (!seenLaw.has(law.slug)) {
+        seenLaw.add(law.slug)
+        laws.push({ id: law.slug, kind: 'law', x: 0, y: 0, w: COL.law.w, h: NODE_H.law, label: law.title, sub: shortLaw(law.title) })
+      }
+      for (const a of law.articles) {
+        const id = `${law.slug}-${a}`
+        if (!seenArt.has(id)) {
+          seenArt.add(id)
+          arts.push({ id, kind: 'art', x: 0, y: 0, w: COL.art.w, h: NODE_H.art, label: `ст. ${a}`, sub: shortLaw(law.title) })
+        }
+        addEdge(law.slug, id)
+        addEdge(id, s.slug)
+      }
+    }
+    srvs.push({
+      id: s.slug, kind: 'srv', x: 0, y: 0, w: COL.srv.w, h: NODE_H.srv,
+      label: s.title, sub: `${s.counts.total} полів · ${s.tabs.length} ${s.tabs.length === 1 ? 'таб' : 'таби'}`,
+    })
+    if (s.doc) {
+      docs.push({ id: `${s.slug}-doc`, kind: 'doc', x: 0, y: 0, w: COL.doc.w, h: NODE_H.doc, label: s.doc.label, sub: s.doc.sub })
+      addEdge(s.slug, `${s.slug}-doc`)
+    }
+  }
+
+  // even-space each column from the top
+  const place = (arr: VizNode[], x: number) => {
+    let y = TOP
+    for (const n of arr) { n.x = x; n.y = y; y += n.h + GAP }
+  }
+  place(laws, COL.law.x)
+  place(arts, COL.art.x)
+  place(srvs, COL.srv.x)
+  // documents align to their service's row
+  const srvY = new Map(srvs.map((n) => [n.id, n.y]))
+  for (const d of docs) { d.x = COL.doc.x; d.y = srvY.get(d.id.replace(/-doc$/, '')) ?? TOP }
+
+  const nodes = [...laws, ...arts, ...srvs, ...docs]
+  const stageHeight = Math.max(560, ...nodes.map((n) => n.y + n.h)) + TOP
+  return { nodes, edges, stageHeight }
 }
 
 export interface VizServicesState { services: VizService[]; source: 'live' | 'demo'; loading: boolean }

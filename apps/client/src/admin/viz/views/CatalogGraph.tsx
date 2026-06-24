@@ -1,87 +1,82 @@
-// Layer 1 — Catalog. The full "Що на що впливає" layered graph (law → article → service → document),
-// ported from the design canvas, plus a Structure / Business overlay toggle.
+// "Карта" — the full "Що на що впливає" layered graph (law → article → service → document),
+// fed by real data (nodes/edges built in vizData.buildCatalogGraph). Click a node to highlight
+// its dependency chain; click a service to open its mirror; click a law change to light up the
+// services it touches. Structure only — the business/revenue overlay is deferred (no metrics source).
 import { useMemo, useState } from 'react'
-import { RotateCcw, Maximize2 } from 'lucide-react'
-import { C, MONO, KIND_STRIPE, KIND_TINT, KIND_LABEL, HEALTH, uah } from '../theme'
+import { RotateCcw, ArrowUpRight } from 'lucide-react'
+import { C, KIND_STRIPE, KIND_TINT, KIND_LABEL, HEALTH } from '../theme'
 import type { NodeKind } from '../theme'
 import { KIND_ICON } from '../icons'
-import { NODES, EDGES, CHANGES, serviceById, changeImpact } from '../demoData'
-import type { VizNode, LawChange } from '../demoData'
-import { ServiceFocusGraph } from './ServiceFocusGraph'
+import type { VizNode } from '../demoData'
+import type { VizService } from '../vizData'
+
+export interface CatalogChange {
+  id: string
+  lawTitle: string
+  date: string
+  affectedSlugs: string[]
+}
 
 const STAGE_W = 1080
-const STAGE_H = 560
 
-const NODE_MAP: Record<string, VizNode> = Object.fromEntries(NODES.map((n) => [n.id, n]))
-
-/** All nodes reachable up- and down-stream from `sel` (the highlighted chain). */
-function connectedChain(sel: string): Set<string> {
+/** All nodes reachable up- and down-stream from `sel` along `edges` (the highlighted chain). */
+function connectedChain(sel: string, edges: [string, string][]): Set<string> {
   const set = new Set<string>([sel])
   const walk = (dir: 'up' | 'down') => {
     const stack = [sel]
     while (stack.length) {
       const cur = stack.pop() as string
-      EDGES.forEach(([from, to]) => {
+      edges.forEach(([from, to]) => {
         const [a, b] = dir === 'up' ? [to, from] : [from, to]
-        if (a === cur && !set.has(b)) {
-          set.add(b)
-          stack.push(b)
-        }
+        if (a === cur && !set.has(b)) { set.add(b); stack.push(b) }
       })
     }
   }
-  walk('up')
-  walk('down')
+  walk('up'); walk('down')
   return set
 }
 
-type Overlay = 'structure' | 'business'
-
-export function CatalogGraph() {
+export function CatalogGraph({ nodes, edges, changes, services, onOpenService }: {
+  nodes: VizNode[]
+  edges: [string, string][]
+  changes: CatalogChange[]
+  services: VizService[]
+  onOpenService: (slug: string) => void
+}) {
   const [sel, setSel] = useState<string | null>(null)
-  const [impact, setImpact] = useState(false)
-  const [overlay, setOverlay] = useState<Overlay>('structure')
-  const [focus, setFocus] = useState(false) // drill into the selected service's subgraph
+  const [activeChange, setActiveChange] = useState<string | null>(null)
 
-  const chain = useMemo(() => (sel ? connectedChain(sel) : null), [sel])
-  const hi = impact ? C.impact : C.accent
-  const ring = impact ? C.impactRing : C.accentRing
+  const nodeMap = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])) as Record<string, VizNode>, [nodes])
+  const svcMap = useMemo(() => new Map(services.map((s) => [s.slug, s])), [services])
+  const stageH = useMemo(() => Math.max(560, ...nodes.map((n) => n.y + n.h)) + 24, [nodes])
 
-  const selNode = sel ? NODE_MAP[sel] : null
-  const depends = sel ? EDGES.filter(([, t]) => t === sel).map(([f]) => NODE_MAP[f]) : []
-  const affects = sel ? EDGES.filter(([f]) => f === sel).map(([, t]) => NODE_MAP[t]) : []
-  const svc = selNode?.kind === 'srv' ? serviceById(selNode.id) : undefined
+  const chain = useMemo<Set<string> | null>(() => {
+    if (activeChange) {
+      const c = changes.find((x) => x.id === activeChange)
+      if (!c) return null
+      const set = new Set<string>()
+      for (const slug of c.affectedSlugs) for (const id of connectedChain(slug, edges)) set.add(id)
+      return set
+    }
+    return sel ? connectedChain(sel, edges) : null
+  }, [sel, activeChange, changes, edges])
 
-  function pickNode(id: string) {
-    setSel(id)
-    setImpact(false)
-  }
-  function pickChange(c: LawChange) {
-    setSel(c.article)
-    setImpact(true)
-  }
-  function reset() {
-    setSel(null)
-    setImpact(false)
-  }
+  const hi = activeChange ? C.impact : C.accent
+  const ring = activeChange ? C.impactRing : C.accentRing
 
-  // Focus mode: when a service is selected, show only its subgraph (separate component).
-  if (focus && svc) {
-    return <ServiceFocusGraph initialServiceId={svc.id} initialOverlay={overlay} onBack={() => setFocus(false)} />
-  }
+  const selNode = sel ? nodeMap[sel] : null
+  const depends = sel ? edges.filter(([, t]) => t === sel).map(([f]) => nodeMap[f]).filter(Boolean) : []
+  const affects = sel ? edges.filter(([f]) => f === sel).map(([, t]) => nodeMap[t]).filter(Boolean) : []
+  const svc = selNode?.kind === 'srv' ? svcMap.get(selNode.id) : undefined
+
+  const pickNode = (id: string) => { setSel(id); setActiveChange(null) }
+  const pickChange = (c: CatalogChange) => { setActiveChange(c.id); setSel(null) }
+  const reset = () => { setSel(null); setActiveChange(null) }
 
   return (
     <div>
       {/* toolbar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-        <SegToggle
-          value={overlay}
-          onChange={setOverlay}
-          options={[
-            { value: 'structure', label: 'Структура' },
-            { value: 'business', label: 'Бізнес-оверлей' },
-          ]}
-        />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 12.5, color: C.inkSecondary }}>
           {(Object.keys(KIND_LABEL) as NodeKind[]).map((k) => (
             <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
@@ -92,19 +87,10 @@ export function CatalogGraph() {
         </div>
         <span style={{ flex: 1 }} />
         <span style={{ fontSize: 12.5, color: C.muted }}>
-          {sel ? 'Підсвічено ланцюг звʼязків' : 'Натисніть вузол, щоб підсвітити звʼязки'}
+          {chain ? 'Підсвічено ланцюг звʼязків' : 'Натисніть вузол, щоб підсвітити звʼязки'}
         </span>
-        <button onClick={reset} style={ghostBtn}>
-          <RotateCcw size={14} /> Скинути
-        </button>
+        <button onClick={reset} style={ghostBtn}><RotateCcw size={14} /> Скинути</button>
       </div>
-
-      {overlay === 'business' && (
-        <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 14px' }}>
-          Послуги пофарбовано за станом (health), товщина звʼязку — за попитом (заявки/міс). Видно, де
-          попит є, а послуга зламана.
-        </p>
-      )}
 
       {/* stage */}
       <div style={stageWrap}>
@@ -116,83 +102,51 @@ export function CatalogGraph() {
           ))}
         </div>
 
-        <div style={{ position: 'relative', width: STAGE_W, height: STAGE_H, margin: '0 auto' }}>
+        <div style={{ position: 'relative', width: STAGE_W, height: stageH, margin: '0 auto' }}>
           {/* edges */}
-          <svg width={STAGE_W} height={STAGE_H} viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-            {EDGES.map(([f, t]) => {
-              const a = NODE_MAP[f]
-              const b = NODE_MAP[t]
-              const x1 = a.x + a.w
-              const y1 = a.y + a.h / 2
-              const x2 = b.x
-              const y2 = b.y + b.h / 2
+          <svg width={STAGE_W} height={stageH} viewBox={`0 0 ${STAGE_W} ${stageH}`} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
+            {edges.map(([f, t]) => {
+              const a = nodeMap[f]; const b = nodeMap[t]
+              if (!a || !b) return null
+              const x1 = a.x + a.w, y1 = a.y + a.h / 2, x2 = b.x, y2 = b.y + b.h / 2
               const mx = (x1 + x2) / 2
               const lit = chain ? chain.has(f) && chain.has(t) : false
               const dim = chain ? !lit : false
-              // business overlay: thickness by demand of whichever endpoint is a service
-              let sw = 1.6
-              if (overlay === 'business') {
-                const s = serviceById(f) ?? serviceById(t)
-                if (s) sw = 1.2 + (s.requestsPerMonth / 32) * 3
-              }
               return (
-                <path
-                  key={`${f}-${t}`}
-                  d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
-                  fill="none"
-                  stroke={lit ? hi : dim ? C.border : '#DAD6CC'}
-                  strokeWidth={lit ? sw + 0.8 : sw}
-                  strokeOpacity={dim ? 0.55 : 1}
-                  strokeLinecap="round"
-                />
+                <path key={`${f}-${t}`} d={`M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`}
+                      fill="none" stroke={lit ? hi : dim ? C.border : '#DAD6CC'}
+                      strokeWidth={lit ? 2.4 : 1.6} strokeOpacity={dim ? 0.55 : 1} strokeLinecap="round" />
               )
             })}
           </svg>
 
           {/* nodes */}
-          {NODES.map((n) => {
+          {nodes.map((n) => {
             const Icon = KIND_ICON[n.kind]
-            const stripe = KIND_STRIPE[n.kind]
-            const service = serviceById(n.id)
+            const service = svcMap.get(n.id)
+            const isSrv = n.kind === 'srv' && service
             const inChain = chain ? chain.has(n.id) : true
             const dim = chain ? !inChain : false
-
-            let bg: string = C.surface
-            let metaText: string | undefined = n.meta
-            if (overlay === 'business' && service) {
-              bg = HEALTH[service.health].tint
-              metaText = service.revenue ? uah(service.revenue) + '/міс' : 'не запущена'
-            }
-
+            const stripe = isSrv ? HEALTH[service!.health].dot : KIND_STRIPE[n.kind]
+            const bg = isSrv ? HEALTH[service!.health].tint : C.surface
             return (
-              <div
-                key={n.id}
-                onClick={() => pickNode(n.id)}
-                style={{
-                  position: 'absolute', left: n.x, top: n.y, width: n.w, height: n.h,
-                  background: bg, border: `1px solid ${inChain && chain ? hi : '#E8E6DF'}`,
-                  borderLeft: `3px solid ${overlay === 'business' && service ? HEALTH[service.health].dot : stripe}`,
-                  borderRadius: 12, padding: '10px 13px', boxSizing: 'border-box', cursor: 'pointer',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                  transition: 'all .18s ease', zIndex: inChain && chain ? 4 : 2,
-                  boxShadow: inChain && chain ? `0 0 0 3px ${ring}, 0 8px 20px rgba(31,30,27,.09)` : '0 1px 2px rgba(31,30,27,.05)',
-                  opacity: dim ? 0.32 : 1, filter: dim ? 'saturate(.4)' : 'none',
-                  transform: n.id === sel ? 'translateY(-1px) scale(1.012)' : 'none',
-                }}
-              >
+              <div key={n.id} onClick={() => pickNode(n.id)} style={{
+                position: 'absolute', left: n.x, top: n.y, width: n.w, height: n.h,
+                background: bg, border: `1px solid ${inChain && chain ? hi : '#E8E6DF'}`,
+                borderLeft: `3px solid ${stripe}`, borderRadius: 12, padding: '10px 13px', boxSizing: 'border-box', cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'all .18s ease',
+                zIndex: inChain && chain ? 4 : 2,
+                boxShadow: inChain && chain ? `0 0 0 3px ${ring}, 0 8px 20px rgba(31,30,27,.09)` : '0 1px 2px rgba(31,30,27,.05)',
+                opacity: dim ? 0.32 : 1, filter: dim ? 'saturate(.4)' : 'none',
+                transform: n.id === sel ? 'translateY(-1px) scale(1.012)' : 'none',
+              }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: stripe, flex: 'none', display: 'inline-flex' }}>
+                  <span style={{ color: KIND_STRIPE[n.kind], flex: 'none', display: 'inline-flex' }}>
                     <Icon size={n.kind === 'srv' ? 18 : 16} strokeWidth={1.7} />
                   </span>
                   <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-.01em', lineHeight: 1.15 }}>{n.label}</span>
                 </div>
                 <div style={{ fontSize: 12, color: C.inkSecondary, lineHeight: 1.3, marginTop: 3 }}>{n.sub}</div>
-                {metaText && (
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 5, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ width: 5, height: 5, borderRadius: 999, background: C.faint }} />
-                    {metaText}
-                  </div>
-                )}
               </div>
             )
           })}
@@ -217,15 +171,15 @@ export function CatalogGraph() {
 
               {svc && (
                 <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-                  <Stat n={svc.fields.used} label="використано" tone="ok" />
-                  <Stat n={svc.fields.extra} label="не в шаблоні" tone="warn" />
-                  <Stat n={svc.fields.missing} label="бракує" tone="danger" />
+                  <Stat n={svc.counts.used} label="використано" tone="ok" />
+                  <Stat n={svc.counts.extra} label="не в шаблоні" tone="warn" />
+                  <Stat n={svc.counts.missing} label="бракує" tone="danger" />
                 </div>
               )}
 
               {svc && (
-                <button onClick={() => setFocus(true)} style={focusBtn}>
-                  <Maximize2 size={14} /> Граф лише цієї послуги
+                <button onClick={() => onOpenService(svc.slug)} style={focusBtn}>
+                  <ArrowUpRight size={14} /> Відкрити дзеркало послуги
                 </button>
               )}
 
@@ -245,36 +199,27 @@ export function CatalogGraph() {
             <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.muted }}>Зміни законів</span>
           </div>
           <p style={{ fontSize: 12.5, color: C.muted, margin: '0 0 16px' }}>
-            Натисніть зміну — на графі підсвітяться зачеплені послуги та порахується виручка під ризиком.
+            Натисніть зміну — на графі підсвітяться зачеплені послуги.
           </p>
+          {changes.length === 0 && <div style={{ fontSize: 13, color: C.faint }}>Немає змін, що потребують перегляду.</div>}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {CHANGES.map((c) => {
-              const active = sel === c.article && impact
-              const sev = c.severity === 'warn'
-                ? { fg: C.warnInk, bg: C.warnTint, bd: C.warnBorder }
-                : { fg: '#1B6CA8', bg: '#E8F0F7', bd: '#CFE0EE' }
-              const { services, revenueAtRisk } = changeImpact(c)
+            {changes.map((c) => {
+              const active = activeChange === c.id
+              const touched = c.affectedSlugs.map((s) => svcMap.get(s)?.title ?? s)
               return (
-                <div
-                  key={c.id}
-                  onClick={() => pickChange(c)}
-                  style={{
-                    border: `1px solid ${active ? '#E3B25C' : C.border}`,
-                    background: active ? '#FCF6E8' : C.surface,
-                    borderRadius: 11, padding: '13px 15px', cursor: 'pointer', transition: 'all .15s ease',
-                    boxShadow: active ? '0 0 0 3px rgba(200,136,28,.14)' : 'none',
-                  }}
-                >
+                <div key={c.id} onClick={() => pickChange(c)} style={{
+                  border: `1px solid ${active ? '#E3B25C' : C.border}`, background: active ? '#FCF6E8' : C.surface,
+                  borderRadius: 11, padding: '13px 15px', cursor: 'pointer', transition: 'all .15s ease',
+                  boxShadow: active ? '0 0 0 3px rgba(200,136,28,.14)' : 'none',
+                }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 5 }}>
-                    <span style={{ fontFamily: MONO, fontSize: 12, fontWeight: 500 }}>{c.ref}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: sev.fg, background: sev.bg, border: `1px solid ${sev.bd}`, padding: '2px 9px', borderRadius: 999, flex: 'none', whiteSpace: 'nowrap' }}>
-                      {c.severity === 'warn' ? 'Потребує ревʼю' : 'Інформативно'}
+                    <span style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3 }}>{c.lawTitle}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: C.warnInk, background: C.warnTint, border: `1px solid ${C.warnBorder}`, padding: '2px 9px', borderRadius: 999, flex: 'none', whiteSpace: 'nowrap' }}>
+                      Потребує ревʼю
                     </span>
                   </div>
-                  <div style={{ fontSize: 13.5, lineHeight: 1.4, marginBottom: 6 }}>{c.title}</div>
                   <div style={{ fontSize: 12, color: C.muted }}>
-                    Зачеплено: {services.map((s) => s.title).join(', ')}
-                    {revenueAtRisk > 0 && <> · <b style={{ color: C.warnInk }}>{uah(revenueAtRisk)}/міс під ризиком</b></>}
+                    {touched.length ? <>Зачеплено: {touched.join(', ')}</> : 'Послуги не визначено'}
                   </div>
                 </div>
               )
@@ -324,27 +269,6 @@ function EmptyDetail() {
       <div style={{ fontSize: 13, maxWidth: 280, marginTop: 5 }}>
         Натисніть закон, статтю, послугу чи документ, щоб побачити деталі та підсвітити весь ланцюг.
       </div>
-    </div>
-  )
-}
-
-function SegToggle<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string }[] }) {
-  return (
-    <div style={{ display: 'inline-flex', background: '#F0EEE7', borderRadius: 10, padding: 3, gap: 2 }}>
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          style={{
-            border: 'none', cursor: 'pointer', borderRadius: 8, padding: '6px 13px', fontSize: 13, fontWeight: 500,
-            background: value === o.value ? C.surface : 'transparent',
-            color: value === o.value ? C.ink : C.inkSecondary,
-            boxShadow: value === o.value ? '0 1px 2px rgba(31,30,27,.08)' : 'none',
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
     </div>
   )
 }

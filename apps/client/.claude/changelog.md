@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-24 (session 46) — viz-lab → реальні сторінки: «Дзеркало» + нова «Карта»
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій усвідомив, що реальна сторінка послуги (`/services/:slug`, «дзеркало») і є те, чим мав бути viz-lab. Виявилось, viz-lab змішував два «зуми»: *одна послуга вглиб* (це «дзеркало» вже робить по-справжньому — дублювання) і *вся система разом* (граф «що на що впливає» + пріоритизація — цього «дзеркало» не покриває). Рішення Сергія: дві поверхні за зумом — «Дзеркало» лишається канонічною сторінкою однієї послуги (з каталогу), а системний граф стає **новим пунктом меню «Карта»** на реальних даних. viz-lab-галерею прибрано.
+**What:**
+- **Нова «Карта»** (`/map`, у сайдбарі, Network-іконка): системний граф закон→стаття→послуга→документ на РЕАЛЬНИХ даних через `serviceAnatomy`/`vizData`. Послуги пофарбовано за health; клік по послузі → перехід на її дзеркало; панель «Зміни законів» — з реального `law_change_log` (flagged), клік підсвічує зачеплені послуги. Бізнес-оверлей (виручка/попит) відкладено — немає джерела метрик.
+- **`buildCatalogGraph(services)`** — чиста функція авто-розкладки в 4 колонки (демо `NODES` були розкладені руками); документи вирівняно по рядку своєї послуги. Покрито 5 unit-тестами (ребра вказують на наявні вузли, колонки, дедуп спільних статей, без NaN).
+- `CatalogGraph` переписано на props (`nodes/edges/changes/services/onOpenService`), без demo-імпортів, без бізнес-оверлею і focus-режиму.
+- `VizService` отримав `citations` (live з `analysis.citations`; demo — хардкод під демо-граф).
+- **Прибрано viz-lab:** видалено `VizLabPage` + 4 demo-види (`ServiceDetail`, `TechnicalView`, `FormBranching`, `Prioritization`) + `ServiceFocusGraph`. Лишилось `theme/icons/vizData/demoData/CatalogGraph`.
+**Files:** `viz/vizData.ts` (+citations, +buildCatalogGraph), `viz/views/CatalogGraph.tsx` (props-rewrite), `pages/MapPage.tsx` (NEW), `viz/__tests__/catalogGraph.test.ts` (NEW), `admin/AdminApp.tsx` (роут `/map`, прибрано `/viz-lab`), `admin/components/AdminLayout.tsx` (пункт «Карта»); deleted: `pages/VizLabPage.tsx`, `viz/views/{ServiceDetail,TechnicalView,FormBranching,Prioritization,ServiceFocusGraph}.tsx`.
+**Tests:** `tsc -b` clean · `vitest` 209/209 ✅ · eslint clean (змінені файли) · Playwright-скриншот `/map` (demo-фолбэк прогнав реальну авто-розкладку): граф + підсвічення ланцюга + health-кольори рендеряться коректно.
+
 ### 2026-06-23 (session 45) — viz-lab: пісочниця прототипів візуалізації послуг
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · demo-data only · route `/viz-lab` (без auth)
 **Why:** Сергію треба якісно показати, *як влаштовані наявні послуги* (а не будувати нові), моніторити вплив змін законів і пріоритизувати за грошима («що чинити першим»). Замість тексту — кликабельна пісочниця, де поруч лежать 5 шарів подачі однієї й тієї ж структури; Сергій тицяє й обирає, що живе. Світла тепло-нейтральна тема взята з його дизайн-канви (палітра винесена в один `theme.ts`, щоб легко правити кольори). Без нових залежностей — усе чистим SVG/inline-стилями (lucide вже стоїть).

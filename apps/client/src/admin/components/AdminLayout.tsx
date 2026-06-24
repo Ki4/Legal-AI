@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Briefcase, MessageSquare, FileText, ClipboardList, Landmark, LogOut } from 'lucide-react'
+import { Briefcase, Network, MessageSquare, FileText, ClipboardList, Landmark, LogOut } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { ThemeToggle } from '../theme/ThemeToggle'
 
 const NAV = [
   { to: '/services',    icon: Briefcase,     label: 'Мої послуги' },
+  { to: '/map',         icon: Network,       label: 'Карта' },
   { to: '/notes',       icon: MessageSquare, label: 'Коментарі' },
   { to: '/requests',    icon: FileText,      label: 'Заявки' },
   { to: '/law-changes', icon: ClipboardList, label: 'Зміни законів' },

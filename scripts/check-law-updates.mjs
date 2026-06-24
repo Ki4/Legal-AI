@@ -32,6 +32,7 @@ import { LAWS, normalizeUrl, lawCode } from './law-registry.mjs';
 import { loadEnv, createSupabaseClient } from './lib/supabase-rest.mjs';
 import { fetchRevisionDate } from './lib/rada.mjs';
 import { affectedServices, applyLawChange } from './lib/law-change.mjs';
+import { captureLawDiff } from './lib/law-impact.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENV_FILE = resolve(ROOT, 'apps/client/.env.local');
@@ -137,12 +138,18 @@ async function main() {
     const oldDate = [...knownDates].sort().pop() || null;
     console.log(`🔴 CHANGED: ${oldDate || '?'} → ${current}`);
 
+    // L1: snapshot the deterministic diff BEFORE applyLawChange flags content is_stale (the
+    // stored old text is still the old revision now). Fail-soft: null → behaves exactly as
+    // before (flip without a diff). Skipped on dry runs (no writes, save a fetch).
+    const articleDiffs = DRY_RUN ? null : await captureLawDiff(client, law);
+
     const res = await applyLawChange(client, {
       law,
       newDate: current,
       oldDate,
       detectedBy: 'cron',
       notes: 'Автоматично виявлено CRON-моніторингом',
+      articleDiffs,
       services,
       dry: DRY_RUN,
     });

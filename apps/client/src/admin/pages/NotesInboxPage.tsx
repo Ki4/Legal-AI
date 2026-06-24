@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '../components/AdminLayout'
+import { ReviewItem } from '../ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { ServiceNote } from '../components/ServiceNotes'
@@ -10,6 +11,34 @@ interface ServiceRef { id: string; slug: string; title: string }
 function fmtDate(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+/**
+ * One comment as a review-queue item. The service it's about is the title (tap «Відкрити
+ * послугу»), the comment is the body, author + date the byline. «Позначити вирішеним» is an
+ * explicit button (via ReviewItem) — fixes the session-42 «✓ Вирішено reads like a badge» debt.
+ */
+export function NoteRow({
+  note, service, onToggle, onOpen,
+}: {
+  note: ServiceNote
+  service?: ServiceRef
+  onToggle: (n: ServiceNote) => void
+  onOpen?: (serviceId: string) => void
+}) {
+  const resolved = note.status === 'done'
+  return (
+    <ReviewItem
+      title={service?.title ?? note.service_slug}
+      timestamp={`${note.author_email ?? 'юрист'} · ${fmtDate(note.created_at)}`}
+      body={note.body}
+      resolved={resolved}
+      openLabel="Відкрити послугу"
+      onResolve={() => onToggle(note)}
+      onReopen={() => onToggle(note)}
+      onOpen={service && onOpen ? () => onOpen(service.slug) : undefined}
+    />
+  )
 }
 
 /** Dev inbox — all lawyer feedback across services (service-mirror slice 2). */
@@ -49,51 +78,35 @@ export function NotesInboxPage() {
       <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white">Коментарі</h1>
-            <p className="text-slate-400 text-xs md:text-sm mt-1 hidden sm:block">Фідбек юриста по всіх послугах.</p>
+            <h1 className="text-xl md:text-2xl font-bold text-ink">Коментарі</h1>
+            <p className="text-inkSoft text-xs md:text-sm mt-1 hidden sm:block">Фідбек юриста по всіх послугах.</p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer select-none">
-            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="accent-blue-600 w-4 h-4" />
-            <span>Лише відкриті{openCount > 0 && <span className="ml-1 text-amber-400 font-semibold">({openCount})</span>}</span>
+          <label className="flex items-center gap-2 text-sm text-inkSoft cursor-pointer select-none">
+            <input type="checkbox" checked={onlyOpen} onChange={(e) => setOnlyOpen(e.target.checked)} className="accent-brand w-4 h-4" />
+            <span>Лише відкриті{openCount > 0 && <span className="ml-1 text-warn font-semibold">({openCount})</span>}</span>
           </label>
         </div>
 
-        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-slate-900 border border-slate-800 rounded-2xl animate-pulse" />)}</div>}
+        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-paper border border-line rounded-xl animate-pulse" />)}</div>}
 
         {!loading && visible.length === 0 && (
           <div className="text-center py-24">
             <div className="text-5xl mb-4">💬</div>
-            <h3 className="text-lg font-semibold text-white mb-2">{onlyOpen ? 'Немає відкритих коментарів' : 'Коментарів ще немає'}</h3>
-            <p className="text-slate-500 text-sm">Юрист залишає їх на сторінці перегляду послуги.</p>
+            <h3 className="text-lg font-semibold text-ink mb-2">{onlyOpen ? 'Немає відкритих коментарів' : 'Коментарів ще немає'}</h3>
+            <p className="text-inkMute text-sm">Юрист залишає їх на сторінці перегляду послуги.</p>
           </div>
         )}
 
         <div className="space-y-3">
-          {visible.map((n) => {
-            const svc = services[n.service_slug]
-            return (
-              <div key={n.id} className={`bg-slate-900 border border-slate-800 rounded-2xl p-4 ${n.status === 'done' ? 'opacity-60' : ''}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <button
-                    onClick={() => svc && navigate(`/services/${svc.id}`)}
-                    className="text-xs font-semibold text-blue-400 hover:text-blue-300"
-                  >
-                    {svc?.title ?? n.service_slug} →
-                  </button>
-                </div>
-                <div className={`text-sm whitespace-pre-wrap break-words ${n.status === 'done' ? 'line-through text-slate-500' : 'text-slate-200'}`}>{n.body}</div>
-                <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500">
-                  <span>{n.author_email ?? 'юрист'}</span>
-                  <span>•</span>
-                  <span>{fmtDate(n.created_at)}</span>
-                  <div className="flex-1" />
-                  <button onClick={() => toggle(n)} className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors">
-                    {n.status === 'open' ? '✓ Вирішено' : '↩ Відкрити'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+          {visible.map((n) => (
+            <NoteRow
+              key={n.id}
+              note={n}
+              service={services[n.service_slug]}
+              onToggle={toggle}
+              onOpen={(id) => navigate(`/services/${id}`)}
+            />
+          ))}
         </div>
       </div>
     </AdminLayout>

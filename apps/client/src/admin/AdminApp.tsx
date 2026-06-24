@@ -11,12 +11,13 @@ import { ServiceViewPage }    from './pages/ServiceViewPage'
 import { NotesInboxPage }     from './pages/NotesInboxPage'
 import { ServiceRequestsPage } from './pages/ServiceRequestsPage'
 import { LawChangeLogPage }   from './pages/LawChangeLogPage'
+import { DesignKitPage }      from './pages/DesignKitPage'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
   if (loading) return (
-    <div className="flex items-center justify-center h-screen bg-slate-900">
-      <div className="w-8 h-8 border-2 border-slate-600 border-t-blue-400 rounded-full animate-spin" />
+    <div className="flex items-center justify-center h-screen bg-paper">
+      <div className="w-8 h-8 border-2 border-lineStrong border-t-brand rounded-full animate-spin" />
     </div>
   )
   if (!user) return <Navigate to="/login" replace />
@@ -27,7 +28,8 @@ export function AdminApp() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange((event) => {
+    if (!supabase) return
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         navigate('/reset-password')
       }
@@ -43,10 +45,11 @@ export function AdminApp() {
       <Route path="services" element={<AdminGuard><DashboardPage /></AdminGuard>} />
       <Route path="services/new" element={<AdminGuard><ServiceEditPage /></AdminGuard>} />
       <Route path="services/:id/edit" element={<AdminGuard><ServiceEditPage /></AdminGuard>} />
-      <Route path="services/:id" element={<AdminGuard><ServiceViewPage /></AdminGuard>} />
+      <Route path="services/:slug" element={<AdminGuard><ServiceViewPage /></AdminGuard>} />
       <Route path="notes" element={<AdminGuard><NotesInboxPage /></AdminGuard>} />
       <Route path="requests" element={<AdminGuard><ServiceRequestsPage /></AdminGuard>} />
       <Route path="law-changes" element={<AdminGuard><LawChangeLogPage /></AdminGuard>} />
+      <Route path="design" element={<DesignKitPage />} />
       <Route path="*" element={<Navigate to="/services" replace />} />
     </Routes>
   )

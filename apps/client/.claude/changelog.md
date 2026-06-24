@@ -10,6 +10,233 @@
 
 ---
 
+### 2026-06-24 (session 46, ч.8) — QA-gate: парсер цитат (ст. N, M) + «Форма клієнта» поверх оверлею
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** (1) Критик+тестувальник знайшли, що парсер цитат (`serviceAnatomy.ts`) втрачав статті у формі `ст. 110, 112 <Закон>` (одиночне `ст.` + список через кому) — діставав лише двойне `ст.ст.`. Реальні шаблони (divorce/alimony/alimony-change) усі вживають `ст.ст.`, тож goldens не зачеплені, але ручна правка шаблону могла мовчки втратити статтю. Сергій підтвердив: чинити зараз. (2) Сергій тричі повідомив, що «Форма клієнта» не клікається. Окрім відносного URL (ч.7), є друга причина: коли увімкнено режим «Залишити коментар», `CommentLayer` стелить capture-surface `absolute inset-0 pointer-events-auto` на весь контент **включно з верхньою панеллю** — і навігація перестає клікатись.
+**What:**
+- `serviceAnatomy.ts`: гілка `single` у `CITATION_THEN_LAW_RE` та `LAW_THEN_PAREN_RE` тепер приймає `ARTICLE_LIST` (не лише один номер) — `ст. 110, 112 СК` дістає обидві статті; `ст.ст.` без змін, тож golden-parity зелений.
+- `ServiceViewPage`: верхня панель отримала `relative z-30` — тримається **над** оверлеєм коментарів (z-20), тож «Назад / Форма клієнта / Редагувати» клікаються навіть у режимі малювання зони.
+- Тести: оновлено регрес-тест у `vizData.test.ts` (тепер `ст. 110, 112` дістає обидві) + 2 нові кейси в `serviceAnatomy.test.ts` (single+список; список не «перетікає» через межу закону).
+**Files:** `lib/serviceAnatomy.ts` (regex single→LIST), `admin/pages/ServiceViewPage.tsx` (top bar z-30), `lib/__tests__/serviceAnatomy.test.ts` (+2), `admin/viz/__tests__/vizData.test.ts` (regression updated).
+**Tests:** `tsc -b` clean · повний прогін `vitest` 43 файли / **1244** тести ✅ (golden parity не зачеплено).
+
+### 2026-06-24 (session 46, ч.7) — Фікс: «Форма клієнта» некликабельна → абсолютний URL клієнта
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій повідомив, що кнопка «Форма клієнта» на сторінці послуги не клікається/не відкриває форму. Причина: вона робила `window.open('/?service=slug', '_blank', 'noopener')` — **відносний** URL. Адмінка — окремий origin (у dev `:5174` з SPA-fallback на `admin.html`, у prod окремий деплой `dist-admin`), тож відносне посилання просто перевідкривало адмінку, а `window.open` як popup міг блокуватись браузером. Той самий баг був у `formHref` картки послуги на дашборді.
+**What:**
+- `lib/clientApp.ts` (NEW): `clientFormUrl(slug)` будує **абсолютний** URL клієнта з `VITE_CLIENT_URL` (default — prod `legal-twa-xi.vercel.app`; для локалки виставити `http://localhost:5173`).
+- `ServiceViewPage`: кнопку-`window.open` замінено на справжній `<a target="_blank" rel="noreferrer">` зі стилем ghost — нативно клікабельний, без popup-блоку, відкривається у новій вкладці.
+- `DashboardPage`: `formHref` тепер `clientFormUrl(svc.slug)` (теж абсолютний).
+- `.env.example`: задокументовано `VITE_CLIENT_URL`.
+**Files:** `lib/clientApp.ts` (new), `admin/pages/ServiceViewPage.tsx` (anchor + import), `admin/pages/DashboardPage.tsx` (formHref + import), `.env.example`.
+**Tests:** `tsc -b` clean. Повний прогін у складі quality-gate сесії.
+
+### 2026-06-24 (session 46, ч.6) — Фікс: per-service пайплайн вилазив за межі; ширша сторінка послуги
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій помітив, що на сторінці послуги (Анатомія → Пайплайн) поля «вилазять» — viz-lab `ServiceDetail` був розрахований на широкий холст, а я вставив його у вузьку картку (`max-w-4xl`) з жорстким `maxWidth:760` всередині й фіксованою сіткою колонок. Карта конкретної послуги нікуди не зникла — вона на вкладці «Граф зв'язків».
+**What:**
+- `ServiceDetail` Band: прибрано cap `maxWidth:760` → банди беруть повну ширину контейнера.
+- Сітка полів форми: `repeat(4,1fr)` → `repeat(auto-fill, minmax(190px,1fr))` — колонки переливаються по ширині, не стискаються і не вилазять.
+- Stage обгорнуто в `overflow-x:auto`; у вбудованому режимі (`service` prop) прибрано зовнішню рамку-картку (більше немає картки-в-картці).
+- `FieldChip`: довгі id/підписи переносяться (`overflowWrap/word-break`).
+- Сторінку послуги розширено `max-w-4xl` → `max-w-5xl`, щоб усім вкладкам (пайплайн/граф/форма) було місце.
+- Перевірено: горизонтального overflow сторінки немає (scrollWidth == clientWidth) на формі з 55 полів / 4 таби.
+**Files:** `viz/views/ServiceDetail.tsx` (Band width, responsive grid, overflow-x, embedded no-card, chip wrap), `admin/pages/ServiceViewPage.tsx` (max-w-5xl).
+**Tests:** `tsc -b` clean · `vitest` 215/215 ✅ · eslint clean · Playwright (55-полів divorce-прев'ю): пайплайн без overflow, граф послуги рендериться.
+
+### 2026-06-24 (session 46, ч.5) — Алгоритм форми: дерево рішень + детальний список (на реальних show_if)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій хотів повернути viz-lab-вид «Алгоритм форми» — справжнє дерево розгалужень (ромб-ворота → гілка → вкладені поля), а не плоский список, що я зробив. Далі уточнив: лишити обидва — **граф** щоб одразу вловити суть, **детальний список** (з розкривними підпунктами) щоб пройтись по деталях.
+**What:**
+- `lib/formFlow.ts` (NEW, pure + tested): `deriveFormFlow(form, diff)` будує дерево `FlowStep` з реального `form_config.show_if` — поле, на яке посилаються інші, стає «ворітьми» (gate) з гілкою залежних полів (рекурсивно, з дедупом/анти-циклом); тег гілки («так», «ні», «= X») рахується з умови; прапор поля used/extra з diff; orphan (умова на неіснуюче поле) показується зверху, не ховається.
+- `viz/views/FormFlow.tsx` (NEW): дерево-візуал (порт viz-lab FormBranching) на `FlowStep[]` — ромби-ворота, гілка «{умова} →», поля тоновані used/extra.
+- `ServiceAnatomy` вкладка **Алгоритм форми** має тумблер **Дерево / Список**. Список (`FormList`) — ієрархічний розкривний: ворота згортають дочірні поля, поле розкриває деталі (умова, варіанти, підказка, id, чи друкує документ).
+- 6 unit-тестів на `deriveFormFlow` (start/end, gate+гілка, вкладені ворота, прапори, без дублів, orphan).
+**Files:** `lib/formFlow.ts` (NEW), `lib/__tests__/formFlow.test.ts` (NEW), `viz/views/FormFlow.tsx` (NEW), `admin/components/ServiceAnatomy.tsx` (тумблер Дерево/Список + FormList; прибрано тимчасовий плоский FormAlgorithm).
+**Tests:** `tsc -b` clean · `vitest` 215/215 ✅ · eslint clean · Playwright: і Дерево (вкладені ворота так/>0/=fixed), і Список (розкривні підпункти) рендеряться без pageerror.
+
+### 2026-06-24 (session 46, ч.4) — Розворот: per-service лінзи на сторінці послуги; системну «Карту» прибрано
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій подивився системну «Карту» (великий граф усіх послуг) і назвав її громіздкою/незручною. Рішення: прибрати її; натомість повернути per-service візуалізації з viz-lab (граф однієї послуги + білдер форми + тумблер подачі), але **на сторінці послуги, вкладками**, на реальних даних. Срочність/статистика — окрема вкладка пізніше.
+**What:**
+- **Сторінка послуги** отримала картку «Як влаштована послуга» з 3 вкладками + stat-трійка зверху:
+  - **Анатомія** — `ServiceDetail`, залочений на поточну послугу (тумблер **Пайплайн / Радіальний / Blueprint** з viz-lab, на реальному `VizService`).
+  - **Граф зв'язків** — граф однієї послуги (закон→стаття→послуга→документ) через `buildCatalogGraph([viz])` + `CatalogGraph` (з `hideChanges`).
+  - **Алгоритм форми** — нове `FormAlgorithm`: Старт → таби/поля з гілками `show_if` (через `describeShowIf`) → Документ, на реальному `form_config`.
+- `ServiceDetail` тепер приймає опційний `service?` (лочиться на одну послугу, ховає селектор). `CatalogGraph` — опційний `hideChanges` (одна колонка без панелі змін).
+- **Прибрано системну «Карту»**: роут `/map` + `MapPage` + пункт меню «Карта».
+- **Прибрано viz-lab-галерею** (тимчасову) і demo-only файли: `VizLabPage`, `TechnicalView`, `FormBranching`, `ServiceFocusGraph`, `CatalogGraphDemo`, `Prioritization`. Лишились `ServiceDetail` + `CatalogGraph` (тепер per-service), theme/icons/vizData/demoData.
+- Зі сторінки послуги прибрано стару «Форма як є» (її покрили Blueprint + Алгоритм форми).
+**Files:** `admin/components/ServiceAnatomy.tsx` (NEW: вкладки + FormAlgorithm), `admin/pages/ServiceViewPage.tsx` (вкладки замість пайплайна; -Форма як є), `viz/views/ServiceDetail.tsx` (+`service?` prop), `viz/views/CatalogGraph.tsx` (+`hideChanges`), `admin/AdminApp.tsx` (-/map, -/viz-lab), `admin/components/AdminLayout.tsx` (-Карта); deleted: `pages/MapPage.tsx`, `pages/VizLabPage.tsx`, `viz/views/{TechnicalView,FormBranching,ServiceFocusGraph,CatalogGraphDemo,Prioritization}.tsx`.
+**Tests:** `tsc -b` clean · `vitest` 209/209 ✅ · eslint clean · Playwright (тимч. прев'ю): усі 3 вкладки + тумблер Пайплайн/Радіальний/Blueprint рендеряться без pageerror.
+
+### 2026-06-24 (session 46, ч.3) — TEMP: повернув viz-lab галерею на `/viz-lab` для перегляду
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · **ТИМЧАСОВО — прибрати після перегляду**
+**Why:** Сергій попросив тимчасово повернути стару viz-lab галерею (демо-дані, без auth), щоб подивитися візуал.
+**What:** Відновив `VizLabPage` + 4 demo-види + `ServiceFocusGraph` з коміту до видалення (feb7691^). Оскільки `CatalogGraph` тепер props-версія для «Карти», стару демо-версію поклав окремим файлом `CatalogGraphDemo.tsx`, і `VizLabPage` імпортує саме її — нова «Карта» не зачеплена. Роут `/viz-lab` (без auth) повернуто.
+**Files:** `viz/views/CatalogGraphDemo.tsx` (NEW, стара демо-версія), `viz/views/{ServiceDetail,TechnicalView,FormBranching,Prioritization,ServiceFocusGraph}.tsx` (restored), `pages/VizLabPage.tsx` (restored + імпорт CatalogGraphDemo), `admin/AdminApp.tsx` (TEMP роут `/viz-lab`).
+**Tests:** `tsc -b` clean · Playwright `/viz-lab` рендериться без pageerror.
+
+### 2026-06-24 (session 46, ч.2) — «Дзеркало» послуги: анатомія-пайплайн замість стіни тексту
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сторінка конкретної послуги (`/services/:slug`) лишалася «старою»: блок «Стан» вивалював `serviceHealth().reasons` — по одному буллету на КОЖНЕ поле (≈30 рядків «Шаблон очікує дані «X», яких форма не питає»). Сергій хотів, щоб вона виглядала як дизайн-канва + ідеї viz-lab (заради чого viz-lab і робився). Переніс сигнатурний per-service пайплайн viz-lab на реальні дані.
+**What:**
+- **Прибрано стіну тексту:** замість переліку всіх reasons — стислий health-рядок (1 речення з лічильників) + лише *категорійні* зауваги (немає шаблону / зламаний show_if / змінені закони / поля без підпису). Per-field деталі тепер — кольорові чипи.
+- **Stat-трійка** (використано / не в шаблоні / бракує — великі тоновані числа), як у детальній панелі канви.
+- **Пайплайн** «Правова основа → форма → документ»: Band 1 — закони+статті з шаблону; Band 2 — таби формою, поля як чипи (зелені used / бурштинові extra); Band 3 — документ + червоний блок «шаблон чекає N полів» з missing-чипами. Усе на дизайн-токенах адмінки (та сама тепло-нейтральна палітра, що й канва), не на паралельній viz-палітрі.
+- `serviceHealth()` не чіпав (юніт-тести лишилися зелені) — змінив тільки подачу в `ServiceViewBody`.
+**Files:** `apps/client/src/admin/pages/ServiceViewPage.tsx` (ServiceViewBody redesign: concise health + StatCard + ServicePipeline/Band/Legend + ukr-plural helpers; прибрано AnatomyGroup і bullet-wall).
+**Tests:** `tsc -b` clean · `vitest` 209/209 ✅ · eslint clean · Playwright-скриншот (тимч. no-auth прев'ю з alimony-подібними даними: 24 поля, 22 missing) — health стислий, трійка 3/21/22, пайплайн із кольоровими чипами рендеряться без pageerror.
+
+### 2026-06-24 (session 46) — viz-lab → реальні сторінки: «Дзеркало» + нова «Карта»
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій усвідомив, що реальна сторінка послуги (`/services/:slug`, «дзеркало») і є те, чим мав бути viz-lab. Виявилось, viz-lab змішував два «зуми»: *одна послуга вглиб* (це «дзеркало» вже робить по-справжньому — дублювання) і *вся система разом* (граф «що на що впливає» + пріоритизація — цього «дзеркало» не покриває). Рішення Сергія: дві поверхні за зумом — «Дзеркало» лишається канонічною сторінкою однієї послуги (з каталогу), а системний граф стає **новим пунктом меню «Карта»** на реальних даних. viz-lab-галерею прибрано.
+**What:**
+- **Нова «Карта»** (`/map`, у сайдбарі, Network-іконка): системний граф закон→стаття→послуга→документ на РЕАЛЬНИХ даних через `serviceAnatomy`/`vizData`. Послуги пофарбовано за health; клік по послузі → перехід на її дзеркало; панель «Зміни законів» — з реального `law_change_log` (flagged), клік підсвічує зачеплені послуги. Бізнес-оверлей (виручка/попит) відкладено — немає джерела метрик.
+- **`buildCatalogGraph(services)`** — чиста функція авто-розкладки в 4 колонки (демо `NODES` були розкладені руками); документи вирівняно по рядку своєї послуги. Покрито 5 unit-тестами (ребра вказують на наявні вузли, колонки, дедуп спільних статей, без NaN).
+- `CatalogGraph` переписано на props (`nodes/edges/changes/services/onOpenService`), без demo-імпортів, без бізнес-оверлею і focus-режиму.
+- `VizService` отримав `citations` (live з `analysis.citations`; demo — хардкод під демо-граф).
+- **Прибрано viz-lab:** видалено `VizLabPage` + 4 demo-види (`ServiceDetail`, `TechnicalView`, `FormBranching`, `Prioritization`) + `ServiceFocusGraph`. Лишилось `theme/icons/vizData/demoData/CatalogGraph`.
+**Files:** `viz/vizData.ts` (+citations, +buildCatalogGraph), `viz/views/CatalogGraph.tsx` (props-rewrite), `pages/MapPage.tsx` (NEW), `viz/__tests__/catalogGraph.test.ts` (NEW), `admin/AdminApp.tsx` (роут `/map`, прибрано `/viz-lab`), `admin/components/AdminLayout.tsx` (пункт «Карта»); deleted: `pages/VizLabPage.tsx`, `viz/views/{ServiceDetail,TechnicalView,FormBranching,Prioritization,ServiceFocusGraph}.tsx`.
+**Tests:** `tsc -b` clean · `vitest` 209/209 ✅ · eslint clean (змінені файли) · Playwright-скриншот `/map` (demo-фолбэк прогнав реальну авто-розкладку): граф + підсвічення ланцюга + health-кольори рендеряться коректно.
+
+### 2026-06-23 (session 45) — viz-lab: пісочниця прототипів візуалізації послуг
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · demo-data only · route `/viz-lab` (без auth)
+**Why:** Сергію треба якісно показати, *як влаштовані наявні послуги* (а не будувати нові), моніторити вплив змін законів і пріоритизувати за грошима («що чинити першим»). Замість тексту — кликабельна пісочниця, де поруч лежать 5 шарів подачі однієї й тієї ж структури; Сергій тицяє й обирає, що живе. Світла тепло-нейтральна тема взята з його дизайн-канви (палітра винесена в один `theme.ts`, щоб легко правити кольори). Без нових залежностей — усе чистим SVG/inline-стилями (lucide вже стоїть).
+**What happened:**
+- 5 видів: **Каталог** (порт layered-графа «Що на що впливає» + тумблер Структура/Бізнес-оверлей: вузли за health, товщина зв'язку за попитом; панель змін законів рахує виручку під ризиком) · **Послуга детально** (3 макети поруч: пайплайн / радіальний ego-граф / document-blueprint) · **Технічна** (форма→n8n→Supabase→шаблон→PDF з health-крапками) · **Алгоритм форми** (decision-tree розгалужень за `show_if`, видно поля що «бракує у формі») · **Пріоритизація** (bubble попит×health×виручка + сортована таблиця + інсайт «найбільший важіль»).
+- Демо-дані у формі реальних типів (`FormField`/`show_if`, admin `Service`, law_chunks/relations) — свап на живий Supabase тривіальний.
+- **Побіжно виправлено латентний баг:** `AdminApp` useEffect звертався до `supabase!.auth` без перевірки на null → краш усієї адмінки у dev без Supabase-env. Додано `if (!supabase) return`.
+**Files:** `apps/client/src/admin/viz/theme.ts` (NEW), `viz/demoData.ts` (NEW), `viz/icons.tsx` (NEW), `viz/views/{CatalogGraph,ServiceDetail,TechnicalView,FormBranching,Prioritization}.tsx` (NEW), `apps/client/src/admin/pages/VizLabPage.tsx` (NEW), `apps/client/src/admin/AdminApp.tsx` (роут `/viz-lab` + null-guard).
+**Tests:** `tsc -b` clean · `npm run build:admin` ✅ · eslint clean · усі 5 видів відрендерено й знято скриншоти (Playwright) — рендеряться коректно.
+
+### 2026-06-23 (session 45, ч.3) — viz-lab: focus-режим (граф лише однієї послуги, #87)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · demo-data
+**Why:** Сергій просив на сесії 45 — клік по послузі має малювати граф **лише цієї послуги**
+(окрім загального). Це і відповідь на «що як структура величезна»: фокус на сусідстві вузла
+замість океану.
+**What:** Нова self-contained `ServiceFocusGraph` — підграф «закони → статті цієї послуги →
+послуга → документ», **авто-розкладка** (позиції рахуються з кількості вузлів, без ручних
+координат → чисто за будь-якої к-сті статей; заодно прев'ю масштаб-плану #90). Несе тумблер
+Структура/Бізнес-оверлей, шапку з health+анатомією+попитом+виручкою, перемикач послуг і помітку
+«змінено законом» на статтях із `CHANGES`. У `CatalogGraph` — кнопка «Граф лише цієї послуги» на
+вибраній послузі + гілка рендера у focus (повернення «← Усі послуги»).
+**Files:** `apps/client/src/admin/viz/views/ServiceFocusGraph.tsx` (NEW),
+`apps/client/src/admin/viz/views/CatalogGraph.tsx` (focus entry-point + branch).
+**Tests:** `tsc -b` clean · eslint clean · `npm run build:admin` ✅ · Playwright скриншоти
+(divorce + property focus) рендеряться без pageerror.
+
+### 2026-06-23 (session 45, ч.11) — DS: ReviewItem (черга на ревʼю) + Lucide-сайдбар; звірено з chat+brief
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Отримав повний експорт Claude Design (zip): README + `chats/chat1.md` (інтент) + `.dc.html` + `admin-ux-brief.md`. Прочитав інтент — **1-в-1** з тим, що будуємо (тепле тло #FAF9F5, синій #2563EB, Geist; дизайн-система + граф зв'язків). Добив два компоненти канви, яких бракувало в бібліотеці.
+**Що зроблено:**
+- **`ui/ReviewItem`** — єдиний інбокс-патерн (коментарі/заявки/зміни законів). «Позначити вирішеним» — **явна кнопка**, не бейдж (фікс UX-боргу session 42, прямо названий у брифі §3); resolved-стан (затемнення + «Відкрити знову»). На `/design`.
+- **`AdminLayout`** — Lucide-іконки замість емодзі (Briefcase/MessageSquare/FileText/ClipboardList; лого — Landmark-плитка #0E4D6E; вихід — LogOut). Структуру навігації лишено (як просить бриф §4).
+**Verify:** tsc/eslint clean; `/design` знято — «Черга на ревʼю» рендериться як канва.
+**Бандл-факти:** доп. `.dc.html`-екранів немає (один файл); шрифти — Geist з CDN (мій self-host коректний); `project/uploads/` — лише референси (бриф + скріни старої тёмної адмінки).
+**Next:** скласти решту сторінок із бібліотеки — ServiceView, 3 інбокси (на `ReviewItem`), ServiceEdit; Lucide-іконки в їхньому тілі.
+
+### 2026-06-23 (session 45, ч.10) — Admin design-system: бібліотека компонентів (`ui/`) + вітрина `/design`
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій запропонував (правильно) спершу зібрати **систему компонентів**, а сторінки потім **складати з неї** і добирати, чого бракує. Це канонічний DS-підхід.
+**Що зроблено:**
+- **`src/admin/ui/`** — примітиви в стилі канви: `Button` (primary/secondary/ghost/danger), `IconButton` (+`bare`), `Badge` (status-пілюля, тони ok/warn/danger/brand/neutral), `Chip` (field, used/extra/missing), `Field` (`Label`/`Input`/`Textarea` з м'яким focus-ring), `Card`+`SectionLabel`; barrel `index.ts`.
+- **`components/ServiceCard.tsx`** — композитна картка послуги за спекою канви (icon-tile + health-крапка + футер: статус-пілюля + lifecycle + Lucide eye/pencil/trash, hover-підйом).
+- **`pages/DesignKitPage.tsx`** + роут **`/design`** (без auth, як viz-lab) — жива вітрина всіх компонентів у світлій/тёмній. Дзеркало розділу «Бібліотека» з `.dc.html`.
+- **`DashboardPage`** — перша сторінка, **зібрана з бібліотеки** (ServiceCard + Lucide-іконки замість емодзі в шапці/empty-state).
+**Verify:** tsc/eslint clean; `/design` знято в обох темах (рендериться 1-в-1 як канва).
+**Next:** Lucide-сайдбар (`AdminLayout`), і решта сторінок — складати з `ui/`, додаючи компоненти за потреби.
+
+### 2026-06-23 (session 45, ч.9) — Admin design-system: Geist + канва-тінь + soft-blue nav (фундамент мови)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій: одних кольорів мало — треба **дизайн-мова** канви Claude Design (`.dc.html`), а не лише палітра. Перший крок — глобальні речі з найбільшим ефектом на відчуття: шрифт Geist, м'якша тінь карток, soft-blue активний пункт навігації (канва прямо каже «структуру сайдбара лишаємо», активний — м'яка синя плашка, не важка заливка).
+**Що зроблено:**
+- **Geist** (self-hosted через `@fontsource/geist-sans`+`geist-mono`, latin+cyrillic, ваги 400/500/600/700 + mono 400/500) — імпорт у `admin/main.tsx`, бандлиться локально (без рантайм-CDN). `tailwind.config`: `font-sans`=Geist, `font-mono`=Geist Mono.
+- **Тінь карток** → канва-значення (`shadow-card` `0 1px 3px rgba(31,30,27,.04)`, `card-hover` `0 4px 16px rgba(31,30,27,.06)`).
+- **Навігація**: активний пункт `bg-brand/10 text-brand` (м'яка плашка) замість важкого `bg-brand text-white`.
+**Verify:** build бандлить woff2 (latin+cyrillic); login-скрин підтверджує Geist (`getComputedStyle h1 → Geist`) + м'якшу тінь; tsc/build clean.
+**Лишилось (наступний етап — ребілд сторінок на компоненти канви):** Lucide-іконки замість емодзі (сайдбар/картки), картка послуги за спекою канви (icon-tile + health-крапка + футер зі статус-пілюлею + icon-кнопки), статус-пілюлі, чипи полів, type-scale H1/H2/секція. Це окремий захід по сторінці. (IMPROVEMENTS #91.)
+
+### 2026-06-23 (session 45, ч.8) — Admin design-system: повна раскатка по всіх сторінках
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** «Делай все» — перевести **всю** адмінку на токени (світла канва default + тёмна по перемикачу ☀/☾).
+**Що зроблено:** 14 файлів переведено зі `slate/blue/red/amber/green` на семантичні токени (4 паралельні агенти за строгою таблицею маппінгу). Сторінки: Dashboard, ServiceEdit, ServiceView, ServiceRequests, LawChangeLog (+`AiDraftCard`), NotesInbox, Forgot/Reset. Компоненти: `AdminLayout` (сайдбар), `FormBuilder`, `ServiceNotes`, `Toast`, `AdminApp` (спіннер). `lib/lawChangeLog.ts` — `ACTION_META`/`SEVERITY_META` на токени. **Перемикач ☀/☾ додано в `AdminLayout`** (сайдбар + мобільна шапка) — доступний на всіх сторінках після логіну.
+**Verify:** 0 leftover хардкод-кольорів; tsc/build clean; UI **191 ✓**; токен-скан без опечаток; forgot+login зняті в обох темах (рендеряться коректно). Авторизовані сторінки візуально не знято (нема логіну в контейнері) — Сергій гляне після pull.
+**Нюанси:** `text-white` лишається лише на кольорових кнопках; `bg-white` ×2 у ServiceEdit — навмисне (превʼю клієнтської форми на білому); `slate-700`/`slate-800` обидва → `paperAlt` (кілька hover-станів злилися — дрібниця); pre-existing eslint у `ServiceRequestsPage:52` (не від ретеми).
+
+### 2026-06-23 (session 45, ч.7) — Admin design-system: токени + перемикач теми + пілот (вхід)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій хоче всю адмінку у світлій канві (палітра viz-lab) з можливістю перемикати на темну. Замість зашитих кольорів (`bg-slate-900`…) у сотнях місць — **токен-система**: семантичні токени (`canvas/paper/ink/brand/warn`…) як CSS-змінні, один перемикач флипає все. Переходимо **поступово, по сторінці**.
+**Що зроблено (фундамент, один раз):**
+- `tailwind.config.js` — семантичні токени-кольори через `rgb(var(--c-…) / <alpha-value>)` (підтримка opacity, напр. `bg-warn/10`). Старі `surface`/`card` не чіпав (їх юзає Telegram-клієнт).
+- `src/index.css` — палітра у двох темах: `:root` (світла канва, з theme.ts) + `[data-theme="dark"]` (slate). + `color-scheme` для нативних контролів.
+- `src/admin/theme/{theme.ts,useTheme.ts,ThemeToggle.tsx}` — застосування теми (localStorage, default світла, `<html data-theme>`), хук, перемикач ☀/☾.
+**Пілот:** `src/admin/pages/LoginPage.tsx` переведено на токени + перемикач у кутку. Обидві теми перевірені скриншотами.
+**Поступовість:** перемикач глобальний, але реагують лише переведені сторінки; решта поки slate-тёмні — мігруємо по одній.
+**Tests:** UI 191 ✓, tsc/eslint clean, build:admin ✅.
+**Next:** мігрувати «Зміни законів» (+ карточка AiDraftCard), далі «Мої послуги» та інші. (IMPROVEMENTS #91.)
+
+### 2026-06-23 (session 45, ч.6) — law-change-impact G4: UI-картка «AI-чернетка»
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** L5 handoff — юрист бачить чернетку агента над своїми нотатками в панелі «Зміни законів» і вирішує. Read-only; `notes`/рішення лишаються людським SSoT.
+**Що зроблено:**
+- `lib/lawChangeLog.ts` — типи нових колонок (`AiStatus`, `AiImpactItem`, `ArticleDiffs`, розширено `LawChangeLogRow`) + хелпери `toAiStatus`/`confidencePct`/`SEVERITY_META`.
+- `admin/pages/LawChangeLogPage.tsx` — `AiDraftCard` над `notes`: бейдж впевненості / «утримався», summary, вплив по послугах (severity-крапка + slug + гіпотеза + чіпи статей), `DiffDetails` (сирий diff + лінк «Звірити з rada»), кнопка «Вставити в нотатку», дисклеймер. Select розширено новими колонками; **graceful** до migration 027 (помилка select → null → порожній список, без краша).
+**Tests:** `lawChangeLog.test.ts` +5 (toAiStatus/confidencePct/SEVERITY_META). UI **191 passed**, `tsc`/eslint clean, `build:admin` ✅.
+**Лишилось (інтеграція в редакторі n8n, не код-артефакт):** workflow `law-change-digest` (Schedule → добір pending → L2 scope RPC → L3 Groq HTTP → L4 critic Code → запис ai_*). Усі ноди/промпти готові (G2/G3) для копіпасту. Картку «вживу» видно після apply 027 + першого прогону дайджесту.
+
+### 2026-06-23 (session 45, ч.5) — law-change-impact G3: детерм. критик + промпти L3/L4
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Захист від галюцинацій навколо єдиного недетерм. кроку (L3 Groq). Критик звіряє чернетку з ground truth; провал → abstention (чернетки немає, лишається diff).
+**Що зроблено:**
+- `n8n/templates/law-change-groundedness.js` (L4a, без LLM) — кожен `slug` ∈ scope, кожна цитована стаття ∈ (diff ∪ scope.norms), кожен `evidence` ∈ diff дослівно → інакше RED → abstain. Перевіряє і prose (summary/hypothesis).
+- `n8n/prompts/law-change-digest.txt` (L3) — strict-JSON промпт: лише наданий diff як джерело, enum-констрейнт на статті/послуги, evidence дослівно, severity ≤ стеля scope, «невпевнений → коротше».
+- `n8n/prompts/law-change-critic.txt` (L4b) — незалежний дорадчий критик → AMBER на непідкріплені diff-ом інтерпретації.
+**Tests:** `law-change-groundedness.test.js` (6) — clean pass; RED на out-of-scope slug / out-of-set статтю / невірний evidence / prose-цитату; scope.norms як валідна цитата.
+**Next:** G4 (UI-картка «AI-чернетка» в панелі «Зміни законів» + типи). n8n-workflow JSON (дайджест) — інтеграція в редакторі n8n із цих готових нод/промптів.
+
+### 2026-06-23 (session 45, ч.4) — law-change-impact G2: scope + юридична severity (детерм.)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** L2 — детермінований розрахунок «які послуги зачеплено + наскільки серйозно» без LLM. Severity **юридична, не попит** (закриває зауваження viz-сесії 45). LLM (L3) пропонує свою, але обмежений цією стелею згори.
+**Що зроблено:** `n8n/templates/law-change-scope.js` (CJS, paste-в-Code-node) — `computeImpactScope` (direct service_slugs / `requires`/`overrides` → high; `clarifies` → medium; `references` → low; max по шляхах; traversal лише по **verified** рёбрах law_relations) + `diffTouchesNumbers` (substantive-токени гроші/%/дата/строк/ПМ → модуляція на щабель). Spec §3.1 уточнено (direct = high, не low — краще над-флагнути).
+**Tests:** `n8n/templates/__tests__/law-change-scope.test.js` (7) — direct+ripple severity, ігнор unverified рёбер, softening, порожній scope.
+**Next:** G3 (детерм. критик groundedness + промпти L3/L4), G4 (UI-картка).
+
+### 2026-06-23 (session 45, ч.3) — law-change-impact G1: детермінований diff (Node, без LLM)
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · ⚠️ **migration 027 чекає apply (Сергій)**
+**Why:** Перша група агента «що змінилось» — L0/L1: при зміні закону монітор знімає **детермінований diff редакцій** і кладе в `law_change_log`. Це ground truth, який юрист бачить навіть коли AI потім утримається. Без LLM, повністю на Node, повністю в тестах.
+**Що зроблено:**
+- `supabase/migrations/027_law_change_impact_fields.sql` — додає `article_diffs jsonb` + `ai_*` колонки (`ai_summary/ai_impact/ai_confidence/ai_status/ai_model/ai_generated_at`) у `law_change_log`. Additive (ADD COLUMN IF NOT EXISTS), `ai_status` CHECK pending|drafted|abstained|error + partial-index на pending-чергу. **Apply вручну в Supabase SQL Editor.**
+- `scripts/lib/law-text.mjs` — `fetchLawText` (повний текст rada, реюз retry/backoff з rada.mjs) + чисті `htmlToText`/`extractArticles` (розбивка за «Стаття N»).
+- `scripts/lib/law-diff.mjs` — чистий LCS line-diff без залежностей + `buildArticleDiffs` (поартикульно, з фолбеком на law-level; cap 32КБ → `truncated`).
+- `scripts/lib/law-impact.mjs` — `captureLawDiff` (оркестрація: стара з `law_documents.full_text` поки не stale + нова з rada → diff). Fail-soft: будь-яка дірка → null, монітор іде як сьогодні.
+- `scripts/lib/law-change.mjs` — `applyLawChange` пише `article_diffs` + `ai_status='pending'`; `check-law-updates.mjs` знімає diff **до** `is_stale`.
+**Tests:** +3 файли / +21 тест (`law-text`, `law-diff`, `law-impact`, `law-change`). Повний Node-прогон **945 passed**, 0 регресій.
+**⚠️ Ordering:** 027 треба застосувати в Supabase **до merge в main** — інакше insert монітора впаде на неіснуючих колонках (до merge прод-монітор на старому коді, не ламається).
+**Next:** G2 (scope/severity), G3 (критик + промпти), G4 (UI-картка).
+
+### 2026-06-23 (session 45, ч.2) — Tier-2 спека `law-change-impact` (агент «що змінилось»)
+**Status:** SPEC ONLY (без коду фічі) · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Після прототипу viz-lab Сергій обрав фічу №1 — агент, що при зміні закону **попередньо**
+описує юристу *що саме змінилось у тексті* і *як це впливає на кожну послугу*, замість сьогоднішнього
+сліпого «щось у СК змінилось, перевір вручну». Це єдиний реальний юр-ризик циклу (проґавлена зміна
+закону) і ідеально лягає на ескалаційну філософію (AI чернетка → підпис Олі). Tier 2, бо зачіпає
+юр-коректність + додає LLM-крок у раніше детермінований моніторинг → підхід треба затвердити ДО коду.
+**Архітектура (узгоджена з наявним кодом, survey субагентом):** дві стадії, поважаючи конвенцію
+«LLM лише в n8n». Монітор (Node, наявний CRON) робить L0-детект + **L1 детермінований diff редакцій**
+(стара з `law_documents.full_text` поки не stale, нова з rada) — знімок у новий рядок `law_change_log`,
+`ai_status='pending'`. n8n workflow `law-change-digest` добирає pending → L2 scope (`service_slugs` +
+обхід `law_relations`, severity = **юридична**, не попит) → L3 Groq (strict JSON, enum-констрейнт) →
+L4 критики + **abstention** → пише `ai_summary`/`ai_impact`/`ai_confidence`. Картка «AI-чернетка» в
+панелі «Зміни законів» (read-only, джерело rada, «Вставити в нотатку»); `notes`/рішення — людський SSoT.
+**Деградація ≥ сьогодні:** будь-яка помилка/abstention → лишається детермінований diff + флип, ніколи
+галюцинація. Migration 027 додає `article_diffs`/`ai_*` колонки.
+**Files (NEW):** `specs/features/law-change-impact/{plan,requirements,validation}.md`.
+**Files (touched):** `specs/roadmap.md` (рядок у v2.2 HITL), `docs/architecture/IMPROVEMENTS.md`
+(#87–#90 — viz-lab follow-ups: підграф по послузі, bubble overlap+семантика, живі дані+health, масштаб),
+`apps/client/.claude/changelog.md`.
+**Next:** реалізація за G1→G5 (Sonnet за готовою спекою); відкрити tracking-issue на старті коду.
+
 ### 2026-06-22 (session 44) — issue-гігієна: закрито #3/#8/#23 як superseded
 **Status:** MERGED (`chore/issue-hygiene-session-44` → main) · doc-only, нуль змін коду
 **Why:** Сесія-старт показала 15 backlog-issues, масово залитих 2026-06-07, що порушують політику CLAUDE.md (IMPROVEMENTS = бэклог ідей never-closed, GitHub Issues = work-units). Рішення Сергія: чистити content-driven — закривати лише ті, що переписані/перекриті пізнішим пунктом IMPROVEMENTS або вже зробленою роботою; решту актуальних лишити.

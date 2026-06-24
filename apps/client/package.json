@@ -20,6 +20,8 @@
     "scaffold": "node scripts/scaffold-service.mjs"
   },
   "dependencies": {
+    "@fontsource/geist-mono": "^5.2.8",
+    "@fontsource/geist-sans": "^5.2.5",
     "@supabase/supabase-js": "^2.99.1",
     "@twa-dev/sdk": "^8.0.2",
     "framer-motion": "^12.35.2",

@@ -1,6 +1,54 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-22 (session 44 — issue-гігієна: закрито #3/#8/#23 як superseded, решта backlog лишена; деталі нижче. ⚠️ session 43 (divorce #67) тримається held на гілці `fix/divorce-property-debt-variant-b` — її лог приїде в main при мерджі. | session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
+> Updated: 2026-06-23 (session 45 — admin design-system (світла Claude-Design канва + темна тема) + law-change-impact агент (Tier-2, G1-G4, migration 027 застосована) + viz-lab пісочниця; ⚠️ **УСЕ на гілці `claude/wizardly-dirac-qxqw5u`, НЕ змержено в main**, деталі нижче. | session 44 — issue-гігієна: закрито #3/#8/#23 як superseded, решта backlog лишена; деталі нижче. ⚠️ session 43 (divorce #67) тримається held на гілці `fix/divorce-property-debt-variant-b` — її лог приїде в main при мерджі. | session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
 > Прочитай эту секцію першою — вона найсвіжіша.
+
+---
+
+## 🆕 Session 45 (2026-06-23) — design-system + law-change-impact агент + viz-lab (велика, 3 теми, ВСЕ на гілці)
+
+### ⚠️ Стан гілки — читати першим
+- **УСЕ на `claude/wizardly-dirac-qxqw5u`, НЕ змержено в main** (~14 комітів). `main` чистий, не чіпали.
+- Свідомо порушено «1 сесія = 1 фокус»: дослідницько-дизайнерська сесія за бажанням Сергія, 3 паралельні напрями (A/B/C нижче).
+- **Migration 027 ЗАСТОСОВАНА Сергієм** (Supabase SQL Editor, Success) — `law_change_log` має `article_diffs`+`ai_*` колонки.
+- Тести: UI `npm test` **191 ✅**; Node `npx vitest run --root <repo> scripts n8n` **958 ✅**; tsc/build clean. Один **pre-existing** eslint `react-hooks/set-state-in-effect` у `ServiceRequestsPage:52` (не від цієї сесії).
+
+### A. viz-lab — пісочниця візуалізації послуг (route `/viz-lab`, demo-data, БЕЗ auth)
+- 5 видів: **Каталог** (layered-граф закон→стаття→послуга→документ + тумблер Структура/Бізнес-оверлей + панель «Зміни законів» з виручкою під ризиком), **Послуга детально** (3 макети), **Технічна** (пайплайн форма→n8n→Supabase→PDF), **Алгоритм форми** (decision-tree з `show_if`), **Пріоритизація** (bubble попит×health×виручка).
+- **#87 focus-граф:** клік по послузі → підграф ЛИШЕ її (auto-layout, не ручні координати). Код: `src/admin/viz/`.
+- Demo-дані у формі реальних типів (FormField/show_if, Service, law_chunks) → свап на живий Supabase тривіальний. Backlog: IMPROVEMENTS #87-90.
+
+### B. law-change-impact — агент «що змінилось» (Tier-2: спека + G1-G4 коду; n8n digest лишився)
+- **Навіщо:** при зміні закону агент ПОПЕРЕДНЬО описує юристу *що саме змінилось* і *вплив по послугах* — закриває єдиний юр-ризик (проґавлена зміна). AI чернетка → підпис Олі.
+- **Архітектура (2 стадії):** монітор (Node, наявний CRON) — L0 детект + L1 **детермінований diff** редакцій (знімок у рядок до `is_stale`); n8n `law-change-digest` — L2 scope + L3 Groq + L4 критик + abstention → пише `ai_*`. Severity **юридична**, не попит. Advisory-only, деградація ≥ сьогодні.
+- **Спека:** `specs/features/law-change-impact/{plan,requirements,validation}.md` (+ rows у roadmap).
+- **G1** (Node, без LLM): `scripts/lib/{law-text,law-diff,law-impact}.mjs`; `applyLawChange`+`check-law-updates.mjs` пишуть `article_diffs`+`ai_status='pending'`. **Migration 027 застосована.**
+- **G2:** `n8n/templates/law-change-scope.js` (computeImpactScope + diffTouchesNumbers).
+- **G3:** `n8n/templates/law-change-groundedness.js` (детерм. критик) + `n8n/prompts/law-change-{digest,critic}.txt`.
+- **G4 (UI):** картка «AI-чернетка» в `admin/pages/LawChangeLogPage.tsx` + типи `lib/lawChangeLog.ts` (graceful pre-migration).
+- **ЛИШИЛОСЯ:** зібрати **n8n workflow `law-change-digest`** (Schedule → добір `ai_status='pending' AND article_diffs IS NOT NULL` → L2 RPC → L3 Groq HTTP → L4 Code → запис ai_*) з готових `n8n/templates/law-change-*` + `n8n/prompts/law-change-*`. Тоді агент живий.
+- Демо-рядок для перегляду картки: INSERT у `law_change_log` (Сергій робив, прибрав).
+
+### C. Admin design-system — світла канва Claude Design + темна тема (фокус-вектор сесії)
+- **Джерело:** Claude Design експорт (`.dc.html` «Legal AI - Дизайн-система» + chat1.md інтент + admin-ux-brief.md). Інтент 1-в-1 з реалізацією. **DesignSync MCP НЕ авторизується в Claude Code Web** (`/design-login` потребує інтерактивного терміналу) → працюємо з файлів.
+- **Токени** — CSS-змінні `--c-*` (`index.css`) + Tailwind семантичні (`canvas/paper/paperAlt/line/ink/inkSoft/inkMute/brand/ok/warn/danger`) у 2 палітрах; перемикач ☀/☾ (`src/admin/theme/`, default світла, localStorage, `<html data-theme>`). **Вся адмінка (14 файлів) переведена** зі slate на токени (4 паралельні агенти).
+- **Geist** self-hosted (`@fontsource/geist-sans`+`geist-mono`, latin+cyrillic, bundled). Canva-тінь (`shadow-card`), **soft-blue active nav** (не важка заливка — як каже бриф).
+- **Бібліотека `src/admin/ui/`:** `Button/IconButton/Badge/Chip/Field(Label/Input/Textarea)/Card/SectionLabel/ReviewItem` + `components/ServiceCard`. Вітрина **`/design`** (без auth) — жива «Бібліотека» канви у світлій/тёмній.
+- **Сторінки складаються з бібліотеки:** Login ✅ (токени+перемикач), Dashboard «Мої послуги» ✅ (ServiceCard+Lucide), сайдбар `AdminLayout` ✅ (Lucide: Briefcase/MessageSquare/FileText/ClipboardList + Landmark-лого + LogOut).
+
+### 🔴 Наступний крок (за пріоритетом брифа §5 — йдемо по порядку)
+1. **Скласти решту сторінок із `ui/`** (кожна — окремий коміт + скрін де можу):
+   - **3 інбокси** (NotesInbox / ServiceRequests / LawChangeLog) на `ReviewItem` (+ фікс «✓ Вирішено» = явна кнопка).
+   - **ServiceView** «дзеркало» — анатомія на `Chip` + секції, сховати жаргон під «технічні деталі».
+   - **ServiceEdit** — таб-бар, прибрати «чеклист-пустушку».
+   - Lucide-іконки в тілі сторінок (де ще емодзі: 🔬🔗🧩👁✏️🗑💾).
+2. **n8n `law-change-digest`** workflow (B) — зібрати в редакторі.
+3. **viz-lab** → живі дані Supabase.
+4. **Merge:** гілка велика й багатотемна → ймовірно розбити на кілька PR при мерджі в main (viz-lab / agent / design-system).
+
+### Запуск середовища
+- Адмінка: `cd apps/client && npm run dev:admin` → `:5174` (логін Supabase з `.env.local`).
+- **Нові no-auth роути:** `/viz-lab` (пісочниця) і `/design` (бібліотека) — відкриваються БЕЗ логіну, зручно дивитись.
+- Тести: UI `npm test`; Node `npx vitest run --root /home/user/Legal-AI scripts n8n`. Білд: `npm run build:admin`.
 
 ---
 

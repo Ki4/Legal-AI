@@ -46,6 +46,7 @@ export function affectedServices(services, law) {
  * @param {string} [opts.oldDate]    previous revision date; derived from watched_laws if omitted
  * @param {'manual'|'cron'} [opts.detectedBy='manual']
  * @param {string} [opts.notes]
+ * @param {object} [opts.articleDiffs] deterministic L1 diff (law-impact.mjs) → law_change_log.article_diffs
  * @param {Array}  [opts.services]   pre-fetched services (avoids a round-trip); fetched if omitted
  * @param {boolean}[opts.dry=false]  when true, performs no writes
  * @returns {Promise<{ affected: Array, derivedOld: string|null, logRow: object|null }>}
@@ -57,6 +58,7 @@ export async function applyLawChange(client, opts) {
     oldDate = null,
     detectedBy = 'manual',
     notes = null,
+    articleDiffs = null,
     dry = false,
   } = opts;
 
@@ -81,6 +83,8 @@ export async function applyLawChange(client, opts) {
   if (dry) return { affected, derivedOld, logRow: null };
 
   // 1. Append the audit row (even with zero dependents — keeps a complete history).
+  //    article_diffs = deterministic L1 ground truth (may be null); ai_status='pending' marks
+  //    the row for the law-change-digest workflow (it skips rows with a null article_diffs).
   const [logRow] = await client.sbInsert('law_change_log', {
     law_slug: law.slug,
     law_title: law.title,
@@ -90,6 +94,8 @@ export async function applyLawChange(client, opts) {
     affected_services: affected.map((s) => s.slug),
     action: 'flagged',
     notes,
+    article_diffs: articleDiffs,
+    ai_status: 'pending',
   });
 
   // 2. Flip each dependent service + acknowledge the new revision date in watched_laws.

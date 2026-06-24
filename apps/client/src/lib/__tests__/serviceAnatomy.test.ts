@@ -37,6 +37,20 @@ describe('extractArticlesByLaw — parity with goldens', () => {
     expect(r.find((l) => l.slug === 'tsyvilnyi-protsesualnyi-kodeks')!.articles).toEqual(['27'])
   })
 
+  it('reads a comma list under a single "ст." (not only "ст.ст.")', () => {
+    // "ст. 110, 112 СК" — single abbreviation + comma list — captures BOTH articles.
+    const r = extractArticlesByLaw('ст. 110, 112 Сімейного кодексу України; ст. 4 Закону України «Про судовий збір»')
+    expect(r.find((l) => l.slug === 'simeinyi-kodeks')!.articles).toEqual(['110', '112'])
+    expect(r.find((l) => l.slug === 'pro-sudovyi-zbir')!.articles).toEqual(['4'])
+  })
+
+  it('does not bleed a list across a law boundary', () => {
+    // The list stops at the law name: "ст. 110 СК ... ст. 60 ЦПК" → 110 under СК, 60 under ЦПК.
+    const r = extractArticlesByLaw('ст. 110 Сімейного кодексу України, ст. 175 Цивільного процесуального кодексу України')
+    expect(r.find((l) => l.slug === 'simeinyi-kodeks')!.articles).toEqual(['110'])
+    expect(r.find((l) => l.slug === 'tsyvilnyi-protsesualnyi-kodeks')!.articles).toEqual(['175'])
+  })
+
   it('empty / no-citation text → []', () => {
     expect(extractArticlesByLaw('')).toEqual([])
     expect(extractArticlesByLaw('Просто текст без посилань')).toEqual([])

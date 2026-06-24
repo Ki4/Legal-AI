@@ -50,12 +50,16 @@ const ARTICLE_LIST = `${ARTICLE_SINGLE}(?:\\s*,\\s*${ARTICLE_SINGLE})*`
 const PREFIX = '(?:пп\\.\\s?(?<subpoint>\\d+)\\s*)?(?:п\\.\\s?(?<point>\\d+)\\s*)?(?:ч\\.\\s?(?<part>\\d+)\\s*)?'
 const FILLER = '[\\s_]*'
 
+// `single` accepts a comma list too ("ст. 110, 112 СК"), not just one article. The single "ст."
+// abbreviation is grammatically meant for one article, but hand-edited templates use it for lists;
+// without this they were dropped silently. expandArticleList handles both; "ст.ст." (multi) is
+// unchanged, so the existing golden templates (all using "ст.ст.") extract identically.
 const CITATION_THEN_LAW_RE = new RegExp(
-  `${PREFIX}(?:ст\\.\\s?ст\\.\\s?(?<multi>${ARTICLE_LIST})|ст\\.\\s?(?<single>${ARTICLE_SINGLE}))${FILLER}(?<law>${LAW_NAME_ALT})`,
+  `${PREFIX}(?:ст\\.\\s?ст\\.\\s?(?<multi>${ARTICLE_LIST})|ст\\.\\s?(?<single>${ARTICLE_LIST}))${FILLER}(?<law>${LAW_NAME_ALT})`,
   'g',
 )
 const LAW_THEN_PAREN_RE = new RegExp(
-  `(?<law>${LAW_NAME_ALT})\\s*\\(\\s*ст\\.\\s?(?<single>${ARTICLE_SINGLE})\\s*\\)`,
+  `(?<law>${LAW_NAME_ALT})\\s*\\(\\s*ст\\.\\s?(?<single>${ARTICLE_LIST})\\s*\\)`,
   'g',
 )
 

@@ -10,6 +10,19 @@
 
 ---
 
+### 2026-06-24 (session 45) — маркетинг-дослідження: сегменти, попит, канали, CustDev (docs-only)
+**Status:** COMMITTED + pushed · branch `claude/inspiring-gauss-72guy7` · doc-only, нуль змін коду/продукту · **PR не створювався**
+**Why:** Сергій замовив повноцінне marketing-research: які послуги востребувані зараз/будуть, де сидить аудиторія, як достукатись, що вона робить зараз. Мета — пріоритезувати напрям продукту даними, не інтуїцією.
+**What happened:**
+- 8 нових/розширених доків у `docs/research/` (усі **українською**, house-style: метадані, TL;DR, `⚖️ Критика` по блоках, Джерела з рівнями 🟢/🟡/🔴).
+- **Головний висновок:** держава автоматизує прості кейси безкоштовно (Дія.AI ~1 млн юзерів/тиждень, Reserv+ 333 тис. відстрочок) → тривкий платний попит у **складних/судових справах + міграції ЄС**.
+- **ТОП-сегменти:** NOW сімейне (тримати, диференціювати vs FastDoc) + військовий triage (тільки ескалація); NEXT легалізація ЄС (Польща CUKR 04.05.2026–04.03.2027) — після валідації WTP проти €0-НКО.
+- **3 GitHub issues відкрито:** #68 CustDev round 1, #69 family-law диференціація, #70 юрист-валідатор (військові). IMPROVEMENTS #87–89 додано.
+- ⚠️ **Верифікація:** `WebFetch` заблоковано egress-політикою (403 на всі хости, двічі перевірено) → усі цифри **search-verified** (URL існує + цифра у видачі), НЕ page-fetched. Лог `verification-log-2026.md`. Потрібен фінальний fetch при відкритому egress.
+**Files:** `docs/research/ukrainian-audience-market-research-2026.md`, `service-demand-map-2026.md`, `custdev-interview-guide-2026.md`, `verification-log-2026.md`, `action-roadmap-2026.md` (NEW); `docs/research/service-demand/02-segment-eu-legalization-2026.md`, `03-segment-ua-family-law-2026.md` (NEW); `service-demand/01-candidate-military-disputes.md` (+ч.2 GTM); `docs/architecture/IMPROVEMENTS.md` (#87–89).
+**Tests:** none (doc-only).
+**Note:** НЕ код-сесія — продукт не змінено. Issues #68–70 = work-units для подальших сесій. Гілка research-only, відкатна.
+
 ### 2026-06-22 (session 44) — issue-гігієна: закрито #3/#8/#23 як superseded
 **Status:** MERGED (`chore/issue-hygiene-session-44` → main) · doc-only, нуль змін коду
 **Why:** Сесія-старт показала 15 backlog-issues, масово залитих 2026-06-07, що порушують політику CLAUDE.md (IMPROVEMENTS = бэклог ідей never-closed, GitHub Issues = work-units). Рішення Сергія: чистити content-driven — закривати лише ті, що переписані/перекриті пізнішим пунктом IMPROVEMENTS або вже зробленою роботою; решту актуальних лишити.

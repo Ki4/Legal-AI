@@ -116,7 +116,11 @@ export function DesignKitPage() {
                 body="Уточнити формулювання щодо розміру аліментів у відсотках від доходу."
                 onResolve={() => {}} onOpen={() => {}}
               />
-              <ReviewItem title="Розірвання шлюбу" resolved onReopen={() => {}} />
+              <ReviewItem
+                title="Розірвання шлюбу" resolved
+                body="Загалом виглядає добре, дякую. Текст рішеного коментаря згорнутий за «Показати»."
+                onReopen={() => {}}
+              />
             </div>
           </Card>
         </div>

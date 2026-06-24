@@ -1,8 +1,9 @@
 // Unified review-queue item (Claude Design canvas) — one pattern for comments / requests /
 // law-changes. "Позначити вирішеним" is an explicit button, not a status badge (fixes the
-// session-42 UX debt called out in the brief). Resolved rows dim + offer "Відкрити знову".
-import { Check } from 'lucide-react'
-import type { ReactNode } from 'react'
+// session-42 UX debt called out in the brief). Resolved rows dim, keep the body collapsed
+// behind a "Показати"/"Сховати" toggle, and offer "Відкрити знову".
+import { Check, ChevronDown } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 
 export interface ReviewItemProps {
   title: ReactNode
@@ -20,22 +21,40 @@ export function ReviewItem({
   title, timestamp, body, resolved = false, openLabel = 'Відкрити послугу',
   onResolve, onReopen, onOpen, children,
 }: ReviewItemProps) {
+  const [showBody, setShowBody] = useState(false)
   if (resolved) {
+    const hasContent = Boolean(body || children)
     return (
       <div className="border border-line rounded-xl px-4 py-3.5 bg-paperAlt/60">
-        <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex items-center justify-between gap-3">
           <span className="text-sm font-semibold text-inkSoft line-through truncate">{title}</span>
           <span className="inline-flex items-center gap-1.5 text-[11.5px] text-ok flex-shrink-0">
             <Check size={13} strokeWidth={2.2} /> Вирішено
           </span>
         </div>
-        {onReopen && (
-          <button onClick={onReopen}
-            className="inline-flex items-center gap-1.5 text-[13px] font-medium text-inkSoft bg-paper
-                       border border-lineStrong rounded-[9px] px-3 py-1.5 hover:text-ink transition-colors">
-            Відкрити знову
-          </button>
+        {showBody && (
+          <div className="mt-2.5">
+            {body && <p className="text-[13px] text-inkSoft leading-relaxed">{body}</p>}
+            {children}
+          </div>
         )}
+        <div className="flex items-center gap-2.5 mt-2.5">
+          {hasContent && (
+            <button onClick={() => setShowBody((v) => !v)}
+              className="inline-flex items-center gap-1 text-[12.5px] font-medium text-inkMute hover:text-ink transition-colors">
+              <ChevronDown size={13} strokeWidth={2}
+                className={`transition-transform ${showBody ? '' : '-rotate-90'}`} />
+              {showBody ? 'Сховати' : 'Показати'}
+            </button>
+          )}
+          {onReopen && (
+            <button onClick={onReopen}
+              className="inline-flex items-center gap-1.5 text-[13px] font-medium text-inkSoft bg-paper
+                         border border-lineStrong rounded-[9px] px-3 py-1.5 hover:text-ink transition-colors">
+              Відкрити знову
+            </button>
+          )}
+        </div>
       </div>
     )
   }

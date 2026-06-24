@@ -17,20 +17,22 @@ const MAP_COLOR: Record<FieldMapping, { fg: string; bg: string; bd: string; dot:
 
 type Variant = 'pipeline' | 'radial' | 'blueprint'
 
-export function ServiceDetail() {
+// `service` locks the view to one service (the mirror page); without it, the old picker shows
+// all services from useVizServices() (kept for the standalone gallery / demo).
+export function ServiceDetail({ service }: { service?: VizService } = {}) {
   const { services, source } = useVizServices()
   const [svcId, setSvcId] = useState<string | null>(null)
   const [variant, setVariant] = useState<Variant>('pipeline')
-  const svc = services.find((s) => s.id === svcId) ?? services[0]
+  const svc = service ?? (services.find((s) => s.id === svcId) ?? services[0])
 
   if (!svc) return <div style={{ ...card, color: C.muted }}>Послуг ще немає.</div>
 
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center', marginBottom: 18 }}>
-        <Seg value={svc.id} onChange={setSvcId} options={services.map((s) => ({ value: s.id, label: s.title }))} />
+        {!service && <Seg value={svc.id} onChange={setSvcId} options={services.map((s) => ({ value: s.id, label: s.title }))} />}
         <span style={{ flex: 1 }} />
-        {source === 'demo' && <span style={{ fontSize: 11.5, color: C.muted }}>демо-дані</span>}
+        {!service && source === 'demo' && <span style={{ fontSize: 11.5, color: C.muted }}>демо-дані</span>}
         <Seg
           value={variant}
           onChange={(v) => setVariant(v as Variant)}

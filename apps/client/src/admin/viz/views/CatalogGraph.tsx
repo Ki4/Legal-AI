@@ -36,12 +36,13 @@ function connectedChain(sel: string, edges: [string, string][]): Set<string> {
   return set
 }
 
-export function CatalogGraph({ nodes, edges, changes, services, onOpenService }: {
+export function CatalogGraph({ nodes, edges, changes, services, onOpenService, hideChanges = false }: {
   nodes: VizNode[]
   edges: [string, string][]
   changes: CatalogChange[]
   services: VizService[]
   onOpenService: (slug: string) => void
+  hideChanges?: boolean
 }) {
   const [sel, setSel] = useState<string | null>(null)
   const [activeChange, setActiveChange] = useState<string | null>(null)
@@ -154,7 +155,7 @@ export function CatalogGraph({ nodes, edges, changes, services, onOpenService }:
       </div>
 
       {/* detail + law changes */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: hideChanges ? '1fr' : '1fr 1fr', gap: 24, marginTop: 24 }}>
         <div style={{ ...card, minHeight: 240 }}>
           {selNode ? (
             <div>
@@ -194,6 +195,7 @@ export function CatalogGraph({ nodes, edges, changes, services, onOpenService }:
         </div>
 
         {/* law changes */}
+        {!hideChanges && (
         <div style={card}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 5 }}>
             <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.muted }}>Зміни законів</span>
@@ -226,6 +228,7 @@ export function CatalogGraph({ nodes, edges, changes, services, onOpenService }:
             })}
           </div>
         </div>
+        )}
       </div>
     </div>
   )

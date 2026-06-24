@@ -10,6 +10,21 @@
 
 ---
 
+### 2026-06-24 (session 46, ч.4) — Розворот: per-service лінзи на сторінці послуги; системну «Карту» прибрано
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій подивився системну «Карту» (великий граф усіх послуг) і назвав її громіздкою/незручною. Рішення: прибрати її; натомість повернути per-service візуалізації з viz-lab (граф однієї послуги + білдер форми + тумблер подачі), але **на сторінці послуги, вкладками**, на реальних даних. Срочність/статистика — окрема вкладка пізніше.
+**What:**
+- **Сторінка послуги** отримала картку «Як влаштована послуга» з 3 вкладками + stat-трійка зверху:
+  - **Анатомія** — `ServiceDetail`, залочений на поточну послугу (тумблер **Пайплайн / Радіальний / Blueprint** з viz-lab, на реальному `VizService`).
+  - **Граф зв'язків** — граф однієї послуги (закон→стаття→послуга→документ) через `buildCatalogGraph([viz])` + `CatalogGraph` (з `hideChanges`).
+  - **Алгоритм форми** — нове `FormAlgorithm`: Старт → таби/поля з гілками `show_if` (через `describeShowIf`) → Документ, на реальному `form_config`.
+- `ServiceDetail` тепер приймає опційний `service?` (лочиться на одну послугу, ховає селектор). `CatalogGraph` — опційний `hideChanges` (одна колонка без панелі змін).
+- **Прибрано системну «Карту»**: роут `/map` + `MapPage` + пункт меню «Карта».
+- **Прибрано viz-lab-галерею** (тимчасову) і demo-only файли: `VizLabPage`, `TechnicalView`, `FormBranching`, `ServiceFocusGraph`, `CatalogGraphDemo`, `Prioritization`. Лишились `ServiceDetail` + `CatalogGraph` (тепер per-service), theme/icons/vizData/demoData.
+- Зі сторінки послуги прибрано стару «Форма як є» (її покрили Blueprint + Алгоритм форми).
+**Files:** `admin/components/ServiceAnatomy.tsx` (NEW: вкладки + FormAlgorithm), `admin/pages/ServiceViewPage.tsx` (вкладки замість пайплайна; -Форма як є), `viz/views/ServiceDetail.tsx` (+`service?` prop), `viz/views/CatalogGraph.tsx` (+`hideChanges`), `admin/AdminApp.tsx` (-/map, -/viz-lab), `admin/components/AdminLayout.tsx` (-Карта); deleted: `pages/MapPage.tsx`, `pages/VizLabPage.tsx`, `viz/views/{TechnicalView,FormBranching,ServiceFocusGraph,CatalogGraphDemo,Prioritization}.tsx`.
+**Tests:** `tsc -b` clean · `vitest` 209/209 ✅ · eslint clean · Playwright (тимч. прев'ю): усі 3 вкладки + тумблер Пайплайн/Радіальний/Blueprint рендеряться без pageerror.
+
 ### 2026-06-24 (session 46, ч.3) — TEMP: повернув viz-lab галерею на `/viz-lab` для перегляду
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · **ТИМЧАСОВО — прибрати після перегляду**
 **Why:** Сергій попросив тимчасово повернути стару viz-lab галерею (демо-дані, без auth), щоб подивитися візуал.

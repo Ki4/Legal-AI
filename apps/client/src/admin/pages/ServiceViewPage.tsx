@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Eye, Pencil, ChevronDown } from 'lucide-react'
 import { AdminLayout } from '../components/AdminLayout'
 import { ServiceNotes } from '../components/ServiceNotes'
+import { CommentLayer } from '../components/CommentLayer'
 import { Card, SectionLabel, Chip, Button, Badge, type BadgeTone, type ChipTone } from '../ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -160,7 +161,7 @@ export function ServiceViewBody({
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+      <div className="relative max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
         {/* Top bar */}
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/services')}
@@ -290,6 +291,9 @@ export function ServiceViewBody({
 
         {/* Lawyer feedback (slice 2) */}
         <ServiceNotes serviceSlug={svc.slug} authorEmail={authorEmail} />
+
+        {/* Zone-anchored comments overlay (migration 028) */}
+        <CommentLayer serviceSlug={svc.slug} authorEmail={authorEmail} />
       </div>
     </AdminLayout>
   )

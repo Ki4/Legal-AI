@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import type { CommentAnchor } from '../../lib/commentAnchor'
 
 export interface ServiceNote {
   id: number
@@ -8,6 +9,7 @@ export interface ServiceNote {
   body: string
   status: 'open' | 'done'
   created_at: string
+  anchor?: CommentAnchor | null // set → pinned to a page zone (shown as a marker, not in this list)
 }
 
 function fmtDate(iso: string): string {
@@ -63,6 +65,8 @@ export function ServiceNotes({ serviceSlug, authorEmail }: { serviceSlug: string
     await supabase.from('service_notes').update({ status: next }).eq('id', note.id)
   }
 
+  const plain = notes.filter((n) => !n.anchor)
+
   return (
     <section className="bg-paper border border-line rounded-2xl p-5 md:p-6">
       <h2 className="text-sm font-bold text-ink uppercase tracking-wide mb-1">💬 Коментарі юриста</h2>
@@ -90,13 +94,13 @@ export function ServiceNotes({ serviceSlug, authorEmail }: { serviceSlug: string
         </div>
       </div>
 
-      {/* List */}
+      {/* List — plain (un-pinned) comments only; zone-pinned ones live on the page as markers */}
       {loading && <div className="h-16 bg-paperAlt/50 rounded-xl animate-pulse" />}
-      {!loading && notes.length === 0 && (
+      {!loading && plain.length === 0 && (
         <p className="text-xs text-inkMute">Ще немає коментарів.</p>
       )}
       <div className="space-y-2">
-        {notes.map((n) => (
+        {plain.map((n) => (
           <div key={n.id} className={`px-3 py-2.5 rounded-xl border ${n.status === 'done' ? 'bg-canvas/40 border-line/60 opacity-60' : 'bg-paperAlt/50 border-line'}`}>
             <div className={`text-sm whitespace-pre-wrap break-words ${n.status === 'done' ? 'line-through text-inkMute' : 'text-ink'}`}>{n.body}</div>
             <div className="flex items-center gap-2 mt-1.5 text-[11px] text-inkMute">

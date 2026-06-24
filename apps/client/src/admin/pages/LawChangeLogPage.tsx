@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AdminLayout } from '../components/AdminLayout'
+import { ReviewItem } from '../ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -71,9 +72,9 @@ export function LawChangeLogPage() {
 
   return (
     <AdminLayout>
-      <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8">
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-6 md:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 md:mb-8">
+        <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-ink">Зміни законів</h1>
             <p className="text-inkSoft text-xs md:text-sm mt-1 hidden sm:block">
@@ -95,7 +96,7 @@ export function LawChangeLogPage() {
         {loading && (
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-28 bg-paper border border-line rounded-2xl animate-pulse" />
+              <div key={i} className="h-28 bg-paper border border-line rounded-xl animate-pulse" />
             ))}
           </div>
         )}
@@ -119,94 +120,108 @@ export function LawChangeLogPage() {
         {!loading && visible.length > 0 && (
           <div className="space-y-3">
             {visible.map((row) => (
-              <div
+              <LawChangeRow
                 key={row.id}
-                className="bg-paper border border-line rounded-2xl p-5 flex flex-col gap-3"
-              >
-                {/* Top: law + status */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 className="font-semibold text-ink text-sm">{row.law_title || row.law_slug}</h3>
-                    <p className="text-inkMute text-xs mt-0.5 font-mono">{formatRevision(row.old_revision_date, row.new_revision_date)}</p>
-                  </div>
-                  <span
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium flex-shrink-0 ${ACTION_META[row.action].badge}`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${ACTION_META[row.action].dot}`} />
-                    {ACTION_META[row.action].label}
-                  </span>
-                </div>
-
-                {/* Meta */}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-inkMute">
-                  <span>🕓 {formatDate(row.detected_at)}</span>
-                  <span>•</span>
-                  <span>{DETECTED_BY_LABEL[row.detected_by] ?? row.detected_by}</span>
-                  {row.reviewed_by && (
-                    <>
-                      <span>•</span>
-                      <span>✅ {row.reviewed_by}, {formatDate(row.reviewed_at)}</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Affected services */}
-                {row.affected_services.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-xs text-inkMute">Зачеплені послуги:</span>
-                    {row.affected_services.map((slug) => (
-                      <span
-                        key={slug}
-                        className="px-2 py-0.5 rounded-md bg-paperAlt text-inkSoft text-xs font-medium"
-                      >
-                        {slug}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* AI draft (law-change-impact agent) — read-only; lawyer decides */}
-                <AiDraftCard
-                  row={row}
-                  onInsert={(text) => setNotesDraft((d) => ({ ...d, [row.id]: text }))}
-                />
-
-                {/* Notes */}
-                <textarea
-                  value={notesDraft[row.id] ?? row.notes ?? ''}
-                  onChange={(e) => setNotesDraft((d) => ({ ...d, [row.id]: e.target.value }))}
-                  placeholder="Нотатка ревʼю (необовʼязково)…"
-                  rows={2}
-                  className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink
-                             placeholder:text-inkMute focus:outline-none focus:border-lineStrong resize-none"
-                />
-
-                {/* Actions */}
-                <div className="flex items-center gap-2 pt-1 border-t border-line">
-                  {reviewActions(row.action).map((action) => (
-                    <button
-                      key={action.to}
-                      onClick={() => review(row, action.to)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                        ${action.variant === 'primary'
-                          ? 'bg-brand/10 text-brand hover:bg-brand/25'
-                          : 'bg-paperAlt text-inkSoft hover:bg-paperAlt'}`}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                  {isPending(row.action) && row.affected_services.length > 0 && (
-                    <span className="text-xs text-inkMute ml-auto">
-                      Після ревʼю активуй послуги на «Мої послуги»
-                    </span>
-                  )}
-                </div>
-              </div>
+                row={row}
+                noteDraft={notesDraft[row.id] ?? row.notes ?? ''}
+                onNoteChange={(text) => setNotesDraft((d) => ({ ...d, [row.id]: text }))}
+                onReview={review}
+              />
             ))}
           </div>
         )}
       </div>
     </AdminLayout>
+  )
+}
+
+// ─── One law-change as a review-queue item ───────────────────────────────────
+// Pending: revision + meta + affected services + AI draft + notes in the body, the review
+// transitions (Переглянуто / Відхилити) as the explicit action row. Resolved (reviewed/
+// dismissed): dims, collapses the detail behind «Показати», badge shows the actual outcome,
+// «Повернути в очікування» re-opens it.
+export function LawChangeRow({
+  row, noteDraft, onNoteChange, onReview,
+}: {
+  row: LawChangeLogRow
+  noteDraft: string
+  onNoteChange: (text: string) => void
+  onReview: (row: LawChangeLogRow, next: LawChangeAction) => void
+}) {
+  const resolved = !isPending(row.action)
+
+  const actions = !resolved ? (
+    <>
+      {reviewActions(row.action).map((a) => (
+        <button
+          key={a.to}
+          onClick={() => onReview(row, a.to)}
+          className={a.variant === 'primary'
+            ? 'inline-flex items-center text-[13px] font-medium text-white bg-brand rounded-[9px] px-3.5 py-1.5 hover:bg-brand/90 transition-colors'
+            : 'text-[13px] font-medium text-inkSoft rounded-[9px] px-3 py-1.5 hover:bg-paperAlt hover:text-ink transition-colors'}
+        >
+          {a.label}
+        </button>
+      ))}
+    </>
+  ) : undefined
+
+  return (
+    <ReviewItem
+      title={row.law_title || row.law_slug}
+      timestamp={`🕓 ${formatDate(row.detected_at)}`}
+      resolved={resolved}
+      resolvedLabel={ACTION_META[row.action].label}
+      resolvedTone={row.action === 'reviewed' ? 'ok' : 'neutral'}
+      reopenLabel="Повернути в очікування"
+      onReopen={resolved ? () => onReview(row, 'flagged') : undefined}
+      actions={actions}
+    >
+      <div className="space-y-3 mb-3.5">
+        {/* Revision */}
+        <p className="text-inkMute text-xs font-mono">{formatRevision(row.old_revision_date, row.new_revision_date)}</p>
+
+        {/* Meta */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-inkMute">
+          <span>{DETECTED_BY_LABEL[row.detected_by] ?? row.detected_by}</span>
+          {row.reviewed_by && (
+            <>
+              <span>•</span>
+              <span>✅ {row.reviewed_by}, {formatDate(row.reviewed_at)}</span>
+            </>
+          )}
+        </div>
+
+        {/* Affected services */}
+        {row.affected_services.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs text-inkMute">Зачеплені послуги:</span>
+            {row.affected_services.map((slug) => (
+              <span key={slug} className="px-2 py-0.5 rounded-md bg-paperAlt text-inkSoft text-xs font-medium">
+                {slug}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* AI draft (law-change-impact agent) — read-only; lawyer decides */}
+        <AiDraftCard row={row} onInsert={onNoteChange} />
+
+        {/* Notes */}
+        <textarea
+          value={noteDraft}
+          onChange={(e) => onNoteChange(e.target.value)}
+          placeholder="Нотатка ревʼю (необовʼязково)…"
+          rows={2}
+          className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink
+                     placeholder:text-inkMute focus:outline-none focus:border-lineStrong resize-none"
+        />
+
+        {!resolved && row.affected_services.length > 0 && (
+          <p className="text-xs text-inkMute">Після ревʼю активуй послуги на «Мої послуги»</p>
+        )}
+      </div>
+    </ReviewItem>
   )
 }
 

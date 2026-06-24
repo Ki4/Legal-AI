@@ -64,4 +64,59 @@ describe('buildCatalogGraph', () => {
     expect(g.nodes.every((n) => Number.isFinite(n.x) && Number.isFinite(n.y))).toBe(true)
     expect(g.stageHeight).toBeGreaterThanOrEqual(560)
   })
+
+  it('even-spaces nodes down each column from the top (strictly increasing y per kind)', () => {
+    const ys = (k: string) => g.nodes.filter((n) => n.kind === k).map((n) => n.y)
+    for (const k of ['law', 'art', 'srv']) {
+      const col = ys(k)
+      for (let i = 1; i < col.length; i++) expect(col[i]).toBeGreaterThan(col[i - 1])
+      expect(col[0]).toBe(24) // TOP
+    }
+  })
+})
+
+describe('buildCatalogGraph — edge cases', () => {
+  it('returns an empty graph at the minimum stage height for no services', () => {
+    const g = buildCatalogGraph([])
+    expect(g.nodes).toEqual([])
+    expect(g.edges).toEqual([])
+    expect(g.stageHeight).toBe(560 + 24) // Math.max(560) + TOP
+  })
+
+  it('includes a citation-less service as a node with no incoming article edges', () => {
+    const g = buildCatalogGraph([svc('lonely', 'Самотня', [], true)])
+    expect(g.nodes.filter((n) => n.kind === 'law')).toHaveLength(0)
+    expect(g.nodes.filter((n) => n.kind === 'art')).toHaveLength(0)
+    expect(g.nodes.some((n) => n.id === 'lonely' && n.kind === 'srv')).toBe(true)
+    // only the service→document edge exists
+    expect(g.edges).toEqual([['lonely', 'lonely-doc']])
+  })
+
+  it('omits the document node + edge for a service without a doc', () => {
+    const g = buildCatalogGraph([svc('draft', 'Чернетка', [{ slug: 'sk', title: SK, articles: ['60'] }], false)])
+    expect(g.nodes.some((n) => n.kind === 'doc')).toBe(false)
+    expect(g.edges.some(([, t]) => t.endsWith('-doc'))).toBe(false)
+    // law→article→service still wired
+    expect(g.edges).toContainEqual(['sk', 'sk-60'])
+    expect(g.edges).toContainEqual(['sk-60', 'draft'])
+  })
+
+  it('labels the service sub with field count and a singular/plural tab word', () => {
+    const oneTab: VizService = { ...svc('s1', 'S1', [], false), tabs: [{ id: 'a', label: 'A' }] }
+    const g1 = buildCatalogGraph([oneTab])
+    expect(g1.nodes.find((n) => n.id === 's1')!.sub).toContain('1 таб')
+    // the shared fixture services have 2 tabs → "таби"
+    const gShared = buildCatalogGraph(SERVICES)
+    expect(gShared.nodes.find((n) => n.id === 'divorce')!.sub).toContain('таби')
+  })
+
+  it('dedupes a law/article shared across services into a single node and edge', () => {
+    // sk-180 is cited by both divorce and alimony in the shared fixture.
+    const gShared = buildCatalogGraph(SERVICES)
+    expect(gShared.nodes.filter((n) => n.id === 'sk-180')).toHaveLength(1)
+    expect(gShared.edges.filter((e) => e[0] === 'sk' && e[1] === 'sk-180')).toHaveLength(1)
+    // but the article fans out to both services
+    expect(gShared.edges).toContainEqual(['sk-180', 'divorce'])
+    expect(gShared.edges).toContainEqual(['sk-180', 'alimony'])
+  })
 })

@@ -18,6 +18,23 @@ describe('htmlToText', () => {
   it('returns empty string for non-string input', () => {
     expect(htmlToText(null)).toBe('');
     expect(htmlToText(undefined)).toBe('');
+    expect(htmlToText(42)).toBe('');
+  });
+
+  it('decodes numeric character references', () => {
+    // &#1057; = "С", &#8212; = em dash
+    expect(htmlToText('<p>&#1057;тигма &#8212; кінець</p>')).toBe('Стигма — кінець');
+  });
+
+  it('turns <br> and list/table block tags into newlines', () => {
+    const out = htmlToText('<li>один</li><li>два</li>рядок<br>далі<tr>клітинка</tr>');
+    expect(out.split('\n').length).toBeGreaterThan(1);
+    expect(out).toContain('один');
+    expect(out).toContain('два');
+  });
+
+  it('collapses runs of inline whitespace and trims', () => {
+    expect(htmlToText('  <p>  багато     пробілів  </p>  ')).toBe('багато пробілів');
   });
 });
 
@@ -38,6 +55,32 @@ describe('extractArticles', () => {
 
   it('returns {} when there are no article headers (caller falls back to law-level diff)', () => {
     expect(extractArticles('просто текст без заголовків статей')).toEqual({});
+  });
+
+  it('keeps preamble text out of the article map (only post-header text is captured)', () => {
+    const text = 'Преамбула без статті\nСтаття 1. Тіло першої.';
+    const arts = extractArticles(text);
+    expect(Object.keys(arts)).toEqual(['1']);
+    expect(arts['1']).not.toContain('Преамбула');
+    expect(arts['1']).toContain('Тіло першої');
+  });
+
+  it('returns {} for non-string input', () => {
+    expect(extractArticles(null)).toEqual({});
+    expect(extractArticles(undefined)).toEqual({});
+    expect(extractArticles(123)).toEqual({});
+  });
+
+  it('captures an article body that runs to end of text (last header)', () => {
+    const arts = extractArticles('Стаття 5. Перша.\nСтаття 6. Остання до кінця.');
+    expect(arts['6']).toContain('Остання до кінця');
+  });
+
+  it('only treats a header at line start (an inline "Стаття N" mid-line is not a split point)', () => {
+    // "див. Стаття 7" sits mid-line → not a header; "Стаття 1." at line start is.
+    const arts = extractArticles('Стаття 1. Текст з посиланням див. Стаття 7 в кінці.');
+    expect(Object.keys(arts)).toEqual(['1']);
+    expect(arts['1']).toContain('Стаття 7');
   });
 });
 

@@ -37,4 +37,35 @@ describe('captureLawDiff', () => {
     });
     expect(d).toBeNull();
   });
+
+  it('is fail-soft when the DB read throws (treats old text as empty)', async () => {
+    const client = { sbGet: async () => { throw new Error('db down'); } };
+    const d = await captureLawDiff(client, FAMILY, {
+      fetchText: async () => 'Стаття 182. Новий.',
+      now: () => '2026-06-23T12:00:00.000Z',
+    });
+    // old empty + new present → a diff that adds the new content (not null).
+    expect(d).not.toBeNull();
+    expect(d.law_code).toBe('2947-14');
+  });
+
+  it('produces a diff from stored old text even when the new fetch yields empty', async () => {
+    const client = { sbGet: async () => [{ full_text: 'Стаття 182. Старий.' }] };
+    const d = await captureLawDiff(client, FAMILY, {
+      fetchText: async () => '',
+      now: () => '2026-06-23T12:00:00.000Z',
+    });
+    expect(d).not.toBeNull();
+    // old has an article header, new is empty → law-level diff (no both-sides article split).
+    expect(d.level).toBe('law');
+  });
+
+  it('tolerates an empty rows array from the DB (no [0] row)', async () => {
+    const client = { sbGet: async () => [] };
+    const d = await captureLawDiff(client, FAMILY, {
+      fetchText: async () => 'Стаття 182. Новий.',
+      now: () => '2026-06-23T12:00:00.000Z',
+    });
+    expect(d.source_url).toBe(FAMILY.url);
+  });
 });

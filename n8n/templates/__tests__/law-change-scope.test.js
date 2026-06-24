@@ -64,6 +64,79 @@ describe('computeImpactScope', () => {
     })
     expect(scope.services).toEqual([])
   })
+
+  it('takes the MAX severity over all paths to a service (high beats low)', () => {
+    // alimony is reached directly (high) and also via references(175) (low) → high wins.
+    const scope = computeImpactScope({
+      changedArticles: ['182'], lawCode: '2947-14', lawChunks: CHUNKS, lawRelations: RELATIONS,
+    })
+    const alimony = scope.services.find((s) => s.slug === 'alimony')
+    expect(alimony.severity).toBe('high')
+    // it collected both its own article (182) and the rippled ones (184 via requires, 175 via references)
+    expect(alimony.articles).toEqual(['175', '182', '184'])
+    expect(alimony.relations).toEqual(expect.arrayContaining(['direct', 'requires', 'references']))
+  })
+
+  it('treats an `overrides` relation at the high ceiling', () => {
+    const chunks = [
+      { id: 'a', law_code: 'L', article_num: '1', service_slugs: [] },             // changed, serves nothing directly
+      { id: 'b', law_code: 'L', article_num: '2', service_slugs: ['svc-over'] },    // neighbor via overrides
+    ]
+    const relations = [{ from_chunk_id: 'a', to_chunk_id: 'b', relation_type: 'overrides', verified_by: 'olga@x' }]
+    const scope = computeImpactScope({ changedArticles: ['1'], lawCode: 'L', lawChunks: chunks, lawRelations: relations })
+    expect(sev(scope, 'svc-over')).toBe('high')
+  })
+
+  it('maps an unknown relation_type to the low ceiling', () => {
+    const chunks = [
+      { id: 'a', law_code: 'L', article_num: '1', service_slugs: [] },
+      { id: 'b', law_code: 'L', article_num: '2', service_slugs: ['svc-x'] },
+    ]
+    const relations = [{ from_chunk_id: 'a', to_chunk_id: 'b', relation_type: 'mentions', verified_by: 'olga@x' }]
+    const scope = computeImpactScope({ changedArticles: ['1'], lawCode: 'L', lawChunks: chunks, lawRelations: relations })
+    expect(sev(scope, 'svc-x')).toBe('low')
+  })
+
+  it('keeps a low severity at low when softening (no underflow below low)', () => {
+    const scope = computeImpactScope({
+      changedArticles: ['182'], lawCode: '2947-14', lawChunks: CHUNKS, lawRelations: RELATIONS,
+      touchesNumbers: false,
+    })
+    // divorce/property only reachable via references → already low, stays low.
+    expect(sev(scope, 'divorce')).toBe('low')
+    expect(sev(scope, 'property')).toBe('low')
+  })
+
+  it('sorts services by severity desc, then slug asc', () => {
+    const scope = computeImpactScope({
+      changedArticles: ['182'], lawCode: '2947-14', lawChunks: CHUNKS, lawRelations: RELATIONS,
+    })
+    const order = scope.services.map((s) => s.slug)
+    // highs first (alimony, alimony-change — alphabetical), then lows (divorce, property)
+    expect(order).toEqual(['alimony', 'alimony-change', 'divorce', 'property'])
+  })
+
+  it('builds a deduped, numerically-sorted norms list from changed + rippled articles', () => {
+    const scope = computeImpactScope({
+      changedArticles: ['182'], lawCode: '2947-14', lawChunks: CHUNKS, lawRelations: RELATIONS,
+    })
+    expect(scope.norms).toEqual(['175', '182', '184'])
+  })
+
+  it('treats a direct-serving change with no relations as high and only its own article', () => {
+    const scope = computeImpactScope({
+      changedArticles: ['184'], lawCode: '2947-14', lawChunks: CHUNKS, lawRelations: [],
+    })
+    expect(sev(scope, 'alimony')).toBe('high')
+    expect(scope.services.find((s) => s.slug === 'alimony').articles).toEqual(['184'])
+  })
+
+  it('survives missing arrays (null chunks / relations / changedArticles)', () => {
+    const scope = computeImpactScope({ changedArticles: null, lawCode: 'L', lawChunks: null, lawRelations: null })
+    expect(scope.services).toEqual([])
+    expect(scope.changed_articles).toEqual([])
+    expect(scope.norms).toEqual([])
+  })
 })
 
 describe('diffTouchesNumbers', () => {

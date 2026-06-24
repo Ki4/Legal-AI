@@ -7,6 +7,7 @@ import {
   reviewActions,
   formatRevision,
   ACTION_META,
+  DETECTED_BY_LABEL,
   toAiStatus,
   confidencePct,
   SEVERITY_META,
@@ -88,6 +89,10 @@ describe('formatRevision', () => {
   it('falls back to ? for an unknown new date', () => {
     expect(formatRevision('2026-01-01', null)).toBe('2026-01-01 → ?')
   })
+
+  it('shows just "→ ?" when both dates are unknown', () => {
+    expect(formatRevision(null, null)).toBe('→ ?')
+  })
 })
 
 describe('ACTION_META', () => {
@@ -95,6 +100,20 @@ describe('ACTION_META', () => {
     expect(ACTION_META.flagged.label).toBeTruthy()
     expect(ACTION_META.reviewed.label).toBeTruthy()
     expect(ACTION_META.dismissed.label).toBeTruthy()
+  })
+
+  it('provides a tailwind dot + badge class for every action', () => {
+    for (const a of ['flagged', 'reviewed', 'dismissed'] as const) {
+      expect(ACTION_META[a].dot).toMatch(/^bg-/)
+      expect(ACTION_META[a].badge).toMatch(/(bg-|text-)/)
+    }
+  })
+})
+
+describe('DETECTED_BY_LABEL', () => {
+  it('labels both detection sources in Ukrainian', () => {
+    expect(DETECTED_BY_LABEL.manual).toBe('Вручну')
+    expect(DETECTED_BY_LABEL.cron).toBe('Автоматично')
   })
 })
 
@@ -119,6 +138,13 @@ describe('confidencePct', () => {
   })
   it('returns null when confidence is absent', () => {
     expect(confidencePct(null)).toBeNull()
+  })
+
+  it('rounds to the nearest whole percent and renders 0%', () => {
+    expect(confidencePct(0)).toBe('0%')          // 0 is present, not absent
+    expect(confidencePct(0.005)).toBe('1%')      // rounds half up
+    expect(confidencePct(0.004)).toBe('0%')
+    expect(confidencePct(0.876)).toBe('88%')
   })
 })
 

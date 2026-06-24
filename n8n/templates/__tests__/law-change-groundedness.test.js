@@ -72,4 +72,56 @@ describe('checkLawChangeGroundedness', () => {
       CTX)
     expect(r.has_red).toBe(false)
   })
+
+  it('never raises an AMBER span (this critic only RED-flags or passes)', () => {
+    const clean = checkLawChangeGroundedness(CLEAN_DRAFT, CTX)
+    expect(clean.has_amber).toBe(false)
+    const dirty = checkLawChangeGroundedness({ ...CLEAN_DRAFT, summary: 'ст.999' }, CTX)
+    expect(dirty.has_amber).toBe(false)
+    expect(dirty.has_red).toBe(true)
+  })
+
+  it('matches evidence after trimming surrounding whitespace', () => {
+    const r = checkLawChangeGroundedness(
+      { ...CLEAN_DRAFT, per_service: [{ ...CLEAN_DRAFT.per_service[0], evidence: '   Нова формула 50 відсотків.   ' }] },
+      CTX)
+    expect(r.has_red).toBe(false)
+  })
+
+  it('passes a draft with no per_service items and no prose citations', () => {
+    const r = checkLawChangeGroundedness({ summary: 'Загальний огляд без цитат.', per_service: [] }, CTX)
+    expect(r.spans).toEqual([])
+    expect(r.has_red).toBe(false)
+  })
+
+  it('is defensive against a null draft / missing ctx', () => {
+    expect(checkLawChangeGroundedness(null, {}).has_red).toBe(false)
+    expect(checkLawChangeGroundedness(null).spans).toEqual([])
+    expect(checkLawChangeGroundedness(undefined, undefined).has_red).toBe(false)
+  })
+
+  it('flags multiple independent problems in one draft (service + article + evidence)', () => {
+    const r = checkLawChangeGroundedness({
+      summary: 'Огляд.',
+      per_service: [{ slug: 'ghost', articles: ['999'], hypothesis: 'X', evidence: 'вигадка' }],
+    }, CTX)
+    const types = r.spans.map((s) => s.type).sort()
+    expect(types).toEqual(['citation', 'evidence', 'service'])
+    expect(r.has_red).toBe(true)
+  })
+
+  it('catches a hallucinated article cited only in a per_service hypothesis prose', () => {
+    const r = checkLawChangeGroundedness({
+      ...CLEAN_DRAFT,
+      per_service: [{ ...CLEAN_DRAFT.per_service[0], hypothesis: 'Можливо також ст.777 застосовна.' }],
+    }, CTX)
+    expect(r.has_red).toBe(true)
+    expect(r.spans.some((s) => s.type === 'citation' && s.text === 'ст.777')).toBe(true)
+  })
+
+  it('reads "статті N" prose form, not just "ст.N", as a citation', () => {
+    const r = checkLawChangeGroundedness({ ...CLEAN_DRAFT, summary: 'Відповідно до статті 999 СК.' }, CTX)
+    expect(r.has_red).toBe(true)
+    expect(r.spans.some((s) => s.type === 'citation')).toBe(true)
+  })
 })

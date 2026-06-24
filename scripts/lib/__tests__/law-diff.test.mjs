@@ -14,6 +14,28 @@ describe('diffLines', () => {
     expect(ops.find((o) => o.op === 'remove')?.line).toBe('old');
     expect(ops.find((o) => o.op === 'add')?.line).toBe('new');
   });
+
+  it('handles a pure insertion at the end', () => {
+    const { ops, coarse } = diffLines(['a'], ['a', 'b']);
+    expect(coarse).toBe(false);
+    expect(ops.map((o) => o.op)).toEqual(['same', 'add']);
+    expect(ops[1].line).toBe('b');
+  });
+
+  it('handles a pure deletion', () => {
+    const { ops } = diffLines(['a', 'b', 'c'], ['a', 'c']);
+    expect(ops.filter((o) => o.op === 'remove').map((o) => o.line)).toEqual(['b']);
+  });
+
+  it('falls back to a coarse remove-then-add block diff past the size guard', () => {
+    const big = Array.from({ length: 4001 }, (_, i) => `line ${i}`);
+    const { ops, coarse } = diffLines(big, big.slice());
+    expect(coarse).toBe(true);
+    // coarse mode emits every old line as remove, then every new line as add (no LCS "same")
+    expect(ops.some((o) => o.op === 'same')).toBe(false);
+    expect(ops.filter((o) => o.op === 'remove')).toHaveLength(4001);
+    expect(ops.filter((o) => o.op === 'add')).toHaveLength(4001);
+  });
 });
 
 describe('buildArticleDiffs — per-article', () => {
@@ -37,6 +59,32 @@ describe('buildArticleDiffs — per-article', () => {
     const d = buildArticleDiffs({ oldText, newText, now: FIXED });
     expect(d.changed_articles).toEqual(['200']);
     expect(d.hunks[0]).toMatchObject({ article_num: '200', op: 'added' });
+  });
+
+  it('flags a removed article as op "removed"', () => {
+    const oldText = 'Стаття 182. Текст.\nСтаття 200. Зайва стаття.';
+    const newText = 'Стаття 182. Текст.';
+    const d = buildArticleDiffs({ oldText, newText, now: FIXED });
+    expect(d.changed_articles).toEqual(['200']);
+    expect(d.hunks[0]).toMatchObject({ article_num: '200', op: 'removed' });
+    expect(d.hunks[0].added).toEqual([]);
+    expect(d.hunks[0].removed.join(' ')).toContain('Зайва');
+  });
+
+  it('reports several changed articles, numerically sorted', () => {
+    const oldText = 'Стаття 9. A.\nСтаття 10. B.\nСтаття 100. C.';
+    const newText = 'Стаття 9. A2.\nСтаття 10. B.\nСтаття 100. C2.';
+    const d = buildArticleDiffs({ oldText, newText, now: FIXED });
+    // 9 and 100 changed; 10 unchanged. Sorted numerically (9 before 100), not lexically.
+    expect(d.changed_articles).toEqual(['9', '100']);
+  });
+
+  it('keys a hyphenated article (182-1) on its full number', () => {
+    const oldText = 'Стаття 182-1. Старе.';
+    const newText = 'Стаття 182-1. Нове.';
+    const d = buildArticleDiffs({ oldText, newText, now: FIXED });
+    expect(d.changed_articles).toEqual(['182-1']);
+    expect(d.hunks[0].op).toBe('changed');
   });
 
   it('returns no hunks when the texts are identical', () => {

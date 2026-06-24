@@ -220,7 +220,7 @@ export function DashboardPage() {
                   healthTitle={hd.title}
                   status={svc.status}
                   formHref={`/?service=${svc.slug}`}
-                  onOpen={() => navigate(`/services/${svc.id}`)}
+                  onOpen={() => navigate(`/services/${svc.slug}`)}
                   onEdit={() => navigate(`/services/${svc.id}/edit`)}
                   onDelete={() => deleteService(svc.id)}
                   onStatus={(to) => changeStatus(svc, to)}

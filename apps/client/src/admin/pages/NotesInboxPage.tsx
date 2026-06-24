@@ -36,7 +36,7 @@ export function NoteRow({
       openLabel="Відкрити послугу"
       onResolve={() => onToggle(note)}
       onReopen={() => onToggle(note)}
-      onOpen={service && onOpen ? () => onOpen(service.id) : undefined}
+      onOpen={service && onOpen ? () => onOpen(service.slug) : undefined}
     />
   )
 }

@@ -46,7 +46,7 @@ export function AdminApp() {
       <Route path="services" element={<AdminGuard><DashboardPage /></AdminGuard>} />
       <Route path="services/new" element={<AdminGuard><ServiceEditPage /></AdminGuard>} />
       <Route path="services/:id/edit" element={<AdminGuard><ServiceEditPage /></AdminGuard>} />
-      <Route path="services/:id" element={<AdminGuard><ServiceViewPage /></AdminGuard>} />
+      <Route path="services/:slug" element={<AdminGuard><ServiceViewPage /></AdminGuard>} />
       <Route path="notes" element={<AdminGuard><NotesInboxPage /></AdminGuard>} />
       <Route path="requests" element={<AdminGuard><ServiceRequestsPage /></AdminGuard>} />
       <Route path="law-changes" element={<AdminGuard><LawChangeLogPage /></AdminGuard>} />

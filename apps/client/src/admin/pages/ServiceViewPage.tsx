@@ -50,7 +50,7 @@ function emptyConfig(): FormConfig {
 }
 
 export function ServiceViewPage() {
-  const { id } = useParams<{ id: string }>()
+  const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
 
@@ -61,18 +61,18 @@ export function ServiceViewPage() {
   const [pendingChanges, setPendingChanges] = useState<{ law_title: string }[]>([])
 
   useEffect(() => {
-    if (!supabase || !user || !id) return
+    if (!supabase || !user || !slug) return
     supabase
       .from('services')
       .select('id, slug, title, description, icon, price, status, generation_mode, document_template, form_config')
-      .eq('id', id)
+      .eq('slug', slug)
       .single()
       .then(({ data, error }) => {
         if (error) { setError(error.message); setLoading(false); return }
         setSvc({ ...data, status: toServiceStatus(data.status) } as ServiceRow)
         setLoading(false)
       })
-  }, [id, user])
+  }, [slug, user])
 
   const analysis = useMemo(() => analyzeTemplate(svc?.document_template ?? ''), [svc?.document_template])
 

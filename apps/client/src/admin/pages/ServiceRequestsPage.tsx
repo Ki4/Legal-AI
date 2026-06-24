@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AdminLayout } from '../components/AdminLayout'
+import { ReviewItem } from '../ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -27,6 +28,50 @@ function fmtDate(iso: string): string {
 
 function uniqueId(): string {
   return (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`).slice(0, 12)
+}
+
+/**
+ * One service request as a review-queue item: requested service is the title, description the
+ * body, the laws + the example document (the actual brief for a future template) live in the
+ * ReviewItem children. "Позначити вирішеним" is an explicit button (via ReviewItem).
+ */
+export function RequestRow({
+  req, onToggle, onOpenExample,
+}: {
+  req: ServiceRequest
+  onToggle: (r: ServiceRequest) => void
+  onOpenExample: (path: string) => void
+}) {
+  const extras = (req.laws_text || req.example_file_path) ? (
+    <div className="space-y-2 mb-3.5">
+      {req.laws_text && (
+        <p className="text-xs text-inkSoft whitespace-pre-wrap break-words">
+          <span className="text-inkMute">Закони: </span>{req.laws_text}
+        </p>
+      )}
+      {req.example_file_path && (
+        <button
+          onClick={() => onOpenExample(req.example_file_path!)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-brand bg-brand/10 hover:bg-brand/20 rounded-lg px-2.5 py-1 transition-colors"
+        >
+          📄 Приклад документа
+        </button>
+      )}
+    </div>
+  ) : null
+
+  return (
+    <ReviewItem
+      title={req.title}
+      timestamp={`${req.requested_by_email ?? 'юрист'} · ${fmtDate(req.created_at)}`}
+      body={req.description ?? undefined}
+      resolved={req.status === 'done'}
+      onResolve={() => onToggle(req)}
+      onReopen={() => onToggle(req)}
+    >
+      {extras}
+    </ReviewItem>
+  )
 }
 
 /**
@@ -200,30 +245,7 @@ export function ServiceRequestsPage() {
 
         <div className="space-y-3">
           {visible.map((r) => (
-            <div key={r.id} className={`bg-paper border border-line rounded-2xl p-4 ${r.status === 'done' ? 'opacity-60' : ''}`}>
-              <div className="flex items-start gap-2">
-                <h3 className={`text-sm font-semibold flex-1 ${r.status === 'done' ? 'line-through text-inkMute' : 'text-ink'}`}>{r.title}</h3>
-                <button onClick={() => toggle(r)} className="px-2 py-0.5 rounded-md bg-paperAlt hover:bg-paperAlt text-inkSoft text-[11px] transition-colors shrink-0">
-                  {r.status === 'open' ? '✓ Вирішено' : '↩ Відкрити'}
-                </button>
-              </div>
-              {r.description && <p className="text-sm text-inkSoft whitespace-pre-wrap break-words mt-2">{r.description}</p>}
-              {r.laws_text && (
-                <p className="text-xs text-inkSoft whitespace-pre-wrap break-words mt-2">
-                  <span className="text-inkMute">Закони: </span>{r.laws_text}
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-3 text-[11px] text-inkMute">
-                {r.example_file_path && (
-                  <button onClick={() => openExample(r.example_file_path!)} className="px-2 py-0.5 rounded-md bg-brand/10 hover:bg-brand/30 text-brand transition-colors">
-                    📄 Приклад документа
-                  </button>
-                )}
-                <span>{r.requested_by_email ?? 'юрист'}</span>
-                <span>•</span>
-                <span>{fmtDate(r.created_at)}</span>
-              </div>
-            </div>
+            <RequestRow key={r.id} req={r} onToggle={toggle} onOpenExample={openExample} />
           ))}
         </div>
       </div>

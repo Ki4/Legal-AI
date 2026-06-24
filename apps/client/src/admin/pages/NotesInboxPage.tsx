@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AdminLayout } from '../components/AdminLayout'
+import { ReviewItem } from '../ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { ServiceNote } from '../components/ServiceNotes'
@@ -10,6 +11,34 @@ interface ServiceRef { id: string; slug: string; title: string }
 function fmtDate(iso: string): string {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+/**
+ * One comment as a review-queue item. The service it's about is the title (tap «Відкрити
+ * послугу»), the comment is the body, author + date the byline. «Позначити вирішеним» is an
+ * explicit button (via ReviewItem) — fixes the session-42 «✓ Вирішено reads like a badge» debt.
+ */
+export function NoteRow({
+  note, service, onToggle, onOpen,
+}: {
+  note: ServiceNote
+  service?: ServiceRef
+  onToggle: (n: ServiceNote) => void
+  onOpen?: (serviceId: string) => void
+}) {
+  const resolved = note.status === 'done'
+  return (
+    <ReviewItem
+      title={service?.title ?? note.service_slug}
+      timestamp={`${note.author_email ?? 'юрист'} · ${fmtDate(note.created_at)}`}
+      body={note.body}
+      resolved={resolved}
+      openLabel="Відкрити послугу"
+      onResolve={() => onToggle(note)}
+      onReopen={() => onToggle(note)}
+      onOpen={service && onOpen ? () => onOpen(service.id) : undefined}
+    />
+  )
 }
 
 /** Dev inbox — all lawyer feedback across services (service-mirror slice 2). */
@@ -58,7 +87,7 @@ export function NotesInboxPage() {
           </label>
         </div>
 
-        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-paper border border-line rounded-2xl animate-pulse" />)}</div>}
+        {loading && <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 bg-paper border border-line rounded-xl animate-pulse" />)}</div>}
 
         {!loading && visible.length === 0 && (
           <div className="text-center py-24">
@@ -69,31 +98,15 @@ export function NotesInboxPage() {
         )}
 
         <div className="space-y-3">
-          {visible.map((n) => {
-            const svc = services[n.service_slug]
-            return (
-              <div key={n.id} className={`bg-paper border border-line rounded-2xl p-4 ${n.status === 'done' ? 'opacity-60' : ''}`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <button
-                    onClick={() => svc && navigate(`/services/${svc.id}`)}
-                    className="text-xs font-semibold text-brand hover:text-brand"
-                  >
-                    {svc?.title ?? n.service_slug} →
-                  </button>
-                </div>
-                <div className={`text-sm whitespace-pre-wrap break-words ${n.status === 'done' ? 'line-through text-inkMute' : 'text-ink'}`}>{n.body}</div>
-                <div className="flex items-center gap-2 mt-2 text-[11px] text-inkMute">
-                  <span>{n.author_email ?? 'юрист'}</span>
-                  <span>•</span>
-                  <span>{fmtDate(n.created_at)}</span>
-                  <div className="flex-1" />
-                  <button onClick={() => toggle(n)} className="px-2 py-0.5 rounded-md bg-paperAlt hover:bg-paperAlt text-inkSoft transition-colors">
-                    {n.status === 'open' ? '✓ Вирішено' : '↩ Відкрити'}
-                  </button>
-                </div>
-              </div>
-            )
-          })}
+          {visible.map((n) => (
+            <NoteRow
+              key={n.id}
+              note={n}
+              service={services[n.service_slug]}
+              onToggle={toggle}
+              onOpen={(id) => navigate(`/services/${id}`)}
+            />
+          ))}
         </div>
       </div>
     </AdminLayout>

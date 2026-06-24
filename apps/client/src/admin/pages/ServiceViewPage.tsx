@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Eye, Pencil, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ArrowDown, Eye, Pencil, ChevronDown } from 'lucide-react'
 import { AdminLayout } from '../components/AdminLayout'
 import { ServiceNotes } from '../components/ServiceNotes'
 import { CommentLayer } from '../components/CommentLayer'
-import { Card, SectionLabel, Chip, Button, Badge, type BadgeTone, type ChipTone } from '../ui'
+import { Card, SectionLabel, Chip, Button, Badge, type BadgeTone } from '../ui'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FormConfig, FormField } from '../../types/form'
@@ -157,6 +157,27 @@ export function ServiceViewBody({
   }), [svc.generation_mode, analysis.hasTemplate, diff, brokenShowIf, emptyLabels, staleCitations])
 
   const hi = HEALTH_UI[health.level]
+  const counts = { used: diff.usedFields.length, extra: diff.unusedFields.length, missing: diff.unmatchedPlaceholders.length }
+  const needsTemplate = svc.generation_mode === null || svc.generation_mode === 'template' || svc.generation_mode === 'hybrid'
+
+  // Plain-language one-liner instead of a per-field bullet wall (the field detail lives in the chips below).
+  const summary = useMemo(() => {
+    if (health.level === 'green') return 'Форма, шаблон і цитати узгоджені — послуга готова збирати документ.'
+    const parts: string[] = []
+    if (needsTemplate && !analysis.hasTemplate) parts.push('документ ще не має шаблону')
+    if (counts.missing) parts.push(`шаблон очікує ${counts.missing} ${plural(counts.missing, 'поле', 'поля', 'полів')}, яких форма не питає`)
+    if (counts.extra) parts.push(`${counts.extra} ${plural(counts.extra, 'поле', 'поля', 'полів')} форма питає, але документ не друкує`)
+    return parts.length ? capitalize(parts.join('; ')) + '.' : 'Є структурні зауваження — дивіться нижче.'
+  }, [health.level, needsTemplate, analysis.hasTemplate, counts.missing, counts.extra])
+
+  // Only categorical issues (no per-field enumeration — that became the colored chips).
+  const issues: { tone: 'danger' | 'warn'; text: string }[] = []
+  if (needsTemplate && !analysis.hasTemplate) issues.push({ tone: 'danger', text: 'Документ не має шаблону — послуга не згенерує документ' })
+  if (brokenShowIf.length) issues.push({ tone: 'danger', text: `${brokenShowIf.length} ${plural(brokenShowIf.length, 'поле', 'поля', 'полів')} з умовою показу на неіснуюче поле` })
+  if (svc.generation_mode === 'js') issues.push({ tone: 'warn', text: 'Генерація через legacy-білдер (не шаблон)' })
+  if (staleCitations.length) issues.push({ tone: 'warn', text: `Змінені / застарілі закони: ${staleCitations.join(', ')}` })
+  if (emptyLabels.length) issues.push({ tone: 'warn', text: `${emptyLabels.length} ${plural(emptyLabels.length, 'поле', 'поля', 'полів')} без підпису` })
+
   const fieldsByTab = (tab: string): FormField[] => form.steps.filter((s) => s.tab === tab)
 
   return (
@@ -197,36 +218,40 @@ export function ServiceViewBody({
             </div>
           </div>
 
-          {/* Health light */}
+          {/* Health light — concise summary + categorical issues only */}
           <div className="mt-5 pt-4 border-t border-line">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-1.5">
               <span className={`w-2.5 h-2.5 rounded-full ${hi.dot}`} />
               <span className={`text-sm font-semibold ${hi.text}`}>Стан: {hi.label}</span>
             </div>
-            <ul className="space-y-1">
-              {health.reasons.map((r, i) => (
-                <li key={i} className="text-xs text-inkSoft flex gap-2">
-                  <span className="text-inkMute">•</span><span>{r}</span>
-                </li>
-              ))}
-            </ul>
+            <p className="text-[12.5px] text-inkSoft leading-relaxed">{summary}</p>
+            {issues.length > 0 && (
+              <ul className="mt-2.5 space-y-1.5">
+                {issues.map((it, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs">
+                    <span className={`mt-1 w-1.5 h-1.5 rounded-full flex-none ${it.tone === 'danger' ? 'bg-danger' : 'bg-warn'}`} />
+                    <span className="text-inkSoft">{it.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Technical details — jargon out of the way */}
           <TechDetails slug={svc.slug} mode={svc.generation_mode} id={svc.id} />
         </Card>
 
-        {/* Document anatomy */}
+        {/* Document anatomy — stat trio + law→form→document pipeline (ported from viz-lab) */}
         <Card className="p-5 md:p-6">
-          <SectionLabel>Анатомія документа</SectionLabel>
-          <p className="text-[12.5px] text-inkMute mt-2 mb-4">Як поля форми зіставляються з тим, що друкує документ.</p>
-          <div className="flex flex-col gap-4">
-            <AnatomyGroup dot="bg-ok" tone="used" title="Використовуються" hint="форма питає → документ друкує" items={diff.usedFields} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <AnatomyGroup dot="bg-warn" tone="extra" title="Не в шаблоні" hint="форма питає, шаблон не друкує (могло живити AI)" items={diff.unusedFields} />
-              <AnatomyGroup dot="bg-danger" tone="missing" title="Бракує у формі" hint="документ чекає дані, форма не питає" items={diff.unmatchedPlaceholders} />
-            </div>
+          <SectionLabel>Анатомія: як збирається документ</SectionLabel>
+          <p className="text-[12.5px] text-inkMute mt-2 mb-4">Правова основа → форма клієнта → готовий документ. Колір поля показує, чи доходить воно до документа.</p>
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <StatCard n={counts.used} label="використано" tone="ok" />
+            <StatCard n={counts.extra} label="не в шаблоні" tone="warn" />
+            <StatCard n={counts.missing} label="бракує" tone="danger" />
           </div>
+          <ServicePipeline svc={svc} form={form} analysis={analysis} diff={diff} healthDot={hi.dot} />
+          <Legend />
         </Card>
 
         {/* Citations */}
@@ -320,18 +345,125 @@ function TechDetails({ slug, mode, id }: { slug: string; mode: string | null; id
   )
 }
 
-// ── Anatomy group — header + field chips (Claude Design canvas) ───────────────────────────
-function AnatomyGroup({ dot, tone, title, hint, items }: { dot: string; tone: ChipTone; title: string; hint: string; items: string[] }) {
+// ── Ukrainian pluralization + small text helpers ──────────────────────────────────────────
+function plural(n: number, one: string, few: string, many: string): string {
+  const m10 = n % 10, m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return one
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few
+  return many
+}
+const capitalize = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s)
+
+// ── Anatomy stat card — big tinted number (used / extra / missing) ─────────────────────────
+function StatCard({ n, label, tone }: { n: number; label: string; tone: 'ok' | 'warn' | 'danger' }) {
+  const cls = {
+    ok: 'bg-ok/10 border-ok/20 text-ok',
+    warn: 'bg-warn/10 border-warn/20 text-warn',
+    danger: 'bg-danger/10 border-danger/20 text-danger',
+  }[tone]
   return (
-    <div>
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-ink">
-        <span className={`w-2 h-2 rounded-full ${dot}`} /> {title}
-        <span className="text-inkMute font-normal">{items.length}</span>
+    <div className={`border rounded-xl px-3 py-3 ${cls}`}>
+      <div className="text-2xl font-bold leading-none">{n}</div>
+      <div className="text-[11.5px] text-inkSoft mt-1">{label}</div>
+    </div>
+  )
+}
+
+// ── Service pipeline — law → form → document, ported from the viz-lab per-service view ──────
+function ServicePipeline({
+  svc, form, analysis, diff, healthDot,
+}: {
+  svc: ServiceRow
+  form: FormConfig
+  analysis: ReturnType<typeof analyzeTemplate>
+  diff: FieldDiff
+  healthDot: string
+}) {
+  const tabs = form.tabs.length ? form.tabs : [{ id: '__all', label: 'Поля' }]
+  const usedSet = new Set(diff.usedFields)
+  return (
+    <div className="flex flex-col items-center gap-1">
+      {/* Band 1 — legal basis */}
+      <Band title="Правова основа" sub="закони та статті, на яких стоїть послуга">
+        {analysis.citations.length === 0
+          ? <PipelineEmpty>шаблон не цитує статей</PipelineEmpty>
+          : (
+            <div className="flex flex-col gap-2.5">
+              {analysis.citations.map((law) => (
+                <div key={law.url} className="flex flex-wrap items-center gap-2">
+                  <span className="text-[12px] font-semibold text-inkSoft">{law.title}</span>
+                  {law.articles.map((a) => (
+                    <span key={a} className="font-mono text-[11.5px] px-2 py-0.5 rounded-md bg-paperAlt text-inkSoft border border-line">ст. {a}</span>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+      </Band>
+      <ArrowDown size={18} strokeWidth={1.8} className="text-inkMute my-0.5" />
+      {/* Band 2 — the form the client fills */}
+      <Band title={svc.title || 'Форма'} sub={`форма · ${form.steps.length} ${plural(form.steps.length, 'поле', 'поля', 'полів')} · ${tabs.length} ${plural(tabs.length, 'таб', 'таби', 'табів')}`} dot={healthDot}>
+        {form.steps.length === 0
+          ? <PipelineEmpty>у формі ще немає полів</PipelineEmpty>
+          : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {tabs.map((t) => {
+                const here = form.steps.filter((s) => t.id === '__all' || s.tab === t.id)
+                if (here.length === 0) return null
+                return (
+                  <div key={t.id} className="border border-line rounded-xl p-3 bg-paperAlt/50">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-inkMute mb-2">{t.label}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {here.map((f) => <Chip key={f.id} tone={usedSet.has(f.id) ? 'used' : 'extra'}>{f.id}</Chip>)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+      </Band>
+      <ArrowDown size={18} strokeWidth={1.8} className="text-inkMute my-0.5" />
+      {/* Band 3 — the generated document */}
+      <Band title="Документ" sub={analysis.hasTemplate ? 'збирається з шаблону' : 'готується'}>
+        {!analysis.hasTemplate
+          ? <PipelineEmpty>шаблон документа ще не завантажено</PipelineEmpty>
+          : diff.unmatchedPlaceholders.length === 0
+            ? <div className="flex items-center gap-2 text-[13px] text-ok"><span className="w-2 h-2 rounded-full bg-ok flex-none" /> усі дані для документа форма збирає</div>
+            : (
+              <div>
+                <div className="text-[12.5px] text-danger mb-2">⚠ шаблон чекає {diff.unmatchedPlaceholders.length} {plural(diff.unmatchedPlaceholders.length, 'поле', 'поля', 'полів')}, яких форма не питає:</div>
+                <div className="flex flex-wrap gap-1.5">{diff.unmatchedPlaceholders.map((p) => <Chip key={p} tone="missing">{p}</Chip>)}</div>
+              </div>
+            )}
+      </Band>
+    </div>
+  )
+}
+
+function Band({ title, sub, dot, children }: { title: string; sub: string; dot?: string; children: React.ReactNode }) {
+  return (
+    <div className="w-full border border-line rounded-2xl bg-paper p-4 md:p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {dot && <span className={`w-2.5 h-2.5 rounded-full flex-none ${dot}`} />}
+        <span className="text-sm font-semibold text-ink">{title}</span>
+        <span className="text-xs text-inkMute">· {sub}</span>
       </div>
-      <p className="text-[11.5px] text-inkMute mt-0.5 mb-2">{hint}</p>
-      {items.length === 0
-        ? <p className="text-xs text-inkMute">—</p>
-        : <div className="flex flex-wrap gap-1.5">{items.map((i) => <Chip key={i} tone={tone}>{i}</Chip>)}</div>}
+      {children}
+    </div>
+  )
+}
+
+const PipelineEmpty = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-xs text-inkMute italic text-center py-1">{children}</p>
+)
+
+function Legend() {
+  const items: [string, string][] = [['bg-ok', 'у документі'], ['bg-warn', 'не в шаблоні'], ['bg-danger', 'бракує у формі']]
+  return (
+    <div className="flex flex-wrap gap-4 mt-4 text-xs text-inkSoft">
+      {items.map(([dot, label]) => (
+        <span key={label} className="inline-flex items-center gap-1.5"><span className={`w-2 h-2 rounded-full ${dot}`} />{label}</span>
+      ))}
     </div>
   )
 }

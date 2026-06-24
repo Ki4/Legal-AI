@@ -11,6 +11,7 @@ import {
   isPublishedFor,
 } from '../../lib/serviceStatus'
 import { analyzeService } from '../../lib/serviceAnatomy'
+import { clientFormUrl } from '../../lib/clientApp'
 import type { FormConfig } from '../../types/form'
 
 interface Service {
@@ -219,7 +220,7 @@ export function DashboardPage() {
                   healthDot={hd.dot}
                   healthTitle={hd.title}
                   status={svc.status}
-                  formHref={`/?service=${svc.slug}`}
+                  formHref={clientFormUrl(svc.slug)}
                   onOpen={() => navigate(`/services/${svc.slug}`)}
                   onEdit={() => navigate(`/services/${svc.id}/edit`)}
                   onDelete={() => deleteService(svc.id)}

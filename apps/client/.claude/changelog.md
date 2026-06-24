@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-06-24 (session 46, ч.7) — Фікс: «Форма клієнта» некликабельна → абсолютний URL клієнта
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** Сергій повідомив, що кнопка «Форма клієнта» на сторінці послуги не клікається/не відкриває форму. Причина: вона робила `window.open('/?service=slug', '_blank', 'noopener')` — **відносний** URL. Адмінка — окремий origin (у dev `:5174` з SPA-fallback на `admin.html`, у prod окремий деплой `dist-admin`), тож відносне посилання просто перевідкривало адмінку, а `window.open` як popup міг блокуватись браузером. Той самий баг був у `formHref` картки послуги на дашборді.
+**What:**
+- `lib/clientApp.ts` (NEW): `clientFormUrl(slug)` будує **абсолютний** URL клієнта з `VITE_CLIENT_URL` (default — prod `legal-twa-xi.vercel.app`; для локалки виставити `http://localhost:5173`).
+- `ServiceViewPage`: кнопку-`window.open` замінено на справжній `<a target="_blank" rel="noreferrer">` зі стилем ghost — нативно клікабельний, без popup-блоку, відкривається у новій вкладці.
+- `DashboardPage`: `formHref` тепер `clientFormUrl(svc.slug)` (теж абсолютний).
+- `.env.example`: задокументовано `VITE_CLIENT_URL`.
+**Files:** `lib/clientApp.ts` (new), `admin/pages/ServiceViewPage.tsx` (anchor + import), `admin/pages/DashboardPage.tsx` (formHref + import), `.env.example`.
+**Tests:** `tsc -b` clean. Повний прогін у складі quality-gate сесії.
+
 ### 2026-06-24 (session 46, ч.6) — Фікс: per-service пайплайн вилазив за межі; ширша сторінка послуги
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Сергій помітив, що на сторінці послуги (Анатомія → Пайплайн) поля «вилазять» — viz-lab `ServiceDetail` був розрахований на широкий холст, а я вставив його у вузьку картку (`max-w-4xl`) з жорстким `maxWidth:760` всередині й фіксованою сіткою колонок. Карта конкретної послуги нікуди не зникла — вона на вкладці «Граф зв'язків».

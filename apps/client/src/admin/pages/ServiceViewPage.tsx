@@ -10,6 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FormConfig } from '../../types/form'
 import { liveServiceToViz } from '../viz/vizData'
+import { clientFormUrl } from '../../lib/clientApp'
 import { type ServiceStatus, toServiceStatus, STATUS_META } from '../../lib/serviceStatus'
 import {
   analyzeTemplate,
@@ -191,9 +192,12 @@ export function ServiceViewBody({
             <ArrowLeft size={16} strokeWidth={1.8} /> Назад
           </button>
           <div className="flex-1" />
-          <Button variant="ghost" onClick={() => window.open(`/?service=${svc.slug}`, '_blank', 'noopener')}>
+          {/* Real anchor (not window.open): natively clickable, no popup-block, opens the
+              client app's absolute URL — a relative link would re-open the admin origin. */}
+          <a href={clientFormUrl(svc.slug)} target="_blank" rel="noreferrer"
+             className="inline-flex items-center justify-center gap-2 rounded-[10px] px-[18px] py-2.5 text-sm font-medium transition-colors bg-transparent text-brand hover:bg-brand/10">
             <Eye size={16} strokeWidth={1.7} /> Форма клієнта
-          </Button>
+          </a>
           <Button variant="secondary" onClick={() => navigate(`/services/${svc.id}/edit`)}>
             <Pencil size={15} strokeWidth={1.7} /> Редагувати
           </Button>

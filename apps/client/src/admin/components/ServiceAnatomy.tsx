@@ -4,10 +4,12 @@
 //   • Форма    — the form's show_if branching, derived from the real form_config
 // A stat trio (used / extra / missing) sits above the tabs as the at-a-glance summary.
 import { useMemo, useState } from 'react'
-import { ArrowDown, Zap } from 'lucide-react'
+import { ChevronDown, GitBranch } from 'lucide-react'
 import { ServiceDetail } from '../viz/views/ServiceDetail'
 import { CatalogGraph } from '../viz/views/CatalogGraph'
+import { FormFlow } from '../viz/views/FormFlow'
 import { buildCatalogGraph, type VizService } from '../viz/vizData'
+import { deriveFormFlow, type FlowStep } from '../../lib/formFlow'
 import { describeShowIf, fieldTypeLabel, type FieldDiff } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import { Card, SectionLabel } from '../ui'
@@ -21,7 +23,9 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function ServiceAnatomy({ viz, form, diff }: { viz: VizService; form: FormConfig; diff: FieldDiff }) {
   const [tab, setTab] = useState<Tab>('anatomy')
+  const [formView, setFormView] = useState<'tree' | 'list'>('tree')
   const graph = useMemo(() => buildCatalogGraph([viz]), [viz])
+  const flow = useMemo(() => deriveFormFlow(form, diff), [form, diff])
 
   return (
     <Card className="p-5 md:p-6">
@@ -48,8 +52,93 @@ export function ServiceAnatomy({ viz, form, diff }: { viz: VizService; form: For
       {tab === 'graph' && (
         <CatalogGraph nodes={graph.nodes} edges={graph.edges} changes={[]} services={[viz]} onOpenService={() => {}} hideChanges />
       )}
-      {tab === 'form' && <FormAlgorithm form={form} diff={diff} />}
+      {tab === 'form' && (
+        <div>
+          <div className="flex justify-end mb-3">
+            <div className="inline-flex bg-paperAlt rounded-lg p-1 gap-1">
+              {([['tree', 'Дерево'], ['list', 'Список']] as const).map(([v, label]) => (
+                <button key={v} onClick={() => setFormView(v)}
+                        className={`px-3 py-1 rounded-md text-[12.5px] font-medium transition-colors ${formView === v ? 'bg-paper text-ink shadow-sm' : 'text-inkMute hover:text-ink'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {formView === 'tree' ? <FormFlow steps={flow} /> : <FormList steps={flow} form={form} />}
+        </div>
+      )}
     </Card>
+  )
+}
+
+// ── Detailed expandable list — the same derived tree, but rows you drill into ──────────────
+function collectGateIds(steps: FlowStep[], acc: string[] = []): string[] {
+  for (const s of steps) {
+    if (s.kind === 'gate') { acc.push(s.id); if (s.yes) collectGateIds(s.yes, acc) }
+  }
+  return acc
+}
+
+function FormList({ steps, form }: { steps: FlowStep[]; form: FormConfig }) {
+  const gateIds = useMemo(() => collectGateIds(steps), [steps])
+  const [open, setOpen] = useState<Set<string>>(() => new Set(gateIds))
+  const toggle = (id: string) => setOpen((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+  const body = steps.filter((s) => s.kind === 'gate' || s.kind === 'field')
+  if (body.length === 0) return <p className="text-sm text-inkMute">У формі ще немає полів.</p>
+  return (
+    <div className="border border-line rounded-2xl bg-paper p-2 md:p-3">
+      {body.map((s) => <FormRow key={s.id} step={s} depth={0} form={form} open={open} toggle={toggle} />)}
+    </div>
+  )
+}
+
+function FormRow({ step, depth, form, open, toggle }: {
+  step: FlowStep; depth: number; form: FormConfig; open: Set<string>; toggle: (id: string) => void
+}) {
+  const isOpen = open.has(step.id)
+  const indent = { paddingLeft: depth * 18 + 4 }
+
+  if (step.kind === 'gate') {
+    return (
+      <div>
+        <button onClick={() => toggle(step.id)} style={indent}
+                className="w-full flex items-center gap-2 py-2 pr-2 text-left rounded-lg hover:bg-paperAlt/60 transition-colors">
+          <ChevronDown size={14} strokeWidth={2} className={`text-inkMute transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+          <GitBranch size={14} strokeWidth={1.8} className="text-warn flex-none" />
+          <span className="text-sm font-semibold text-ink">{step.label}</span>
+          <span className="text-[11px] font-semibold text-warn bg-warn/10 border border-warn/20 rounded-full px-2 py-0.5">{step.branch} →</span>
+        </button>
+        {isOpen && step.yes?.map((c) => <FormRow key={c.id} step={c} depth={depth + 1} form={form} open={open} toggle={toggle} />)}
+      </div>
+    )
+  }
+
+  const f = step.field
+  const used = step.flag === 'used'
+  return (
+    <div>
+      <button onClick={() => toggle(step.id)} style={indent}
+              className="w-full flex items-center gap-2 py-2 pr-2 text-left rounded-lg hover:bg-paperAlt/60 transition-colors">
+        <ChevronDown size={13} strokeWidth={2} className={`text-inkMute/60 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+        <span className={`w-2 h-2 rounded-full flex-none ${used ? 'bg-ok' : 'bg-warn'}`} />
+        <span className="text-sm text-ink">{step.label}</span>
+        {f?.required && <span className="text-danger text-xs" title="Обовʼязкове">*</span>}
+        {f && <span className="text-[11px] text-inkMute px-1.5 py-0.5 bg-paperAlt rounded">{fieldTypeLabel(f.type)}</span>}
+        {!used && <span className="text-[11px] text-warn/80">не в шаблоні</span>}
+      </button>
+      {isOpen && f && (
+        <div style={{ paddingLeft: depth * 18 + 33 }} className="pb-2 text-[11.5px] text-inkMute space-y-0.5">
+          {f.show_if && <div>умова показу: <span className="text-inkSoft">{describeShowIf(f.show_if, form)}</span></div>}
+          {f.options && f.options.length > 0 && <div>варіанти: <span className="text-inkSoft">{f.options.map((o) => o.label).join(', ')}</span></div>}
+          {f.hint && <div>підказка: <span className="text-inkSoft">{f.hint}</span></div>}
+          <div className="font-mono">id: {f.id}{used ? '' : ' · документ не друкує це поле'}</div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -68,64 +157,3 @@ function StatCard({ n, label, tone }: { n: number; label: string; tone: 'ok' | '
   )
 }
 
-// ── Form algorithm — the real show_if branching (Старт → таби/поля з умовами → Документ) ────
-function FormAlgorithm({ form, diff }: { form: FormConfig; diff: FieldDiff }) {
-  const usedSet = new Set(diff.usedFields)
-  const tabs = form.tabs.length ? form.tabs : [{ id: '__all', label: 'Поля' }]
-  if (form.steps.length === 0) return <p className="text-sm text-inkMute">У формі ще немає полів.</p>
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <FlowEnd label="Старт форми" sub="клієнт відкриває форму" tone="brand" />
-      {tabs.map((t) => {
-        const here = form.steps.filter((s) => t.id === '__all' || s.tab === t.id)
-        if (here.length === 0) return null
-        return (
-          <div key={t.id} className="contents">
-            <ArrowDown size={16} strokeWidth={1.8} className="text-inkMute my-0.5" />
-            <div className="w-full border border-line rounded-2xl bg-paper p-4 md:p-5 shadow-sm">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-brand mb-3">{t.label}</div>
-              <div className="flex flex-col gap-2">
-                {here.map((f) => {
-                  const used = usedSet.has(f.id)
-                  return (
-                    <div key={f.id} className={f.show_if ? 'pl-3 border-l-2 border-warn/40' : ''}>
-                      {f.show_if && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-warn mb-1">
-                          <Zap size={12} strokeWidth={2} /> якщо {describeShowIf(f.show_if, form)}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`w-2 h-2 rounded-full flex-none ${used ? 'bg-ok' : 'bg-warn'}`} />
-                        <span className="text-sm text-ink">{f.label || <span className="font-mono text-inkMute">{f.id}</span>}</span>
-                        {f.required && <span className="text-danger text-xs" title="Обовʼязкове">*</span>}
-                        <span className="text-[11px] text-inkMute px-1.5 py-0.5 bg-paperAlt rounded">{fieldTypeLabel(f.type)}</span>
-                        {!used && <span className="text-[11px] text-warn/80">не в шаблоні</span>}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        )
-      })}
-      <ArrowDown size={16} strokeWidth={1.8} className="text-inkMute my-0.5" />
-      <FlowEnd label="Готовий документ" sub="збирається з заповнених полів" tone="ok" />
-    </div>
-  )
-}
-
-function FlowEnd({ label, sub, tone }: { label: string; sub: string; tone: 'brand' | 'ok' }) {
-  const cls = tone === 'brand' ? 'border-brand/30 bg-brand/5' : 'border-ok/30 bg-ok/5'
-  const dot = tone === 'brand' ? 'bg-brand' : 'bg-ok'
-  return (
-    <div className={`inline-flex items-center gap-2.5 border rounded-xl px-4 py-2.5 ${cls}`}>
-      <span className={`w-2.5 h-2.5 rounded-full ${dot}`} />
-      <div>
-        <div className="text-sm font-semibold text-ink">{label}</div>
-        <div className="text-[11.5px] text-inkMute">{sub}</div>
-      </div>
-    </div>
-  )
-}

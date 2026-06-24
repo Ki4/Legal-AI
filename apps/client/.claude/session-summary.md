@@ -1,27 +1,6 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-24 (session 45 — marketing-research (docs-only): сегменти/попит/канали/CustDev — 8 доків у `docs/research/`; issues #68–70 відкрито; IMPROVEMENTS #87–89; ⚠️ WebFetch заблоковано egress → усе **search-verified**, не page-fetched. | session 44 — issue-гігієна: закрито #3/#8/#23 як superseded. ⚠️ session 43 (divorce #67) held на гілці `fix/divorce-property-debt-variant-b`. | session 42 — service-mirror ЗАВЕРШЕНО, issue #66 ЗАКРИТО.)
+> Updated: 2026-06-22 (session 44 — issue-гігієна: закрито #3/#8/#23 як superseded, решта backlog лишена; деталі нижче. ⚠️ session 43 (divorce #67) тримається held на гілці `fix/divorce-property-debt-variant-b` — її лог приїде в main при мерджі. | session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
 > Прочитай эту секцію першою — вона найсвіжіша.
-
----
-
-## 🆕 Session 45 (2026-06-24) — Marketing-research: сегменти, попит, канали, CustDev (docs-only)
-
-### Головне — стан ЗАРАЗ
-- **Гілка `claude/inspiring-gauss-72guy7`** — 8 доків дослідження запушено (doc-only, нуль змін продукту). **PR не створювався.**
-- **Відповіли на 4 питання:** які послуги востребувані зараз/будуть · де сидить аудиторія · як достукатись · що робить зараз.
-- **Головний висновок:** держава автоматизує прості кейси безкоштовно (Дія.AI ~1 млн/тиждень, Reserv+ 333 тис.) → платний попит = **складні/судові + міграція ЄС**. Не будувати під Дія.AI/Reserv+/держ-портали.
-- **Сегменти:** NOW сімейне (тримати, диференціювати vs FastDoc) + військовий triage (тільки ескалація — Reserv+ забрав прості відстрочки); NEXT легалізація ЄС (Польща CUKR 04.05.2026–04.03.2027) — лише після валідації WTP проти €0-НКО (DE без поспіху: §24 авто до 03.2027).
-- **3 issues відкрито:** #68 CustDev round 1, #69 family-law диференціація, #70 юрист-валідатор. IMPROVEMENTS #87–89.
-- ⚠️ **Верифікація:** WebFetch заблоковано (403, двічі) → усе **search-verified**, не page-fetched (`verification-log-2026.md`).
-
-### Нові доки (docs/research/)
-`ukrainian-audience-market-research-2026.md` (6 блоків + TAM/SAM/SOM) · `service-demand-map-2026.md` (Now/Next/Later) · `custdev-interview-guide-2026.md` (гайд + кіт достукування) · `verification-log-2026.md` · `action-roadmap-2026.md` · `service-demand/02-segment-eu-legalization-2026.md` · `service-demand/03-segment-ua-family-law-2026.md` · `service-demand/01-...` (+ч.2 GTM).
-
-### 🔴 Наступний крок
-1. **CustDev round 1** (issue #68) — 8–12 теплих інтервʼю через Ольгу за гайдом → реальні UA-частки каналів (закрити Clio-прогалину).
-2. **Fetch-верифікація** цифр при відкритому egress (список у `verification-log-2026.md`).
-3. **Family-law диференціація** (#69) vs FastDoc; **юрист-валідатор** (#70) для військових.
-4. EU legalization — будувати лише після WTP-валідації (спершу Польща CUKR).
 
 ---
 

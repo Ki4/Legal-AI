@@ -10,6 +10,13 @@
 
 ---
 
+### 2026-06-24 (session 46, ч.3) — TEMP: повернув viz-lab галерею на `/viz-lab` для перегляду
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u` · **ТИМЧАСОВО — прибрати після перегляду**
+**Why:** Сергій попросив тимчасово повернути стару viz-lab галерею (демо-дані, без auth), щоб подивитися візуал.
+**What:** Відновив `VizLabPage` + 4 demo-види + `ServiceFocusGraph` з коміту до видалення (feb7691^). Оскільки `CatalogGraph` тепер props-версія для «Карти», стару демо-версію поклав окремим файлом `CatalogGraphDemo.tsx`, і `VizLabPage` імпортує саме її — нова «Карта» не зачеплена. Роут `/viz-lab` (без auth) повернуто.
+**Files:** `viz/views/CatalogGraphDemo.tsx` (NEW, стара демо-версія), `viz/views/{ServiceDetail,TechnicalView,FormBranching,Prioritization,ServiceFocusGraph}.tsx` (restored), `pages/VizLabPage.tsx` (restored + імпорт CatalogGraphDemo), `admin/AdminApp.tsx` (TEMP роут `/viz-lab`).
+**Tests:** `tsc -b` clean · Playwright `/viz-lab` рендериться без pageerror.
+
 ### 2026-06-24 (session 46, ч.2) — «Дзеркало» послуги: анатомія-пайплайн замість стіни тексту
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Сторінка конкретної послуги (`/services/:slug`) лишалася «старою»: блок «Стан» вивалював `serviceHealth().reasons` — по одному буллету на КОЖНЕ поле (≈30 рядків «Шаблон очікує дані «X», яких форма не питає»). Сергій хотів, щоб вона виглядала як дизайн-канва + ідеї viz-lab (заради чого viz-lab і робився). Переніс сигнатурний per-service пайплайн viz-lab на реальні дані.

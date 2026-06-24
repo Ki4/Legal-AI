@@ -90,13 +90,12 @@ describe('liveServiceToViz — citations', () => {
     expect(sk.articles).toEqual(['110', '112'])
   })
 
-  it('reads a comma list only under the double abbreviation, not a bare "ст. N, M"', () => {
-    // Current grammar (serviceAnatomy citation regex): "ст. 110, 112 СК" — a single "ст." with a
-    // comma list — captures NEITHER article, because the law name no longer abuts the number.
-    // Only "ст.ст. 110, 112" (double abbreviation) reads the whole list. Documented so a future
-    // grammar relax here is a deliberate, test-visible change.
+  it('reads a comma list under a single "ст." too, same as the double abbreviation', () => {
+    // The single "ст." abbreviation is grammatically for one article, but hand-edited templates
+    // use it for lists — "ст. 110, 112 СК" must capture BOTH articles, not drop them. "ст.ст. …"
+    // (double abbreviation) reads the same list. (serviceAnatomy: single branch → ARTICLE_LIST.)
     const bare = liveServiceToViz({ slug: 'x', title: 'X', generation_mode: 'template', document_template: '{{a}} ст. 110, 112 Сімейного кодексу України.', form_config: form('a') })
-    expect(bare.articles).toEqual([]) // neither 110 nor 112 — see SDD note in report
+    expect(bare.articles.map((n) => n.label)).toEqual(['ст. 110', 'ст. 112'])
     const dbl = liveServiceToViz({ slug: 'x', title: 'X', generation_mode: 'template', document_template: '{{a}} ст.ст. 110, 112 Сімейного кодексу України.', form_config: form('a') })
     expect(dbl.articles.map((n) => n.label)).toEqual(['ст. 110', 'ст. 112'])
   })

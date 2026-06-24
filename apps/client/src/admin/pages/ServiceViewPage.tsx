@@ -185,8 +185,9 @@ export function ServiceViewBody({
   return (
     <AdminLayout>
       <div className="relative max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
-        {/* Top bar */}
-        <div className="flex items-center gap-3">
+        {/* Top bar — z-30 keeps the nav above the CommentLayer overlay (z-20), so it stays
+            clickable even while the comment "draw a zone" capture surface is active. */}
+        <div className="relative z-30 flex items-center gap-3">
           <button onClick={() => navigate('/services')}
                   className="inline-flex items-center gap-1.5 text-inkSoft hover:text-ink text-sm flex-shrink-0">
             <ArrowLeft size={16} strokeWidth={1.8} /> Назад

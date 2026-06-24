@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-06-24 (session 46, ч.8) — QA-gate: парсер цитат (ст. N, M) + «Форма клієнта» поверх оверлею
+**Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
+**Why:** (1) Критик+тестувальник знайшли, що парсер цитат (`serviceAnatomy.ts`) втрачав статті у формі `ст. 110, 112 <Закон>` (одиночне `ст.` + список через кому) — діставав лише двойне `ст.ст.`. Реальні шаблони (divorce/alimony/alimony-change) усі вживають `ст.ст.`, тож goldens не зачеплені, але ручна правка шаблону могла мовчки втратити статтю. Сергій підтвердив: чинити зараз. (2) Сергій тричі повідомив, що «Форма клієнта» не клікається. Окрім відносного URL (ч.7), є друга причина: коли увімкнено режим «Залишити коментар», `CommentLayer` стелить capture-surface `absolute inset-0 pointer-events-auto` на весь контент **включно з верхньою панеллю** — і навігація перестає клікатись.
+**What:**
+- `serviceAnatomy.ts`: гілка `single` у `CITATION_THEN_LAW_RE` та `LAW_THEN_PAREN_RE` тепер приймає `ARTICLE_LIST` (не лише один номер) — `ст. 110, 112 СК` дістає обидві статті; `ст.ст.` без змін, тож golden-parity зелений.
+- `ServiceViewPage`: верхня панель отримала `relative z-30` — тримається **над** оверлеєм коментарів (z-20), тож «Назад / Форма клієнта / Редагувати» клікаються навіть у режимі малювання зони.
+- Тести: оновлено регрес-тест у `vizData.test.ts` (тепер `ст. 110, 112` дістає обидві) + 2 нові кейси в `serviceAnatomy.test.ts` (single+список; список не «перетікає» через межу закону).
+**Files:** `lib/serviceAnatomy.ts` (regex single→LIST), `admin/pages/ServiceViewPage.tsx` (top bar z-30), `lib/__tests__/serviceAnatomy.test.ts` (+2), `admin/viz/__tests__/vizData.test.ts` (regression updated).
+**Tests:** `tsc -b` clean · повний прогін `vitest` 43 файли / **1244** тести ✅ (golden parity не зачеплено).
+
 ### 2026-06-24 (session 46, ч.7) — Фікс: «Форма клієнта» некликабельна → абсолютний URL клієнта
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** Сергій повідомив, що кнопка «Форма клієнта» на сторінці послуги не клікається/не відкриває форму. Причина: вона робила `window.open('/?service=slug', '_blank', 'noopener')` — **відносний** URL. Адмінка — окремий origin (у dev `:5174` з SPA-fallback на `admin.html`, у prod окремий деплой `dist-admin`), тож відносне посилання просто перевідкривало адмінку, а `window.open` як popup міг блокуватись браузером. Той самий баг був у `formHref` картки послуги на дашборді.

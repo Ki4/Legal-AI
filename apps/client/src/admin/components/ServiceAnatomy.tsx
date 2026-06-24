@@ -29,16 +29,14 @@ export function ServiceAnatomy({ viz, form, diff }: { viz: VizService; form: For
 
   return (
     <Card className="p-5 md:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <SectionLabel>Як влаштована послуга</SectionLabel>
-        <div className="inline-flex bg-paperAlt rounded-xl p-1 gap-1">
-          {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-                    className={`px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${tab === t.id ? 'bg-paper text-ink shadow-sm' : 'text-inkMute hover:text-ink'}`}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+      <SectionLabel>Як влаштована послуга</SectionLabel>
+      <div className="mt-3 mb-5 inline-flex flex-wrap bg-paperAlt rounded-xl p-1 gap-1 border border-line">
+        {TABS.map((t) => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === t.id ? 'bg-paper text-ink shadow-sm' : 'text-inkMute hover:text-ink'}`}>
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* at-a-glance: how form fields map to the document */}

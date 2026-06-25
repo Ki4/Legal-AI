@@ -87,9 +87,22 @@ Only entries verified *in-session against code* belong here; memory ≠ evidence
   `divorce/alimony.checklist.json` (glob `n8n/templates/services/`). _(2026-06-25)_
 - 📋 **citations-drift CI guard** — claimed; **next check:** confirm the test
   file exists and runs in CI.
-- 📋 **checklist enforced on live (template/js) path** — claimed from roadmap;
-  **next check:** find a checklist-validator node on the non-hybrid branch of
-  `form-submit.json`.
+- ✅ **checklist enforced on the live `template` path** — `Build Document`
+  (`form-submit.json:298`) branches on `generation_mode`; both the `hybrid` and
+  `template` branches call `validateChecklist(document, ctx,
+  svc.required_checklist)` (validator `validate-checklist.js` + test). divorce/
+  alimony are `template` live (prod) ⇒ the guard is on the live path. Build
+  Document is the convergence point (connections 1343, 1354 feed it). _(2026-06-25)_
+  - ⚠️ the legacy `js` branch does **not** call validateChecklist; no live
+    service is js+active today (business/court_search/military = js+disabled),
+    but a flip back to js would silently drop the guard.
+  - 📋 efficacy depends on `services.required_checklist` being populated in prod
+    (empty checklist = no-op pass). **Next check (prod):** `SELECT slug,
+    required_checklist IS NOT NULL AS has_cl FROM services WHERE slug IN
+    ('divorce','alimony');`
+  - 📋 unconfirmed whether `_checklist_result.ok=false` **blocks/flags** delivery
+    or is only written to `cases.checklist_failed` (`:889`). **Next check:**
+    trace checklist_failed consumers.
 
 ### Deterministic routing (no LLM/semantic router needed on the form-path)
 

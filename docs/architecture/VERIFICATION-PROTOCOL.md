@@ -100,6 +100,26 @@ Only entries verified *in-session against code* belong here; memory ≠ evidence
   needed; a router is only for *free-text* input) stands independent of live
   status.
 
+### GraphRAG / `law_relations` (curated legal knowledge graph)
+
+- ✅ **built (schema + write RPC)** — `017_law_relations.sql`: typed edges
+  (requires / exception_if / overrides / clarifies / references) between
+  `law_chunks`, lawyer-`verified_by`, + `upsert_law_relation` RPC. _(2026-06-25)_
+- ✅ **traversal logic built + tested** — `law-change-scope.js` (+
+  `__tests__/law-change-scope.test.js`): deterministic in-JS severity
+  propagation; **only `verified_by` edges traversed**. _(2026-06-25)_
+- ⚠️ **built-not-live** — `law-change-scope` is in **no** workflow under
+  `workflows/current/` (grep: 0 matches; current = form-submit + main-bot only);
+  session-summary: digest "ready to wire". **Caveat:** confirm no unexported
+  digest workflow on the live n8n. _(2026-06-25)_
+- ❌ **not a retrieval graph** — `search_law_chunks` (only retrieval RPC) does
+  pure vector search, no graph join; no read-side traversal RPC exists. The
+  graph serves **law-change impact monitoring**, not RAG. Data seeded for
+  `alimony-change` only (disabled pilot, `scripts/seed-alimony-change-laws.mjs`).
+- Note: deliberately a *human-verified* graph, **not** Microsoft community-
+  GraphRAG — LLM-extracted edges would inject hallucinations into the one asset
+  whose value is that it's lawyer-verified. Don't convert it.
+
 ### Document generation path (doc-engine `template` vs legacy `js`)
 
 - ⚠️ **conflict / unresolved** — `IMPROVEMENTS.md:620` claims alimony is

@@ -55,6 +55,14 @@ evidence.** Status + evidence pointers, nothing else.
 Format per row: `TAG — claim — evidence (≥2, file:line) — date — next check`.
 Only entries verified *in-session against code* belong here; memory ≠ evidence.
 
+**Reading note — tags describe live-state, NOT desirability or plan-validity.**
+A ⚠️ built-not-live row can be the *intended* state: the hybrid stack (L4
+critics, `search_law_chunks`, `law_relations`) is scaffolding for a **future
+tier** of complex/reasoning documents (alimony-change is the pilot), deliberately
+not live. Whether that plan is even right — and which services belong in the new
+tier — is an **open product question**, itself 📋-unknown, NOT a verification gap
+to "fix". The audit reports what lives, not what should be rushed live.
+
 ### Hybrid pipeline (L2 retrieval → L3 reasoning → L4 critics)
 
 - ✅ **built** — nodes + wiring in `form-submit.json` (`Is Hybrid?` → `L2 Get
@@ -85,8 +93,18 @@ Only entries verified *in-session against code* belong here; memory ≠ evidence
 
 - ✅ **files exist** — `divorce/alimony/alimony-change.citations.json`,
   `divorce/alimony.checklist.json` (glob `n8n/templates/services/`). _(2026-06-25)_
-- 📋 **citations-drift CI guard** — claimed; **next check:** confirm the test
-  file exists and runs in CI.
+- ✅ **citations goldens + drift guard exist** — `*.citations.json` goldens +
+  `citations-drift.test.js`: per-template SSoT check (`golden ===
+  extractArticlesByLaw(template)`), fails when a template's legal basis drifts.
+  Data-driven (~1 test/template), **not** the "28 tests" of changelog:119 (that's
+  the separate parser suite `scripts/lib/citations.mjs`, count 📋-unverified). _(2026-06-25)_
+  - ⚠️ **dev-time guard, not runtime** — protects committed-template integrity at
+    authoring time; does not inspect live generation output.
+  - ⚠️ **not enforced by CI** — `.github/workflows/` has only `law-monitor.yml`
+    (no vitest step); no root `package.json` / `.husky` / custom hooksPath found.
+    The suite runs only when a dev runs vitest manually. **Next check:** confirm
+    no per-subdir pre-commit hook (apps/client, n8n). Implication: "1056+ tests
+    passing / CI green" claims describe LOCAL runs, not an automated gate.
 - ✅ **checklist enforced on the live `template` path** — `Build Document`
   (`form-submit.json:298`) branches on `generation_mode`; both the `hybrid` and
   `template` branches call `validateChecklist(document, ctx,

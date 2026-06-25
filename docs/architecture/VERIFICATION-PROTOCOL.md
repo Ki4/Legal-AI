@@ -114,13 +114,19 @@ to "fix". The audit reports what lives, not what should be rushed live.
   - ⚠️ the legacy `js` branch does **not** call validateChecklist; no live
     service is js+active today (business/court_search/military = js+disabled),
     but a flip back to js would silently drop the guard.
-  - 📋 efficacy depends on `services.required_checklist` being populated in prod
-    (empty checklist = no-op pass). **Next check (prod):** `SELECT slug,
-    required_checklist IS NOT NULL AS has_cl FROM services WHERE slug IN
-    ('divorce','alimony');`
-  - 📋 unconfirmed whether `_checklist_result.ok=false` **blocks/flags** delivery
-    or is only written to `cases.checklist_failed` (`:889`). **Next check:**
-    trace checklist_failed consumers.
+  - ⚠️ **non-blocking by design (verified)** — `_checklist_result` appears only
+    twice in form-submit.json: set in Build Document (`:298`), written to
+    `cases.checklist_failed` (`:888`). **No IF/Switch gates on it** → a failed
+    checklist does **not** block delivery; the document ships and the failure is
+    only recorded as an admin-review flag. Confirmed by migration `021:6-7`
+    ("no behavior change until a checklist is uploaded") + column semantics
+    (`021:14-16`: null=none / false=ok / true=missing). Checklist is a live
+    **detector, not an enforcement gate**. _(2026-06-25)_
+  - 📋 efficacy still depends on `required_checklist` being populated in prod
+    (`021:8` defaults to `'{}'` = validation skipped). **Query handed to Sergey**
+    — `SELECT slug, status, generation_mode, (required_checklist <> '{}') AS
+    has_checklist, COALESCE(jsonb_array_length(required_checklist->'items'),0) AS
+    n_items FROM services ORDER BY slug;`
 
 ### Deterministic routing (no LLM/semantic router needed on the form-path)
 

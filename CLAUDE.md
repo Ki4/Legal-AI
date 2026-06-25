@@ -57,6 +57,7 @@ scripts/        ← Repo-level utility scripts (not part of any app)
 - Start: read `apps/client/.claude/session-summary.md` + `apps/client/.claude/changelog.md`; if a feature is in progress, mark its GitHub issue in-progress.
 - **Model per session (routing by tier):** the `/session-start` briefing must end with a **Recommended model** line for the next task — Tier 0/1 implementation from a ready issue/spec → **Sonnet**; Tier 2 specs, architecture, research, debugging the unknown, legally-critical logic design → **Opus or higher**. Sergey switches via `/model` right after the briefing; a mid-session switch keeps the full conversation context (only the generating model changes).
 - End (phrases: "закінчуємо", "на сьогодні все", "на добраніч", "good night"): update both files; tick the issue checklist + comment progress on the active issue.
+- **Verify before "done" (claim ≠ fact):** any "already done" — from a doc, your idea, or my own earlier conclusion — is a hypothesis until checked against code/runtime. Tag status ✅ live / ⚠️ built-not-live / 📋 claimed / ❌ gap; ✅ needs ≥2 *agreeing* evidence (one showing **invocation**, not just *definition*), and any contradicting evidence blocks it. Protocol + living status-ledger: `docs/architecture/VERIFICATION-PROTOCOL.md`.
 - Language: UI = Ukrainian, chat = Russian OK, code comments = English
 
 ## Issue tracking (GitHub)

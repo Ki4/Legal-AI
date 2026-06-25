@@ -122,15 +122,17 @@ Only entries verified *in-session against code* belong here; memory ≠ evidence
 
 ### Document generation path (doc-engine `template` vs legacy `js`)
 
-- ⚠️ **conflict / unresolved** — `IMPROVEMENTS.md:620` claims alimony is
-  `generation_mode='template'` live, but repo-configured state says
-  divorce/alimony = `'js'` (legacy JS builders): `014_doc_engine.sql`
-  defaults+backfills `'js'`; `016_alimony_change_service.sql:4` explicitly calls
-  alimony/divorce "hardcoded JS builders"; **no** migration flips them to
-  `'template'` (`011:31` only sets `status='active'`). The doc-engine flip is a
-  no-deploy live switch (`014:32`), so prod *could* differ from migrations.
-  **Next check (prod, Sergey):** `SELECT slug, generation_mode FROM services
-  WHERE slug IN ('divorce','alimony');` _(2026-06-25)_
+- ✅ **live = `template`** — prod `SELECT` (2026-06-25): `divorce` and `alimony`
+  are both `generation_mode='template'`, `status='active'`, `has_template=true`.
+  The live generation path is the doc-engine declarative render
+  (`render-document.js` + `<slug>.document.txt`) — **not** the legacy JS builder,
+  **not** hybrid. (Other services business/court_search/military = `js` + disabled.)
+- ⚠️ **repo was stale/misleading (resolved)** — migration `014` backfills `'js'`
+  and `016:4` calls divorce/alimony "hardcoded JS builders"; **no migration
+  records the flip to `'template'`**. The flip is the by-design no-deploy switch
+  (`014:32`), so it lives only in prod. **Lesson:** `generation_mode` is a
+  *runtime-class* fact — the repo can never tell the live generation path; only a
+  prod query can. This is the case that vindicates Rule #4. _(2026-06-25)_
 
 ---
 

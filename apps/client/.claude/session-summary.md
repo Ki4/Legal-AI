@@ -1,5 +1,5 @@
 # Legal AI — Master Context Document
-> Updated: 2026-06-25 (session 47 — **Verification Protocol + P1-аудит**: створено `docs/architecture/VERIFICATION-PROTOCOL.md` (status ✅/⚠️/📋/❌ + правило ≥2 згоджених evidence + runtime як окремий клас), P1 anti-hallucination spine звірено на 100% вкл. прод. Ключове: живий шлях divorce/alimony = doc-engine `template` (а репо казало `js`!), захист = детермінізм + checklist-**детектор** (не гейт); критики/RAG/GraphRAG = свідомий future-tier scaffolding (спить); тест-гейта в CI немає. Гілка `claude/affectionate-mccarthy-ho6gqe`, docs-only. | session 45 — admin design-system (світла Claude-Design канва + темна тема) + law-change-impact агент (Tier-2, G1-G4, migration 027 застосована) + viz-lab пісочниця; ⚠️ **УСЕ на гілці `claude/wizardly-dirac-qxqw5u`, НЕ змержено в main**, деталі нижче. | session 44 — issue-гігієна: закрито #3/#8/#23 як superseded, решта backlog лишена; деталі нижче. ⚠️ session 43 (divorce #67) тримається held на гілці `fix/divorce-property-debt-variant-b` — її лог приїде в main при мерджі. | session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
+> Updated: 2026-06-25 (session 47 — **Verification Protocol + P1-аудит**: створено `docs/architecture/VERIFICATION-PROTOCOL.md` (status ✅/⚠️/📋/❌ + правило ≥2 згоджених evidence + runtime як окремий клас), P1 anti-hallucination spine звірено на 100% вкл. прод. Ключове: живий шлях divorce/alimony = doc-engine `template` (а репо казало `js`!), захист = детермінізм + checklist-**детектор** (не гейт); критики/RAG/GraphRAG = свідомий future-tier scaffolding (спить); тест-гейта в CI немає. Гілка `claude/affectionate-mccarthy-ho6gqe`. **+ продуктовий розворот:** детермінізм-first, модель блоків A/B/C/D, медицина=пілот (July+); план якісного виводу docx/pdf/html до **1 липня** — issue #71 (Path-1 Google `:export`). **Від Сергія: PR да/ні + Google `:export` scope в n8n.** | session 45 — admin design-system (світла Claude-Design канва + темна тема) + law-change-impact агент (Tier-2, G1-G4, migration 027 застосована) + viz-lab пісочниця; ⚠️ **УСЕ на гілці `claude/wizardly-dirac-qxqw5u`, НЕ змержено в main**, деталі нижче. | session 44 — issue-гігієна: закрито #3/#8/#23 як superseded, решта backlog лишена; деталі нижче. ⚠️ session 43 (divorce #67) тримається held на гілці `fix/divorce-property-debt-variant-b` — її лог приїде в main при мерджі. | session 42 — service-mirror ЗАВЕРШЕНО: слайси 2+3 ЗМЕРЖЕНО в main, migration 025+026 застосовані, слайс 3 e2e-верифіковано наживо (upload→інбокс→signed URL→PDF), **issue #66 ЗАКРИТО**. Знайдено+виправлено передіснуючу поломку `tsc -b` на main.)
 > Прочитай эту секцію першою — вона найсвіжіша.
 
 ---
@@ -22,6 +22,18 @@
 
 ### Гілка/тести
 - Усе на `claude/affectionate-mccarthy-ho6gqe`, **docs-only** (протокол + CLAUDE.md bullet + цей лог). 7 docs-комітів (6961531…678f100). `main` не чіпали. Коду/тестів не змінювали — аудит read-only.
+
+### 🔄 Продовження (вечір 25.06) — продуктовий розворот + план виводу до 1 липня
+- **Продуктовий висновок:** детермінізм-first. Модель блоків **A** (fill) / **B** (абзац юриста за правилом — DSL `{{#if}}` **вже вміє**, `divorce.document.txt:100`) / **C** (ІІ-чернетка+ревʼю, рідко) / **D** (ескалація до живого юриста — часто краще за C). Реальний продукт-розрив = **lawyer-авторинг UI (Service Builder)**: формат блоків є, поверхні редагування для юриста немає (шаблон у git+CLI; адмінка тільки **читає** `document_template`). **Медицина** (юрист хоче, детермінований пакет) = перший пілот. Усе це — **липень+**.
+- **Дедлайн 1 липня (демо юристу):** довести вже-живі divorce/alimony + якісний вивід. Заведено **issue #71** (G1 export docx/pdf/html через Google `:export` → приватний `sendDocument` · G2 превʼю в адмінці · G3 unshare публічного Doc · G4 демо+one-pager) + 6 локальних задач. Path-1 (Google export), **demo-grade**.
+- **Перевірено цю сесію:** сьогодні юзер отримує **публічну Google-Doc ссилку** (PII!) — серверного docx/pdf/html немає, превʼю документа в адмінці немає. `render-document.js` = чистий JS, але поза `apps/client` → G2 через **Vite-alias** на сам файл (SSoT не дублюємо). divorce/alimony вже `template` (не `js`, як казало репо).
+- **#67** divorce (порожні property/debt) — фікс на гілці `fix/divorce-property-debt-variant-b`, чинимо «як є», Олі на демо 1-го.
+
+### ❓ Що від Сергія (щоб Claude гнав автономно на вихідних 27-28)
+1. **PR під гілку для ревʼю з телефона — да/ні?** (на «да» Claude відкриє + сам чинить по комментах/CI)
+2. **n8n: підтвердити Google OAuth scope для `:export`** — розблокує G1.
+3. **G2 «як описано» — ок?** (інакше Claude просто стартує превʼю-таб «Документ»).
+4. **Оля** — підтвердити показ/ревʼю **1 липня**.
 
 ---
 

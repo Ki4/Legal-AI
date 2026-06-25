@@ -229,3 +229,25 @@ round-robin LB (nginx/traefik); (б) job-queue (BullMQ/Redis) с N воркер�
 **Открытые подвопросы:** степень preview (сколько показывать), формат preview (image vs watermarked
 HTML), интеграция платежа (Telegram Payments?), где хранится confirmed-флаг и как сервер его проверяет
 перед выдачей чистого артефакта.
+
+---
+
+## Связь с backlog (IMPROVEMENTS / issues) — чтобы ничего не потерять
+
+Дизайн из этого журнала + research-доков ложится на **существующий** backlog (по правилу «no
+duplication» — аугментируем, не плодим дубли). Карта связей:
+
+| Тема (наш разбор) | Backlog-ID | Статус |
+|---|---|---|
+| Формати + стилістика + page-integrity + preview | **#77** | аугментирован 2026-06-25 (docx+Gotenberg, NBSP, multi-renderer, cost) |
+| Захист предперегляду / watermark / «2 артефакта» (Q6) | **#86** | уже детально; наш Q6 совпал |
+| PII приватна доставка PDF (Drive `files.export`) | **#57** 🔴 | существует (issue) |
+| Типографіка-директиви `{{!style:}}` (+ `keep-block`) | **#50** | существует (фаза 2) |
+| Авторська система для юриста (семантичні ролі) | **#51** | существует (Admin-UI редактор шаблону) |
+| Faithfulness / NLI-критик; abstention-моніторинг | **#38** / **#73** | существуют |
+| CI + eval-набори; e2e hybrid | **#53** / **#54** / **#74** | существуют |
+| Multi-template на послугу | **#72** | существует |
+
+GitHub-issues заводим **только** под то, что реально стартуем (PII #57 уже есть). Roadmap-строка —
+`specs/roadmap.md` (раздел вывода документа). Design-note по сложным услугам/авторской системе/Tier-3
+песочнице — `docs/architecture/complex-services-design-note.md`.

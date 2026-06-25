@@ -105,7 +105,7 @@ to "fix". The audit reports what lives, not what should be rushed live.
     The suite runs only when a dev runs vitest manually. **Next check:** confirm
     no per-subdir pre-commit hook (apps/client, n8n). Implication: "1056+ tests
     passing / CI green" claims describe LOCAL runs, not an automated gate.
-- ✅ **checklist enforced on the live `template` path** — `Build Document`
+- ✅ **checklist runs (as a detector) on the live `template` path** — `Build Document`
   (`form-submit.json:298`) branches on `generation_mode`; both the `hybrid` and
   `template` branches call `validateChecklist(document, ctx,
   svc.required_checklist)` (validator `validate-checklist.js` + test). divorce/
@@ -122,11 +122,10 @@ to "fix". The audit reports what lives, not what should be rushed live.
     ("no behavior change until a checklist is uploaded") + column semantics
     (`021:14-16`: null=none / false=ok / true=missing). Checklist is a live
     **detector, not an enforcement gate**. _(2026-06-25)_
-  - 📋 efficacy still depends on `required_checklist` being populated in prod
-    (`021:8` defaults to `'{}'` = validation skipped). **Query handed to Sergey**
-    — `SELECT slug, status, generation_mode, (required_checklist <> '{}') AS
-    has_checklist, COALESCE(jsonb_array_length(required_checklist->'items'),0) AS
-    n_items FROM services ORDER BY slug;`
+  - ✅ **populated in prod (verified)** — prod `SELECT` (2026-06-25): divorce = 5
+    checklist items, alimony = 4, both `has_checklist=true`. The detector has
+    teeth on the live path (validates real required clauses every generation).
+    business/court_search/military = js+disabled, no checklist (expected).
 
 ### Deterministic routing (no LLM/semantic router needed on the form-path)
 

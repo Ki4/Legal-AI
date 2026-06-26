@@ -10,8 +10,14 @@
 
 ---
 
+### 2026-06-26 (session 48) — C-EXCEPTION: верифікація склонення як live LLM-кроку (docs)
+**Status:** MERGED to main · `ac245d6` · branch `docs/c-exception-declension-verified`
+**Why:** Backlog-47 C-EXCEPTION був 📋 (треба верифікувати, чи склонення ПІБ — живий LLM-крок). Закриваємо за VERIFICATION-PROTOCOL (≥2 згоджених evidence + invocation).
+**What:** підтверджено live: `form-submit` → `Prepare Declension` (промпт `*-declension-prompt.txt`) → `AI Declension` (Groq POST) → `Build Document` (`buildContext` читає `ai.*_genitive/_instrumental/_locative`, fallback у називний). Це єдине неустранне місце LLM. Caveat: Groq дає JSON-mode, НЕ GBNF-grammar → реалістичний харнес = JSON-schema + детермінований пост-чек (стем-share). Оновлено `backlog-session-47.md` C-EXCEPTION 📋→✅.
+**Files:** `docs/architecture/backlog-session-47.md`.
+
 ### 2026-06-26 (session 48) — A1: CI тест-гейт (.github/workflows/test.yml)
-**Status:** COMMITTED · branch `chore/ci-test-gate`
+**Status:** MERGED to main · `cdb8491` (PR #72, перший cloud-прогон ✅ success) · branch `chore/ci-test-gate`
 **Why:** Аудит session 47 знайшов: ~1250 тестів гонялися ЛИШЕ вручну — у `.github/workflows/` був тільки `law-monitor.yml`. «CI green» = локально, не гейт. A1 з backlog-47: зробити реальний гейт на push до main + кожен PR.
 **What:** новий workflow `test.yml` (Node 22, `working-directory: apps/client`): `npm ci` → `tsc -b` → `npm test` (UI) → `npx vitest run --root ../.. scripts n8n` (root-сьют). Без root `package.json` — vitest живе в apps/client, root-тести фільтруються по шляху (`scripts`/`n8n`), CJS вантажиться самими тестами.
 **Files:** `.github/workflows/test.yml` (new).

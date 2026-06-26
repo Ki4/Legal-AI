@@ -14,7 +14,13 @@
  * Parsing patterns carried over from scripts/seed-divorce-laws.ts.
  */
 
-const USER_AGENT = 'Mozilla/5.0 (compatible; LegalAI-Bot/1.0)';
+// zakon.rada.gov.ua fronts a WAF that returns HTTP 403 for an obvious "...Bot/1.0" UA on
+// SOME law pages (e.g. /laws/show/3674-17 «Про судовий збір») while letting the codes through
+// — so a watched law could be silently dropped from monitoring. We read only public, freely
+// published law text, politely (1s+ spacing, weekly cadence), so we present a standard browser
+// UA to fetch reliably. Not auth/paywall circumvention.
+const USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 const REQUEST_HEADERS = {
   'User-Agent': USER_AGENT,

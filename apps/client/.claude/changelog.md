@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-06-26 (session 49) — Declension stem-guard: детерм. пост-чек над AI-склоненням
+**Status:** branch `feat/declension-stem-guard` (НЕ змержено, live-деплой n8n ВІДКЛАДЕНО) · commit `<hash>`
+**Why:** DO-NOW з C-EXCEPTION. Склонення ПІБ — єдиний живий LLM-крок (Groq). Сьогодні AI-вихід довіряється сліпо: порожнє поле відкочується в називний, але ГАЛЮЦИНАЦІЯ (інше імʼя / сміття / випущене слово) йде прямо в судовий документ. Guard = детермінований пост-чек: склонена форма мусить ділити СТЕМ з називним джерелом, інакше відкат у називний (як ніби AI промовчав).
+**What:**
+- `n8n/templates/render-document.js`: нові pure-функції `normalizeDeclensionWord`/`commonPrefixLen`/`wordStemOk`/`declensionStemOk`/`guardDeclension` (після `joinName`); 4 поля ПІБ у `aiSafe` (plaintiff/defendant × instrumental/genitive) обгорнуті `guardDeclension(name, ai)` — субсумує старий `|| name` empty-fallback. Tuned LENIENT (відхиляє лише явні mismatch: підмінене слово, інша к-сть слів) — асиметрія свідома: хибний відкат коректної форми псує якість, тож при сумніві ACCEPT.
+- `n8n/workflows/current/form-submit.json`: `Build Document` node регенеровано (sync-build-document-node.mjs, 74819→78133 chars) — guard інлайнено. **Live n8n НЕ задеплоєно.**
+- Parity-фікс: synthetic «swap» кейси (`*-template-parity.test.js`) спаровували переставлені імена зі старим (жіночим) AI-склоненням — guard правильно це ловив і ламав parity. Зроблено фікстури самосогласованими (чоловічий істец → чоловіче склонення), як і виробляв би живий AI. Engine===builder збережено.
+**Files:** `n8n/templates/render-document.js`, `n8n/templates/__tests__/declension-guard.test.js` (new, 19 тестів), `n8n/templates/__tests__/divorce-template-parity.test.js`, `n8n/templates/__tests__/alimony-template-parity.test.js`, `n8n/workflows/current/form-submit.json`.
+**Tests:** guard **19 ✅** (реальні відмінювання pass, галюцинації/swap/empty fail, апостроф-варіанти, buildContext-інтеграція) · parity divorce+alimony **263 байт-у-байт ✅** · повний n8n+scripts **1008 ✅** (+19).
+**🔴 ВІДКЛАДЕНО (live-risk):** деплой `scripts/deploy-workflow.mjs form-submit` + ОБОВʼЯЗКОВИЙ реальний webhook-тест (генерація divorce/alimony наживо). Доки не задеплоєно — guard живе лише в репо/тестах, прод-поведінка незмінна.
+
 ### 2026-06-26 (session 48) — C-EXCEPTION: верифікація склонення як live LLM-кроку (docs)
 **Status:** MERGED to main · `ac245d6` · branch `docs/c-exception-declension-verified`
 **Why:** Backlog-47 C-EXCEPTION був 📋 (треба верифікувати, чи склонення ПІБ — живий LLM-крок). Закриваємо за VERIFICATION-PROTOCOL (≥2 згоджених evidence + invocation).

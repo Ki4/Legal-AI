@@ -495,6 +495,67 @@ function joinName(...parts) {
   return filled.length ? filled.join(' ') : FALLBACK;
 }
 
+// ─── Declension stem-guard (C-EXCEPTION DO-NOW) ───────────────────────────────
+// The declension step is the ONE live LLM call in the otherwise-deterministic
+// pipeline. AI output is trusted blindly today: an empty field falls back to the
+// nominative, but a HALLUCINATED field (wrong name, garbage, dropped word) goes
+// straight into a court document. This guard is a deterministic post-check — a
+// declined form must keep the STEM of its nominative source; if it doesn't we
+// revert to the nominative (same safe outcome as if the AI had returned nothing).
+//
+// Tuned LENIENT on purpose. Ukrainian inflection only swaps word endings, so a
+// correct declension always shares a long common prefix per word. We reject only
+// CLEAR mismatches (swapped word, changed word-count). The asymmetry is deliberate:
+// wrongly reverting a CORRECT form degrades quality, so when unsure we ACCEPT.
+
+function normalizeDeclensionWord(w) {
+  return String(w)
+    .toLowerCase()
+    .replace(/[’'`´]/g, "'") // unify apostrophe variants (Гур'єв)
+    .replace(/[.,;:]/g, '');           // strip trailing punctuation
+}
+
+function commonPrefixLen(a, b) {
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a[i] === b[i]) i += 1;
+  return i;
+}
+
+// One word passes if its declined form shares enough of a stem with the
+// nominative word. Endings are ~1–4 chars, so we require the common prefix to
+// cover at least half of the shorter word (min 2 chars): clears real inflection
+// (Іванова→Іванову, Інна→Інни) and harsher fleeting-vowel cases (Орел→Орла),
+// while rejecting a swapped surname (Іванова→Петренко).
+function wordStemOk(nomWord, decWord) {
+  const a = normalizeDeclensionWord(nomWord);
+  const b = normalizeDeclensionWord(decWord);
+  if (!a || !b) return false;
+  if (a === b) return true; // indeclinable / unchanged (м., РАЦС, у)
+  const minLen = Math.min(a.length, b.length);
+  const lcp = commonPrefixLen(a, b);
+  const need = Math.max(2, Math.ceil(minLen / 2));
+  return lcp >= need;
+}
+
+// Whole-name guard: equal word-count AND every word keeps its stem. Any failure
+// → caller reverts the ENTIRE field to nominative (never mix a half-trusted
+// declension into a legal name).
+function declensionStemOk(nominative, declined) {
+  const nomWords = String(nominative || '').trim().split(/\s+/).filter(Boolean);
+  const decWords = String(declined || '').trim().split(/\s+/).filter(Boolean);
+  if (!decWords.length) return false;
+  if (nomWords.length !== decWords.length) return false;
+  return nomWords.every((w, i) => wordStemOk(w, decWords[i]));
+}
+
+// Returns the AI declension when it passes the stem-guard, else the nominative.
+// Subsumes the old `aiIn.x || nominative` empty-fallback (empty → fails → nominative).
+function guardDeclension(nominative, aiDeclined) {
+  if (aiDeclined && declensionStemOk(nominative, aiDeclined)) return aiDeclined;
+  return nominative;
+}
+
 /** "свідоцтво №..." → "свідоцтвом №..." (instrumental after "підтверджується") */
 function normalizeCert(certInfo) {
   if (!certInfo) return certInfo;
@@ -594,11 +655,14 @@ function buildContext(answers, ai) {
   const courtFee = priceOfClaim !== null ? Math.max(onePercentOfClaim, courtFeeFloor) : null;
   const courtFeeIsFloor = onePercentOfClaim !== null ? onePercentOfClaim <= courtFeeFloor : false;
 
+  // PIB declensions pass through the stem-guard: a hallucinated/garbled name
+  // reverts to the nominative instead of reaching the document. The guard also
+  // subsumes the old `|| name` empty-fallback (empty AI field → reverts).
   const aiSafe = {
-    plaintiff_instrumental: aiIn.plaintiff_instrumental || plaintiffName,
-    plaintiff_genitive: aiIn.plaintiff_genitive || plaintiffName,
-    defendant_instrumental: aiIn.defendant_instrumental || aiIn.spouse_instrumental || defendantName,
-    defendant_genitive: aiIn.defendant_genitive || aiIn.spouse_genitive || defendantName,
+    plaintiff_instrumental: guardDeclension(plaintiffName, aiIn.plaintiff_instrumental),
+    plaintiff_genitive: guardDeclension(plaintiffName, aiIn.plaintiff_genitive),
+    defendant_instrumental: guardDeclension(defendantName, aiIn.defendant_instrumental || aiIn.spouse_instrumental),
+    defendant_genitive: guardDeclension(defendantName, aiIn.defendant_genitive || aiIn.spouse_genitive),
     marriage_place_locative: aiIn.marriage_place_locative || a.marriage_place || FALLBACK,
     children_genitive: aiIn.children_genitive
       || (children.length ? children.map((c) => `${c.name}, ${c.birthDate} р.н.`).join('; ') : FALLBACK),
@@ -652,5 +716,10 @@ if (typeof module !== 'undefined' && module.exports) {
     parseMoney,
     ageFromBirthDate,
     pmFloorForAge,
+    // declension stem-guard
+    wordStemOk,
+    declensionStemOk,
+    guardDeclension,
+    normalizeDeclensionWord,
   };
 }

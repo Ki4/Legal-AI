@@ -161,11 +161,6 @@ describe('parity: individual branch toggles', () => {
     'defendant official email present': { defendant_official_email: 'present' },
     'defendant official email absent': { defendant_official_email: 'absent' },
 
-    'male plaintiff, female defendant (all gender forms swap)': {
-      last_name: 'Коваленко', first_name: 'Дмитро', middle_name: 'Олегович',
-      defendant_last_name: 'Коваленко', defendant_first_name: 'Наталія', defendant_middle_name: 'Вікторівна',
-    },
-
     'divorce: court without case number': { divorce_case_number: '' },
     'divorce: no court at all': { divorce_court: '', divorce_case_number: '' },
     'no divorce date': { divorce_date: '' },
@@ -193,6 +188,26 @@ describe('parity: individual branch toggles', () => {
   for (const [label, patch] of Object.entries(cases)) {
     it(label, () => compare({ ...BASE_ANSWERS, ...patch }, BASE_AI))
   }
+
+  // Swapped names need a SELF-CONSISTENT ai: the declension stem-guard
+  // (render-document.js) reverts an ai form whose stem mismatches the nominative
+  // name, so a male plaintiff must be paired with a male declension (as the live
+  // AI step would actually produce). Engine and legacy builder still agree.
+  it('male plaintiff, female defendant (all gender forms swap)', () =>
+    compare(
+      {
+        ...BASE_ANSWERS,
+        last_name: 'Коваленко', first_name: 'Дмитро', middle_name: 'Олегович',
+        defendant_last_name: 'Коваленко', defendant_first_name: 'Наталія', defendant_middle_name: 'Вікторівна',
+      },
+      {
+        ...BASE_AI,
+        plaintiff_instrumental: 'Коваленка Дмитра Олеговича',
+        plaintiff_genitive: 'Коваленка Дмитра Олеговича',
+        defendant_instrumental: 'Коваленко Наталії Вікторівни',
+        defendant_genitive: 'Коваленко Наталії Вікторівни',
+      },
+    ))
 
   it('fixed type: unemployed has no income clause (legacy asymmetry preserved)', () => {
     compare({ ...BASE_ANSWERS, alimony_type: 'fixed', alimony_fixed_amount: '9000', defendant_employed: 'no', defendant_employer: '' }, BASE_AI)

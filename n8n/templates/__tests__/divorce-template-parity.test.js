@@ -216,11 +216,6 @@ describe('parity: individual branch toggles', () => {
     'spouse official email present': { spouse_official_email: 'present' },
     'spouse official email absent': { spouse_official_email: 'absent' },
 
-    'male plaintiff, female spouse (all gender forms swap)': {
-      last_name: 'Коваленко', first_name: 'Віктор', middle_name: 'Петрович',
-      spouse_last_name: 'Коваленко', spouse_first_name: 'Марія', spouse_middle_name: 'Олександрівна',
-    },
-
     'spouse consents': { spouse_consents: true },
     'spouse consents as string "true"': { spouse_consents: 'true' },
 
@@ -287,6 +282,26 @@ describe('parity: individual branch toggles', () => {
   for (const [label, patch] of Object.entries(cases)) {
     it(label, () => compare({ ...BASE_ANSWERS, ...patch }, BASE_AI))
   }
+
+  // Swapped names need a SELF-CONSISTENT ai: the declension stem-guard
+  // (render-document.js) reverts an ai form whose stem mismatches the nominative
+  // name, so a male plaintiff must be paired with a male declension (as the live
+  // AI step would actually produce). Engine and legacy builder still agree.
+  it('male plaintiff, female spouse (all gender forms swap)', () =>
+    compare(
+      {
+        ...BASE_ANSWERS,
+        last_name: 'Коваленко', first_name: 'Віктор', middle_name: 'Петрович',
+        spouse_last_name: 'Коваленко', spouse_first_name: 'Марія', spouse_middle_name: 'Олександрівна',
+      },
+      {
+        ...BASE_AI,
+        plaintiff_instrumental: 'Коваленком Віктором Петровичем',
+        plaintiff_genitive: 'Коваленка Віктора Петровича',
+        defendant_instrumental: 'Коваленко Марією Олександрівною',
+        defendant_genitive: 'Коваленко Марії Олександрівни',
+      },
+    ))
 })
 
 // ─── Goldens: 4 fixture scenarios byte-identical to expected/*.txt ───────────

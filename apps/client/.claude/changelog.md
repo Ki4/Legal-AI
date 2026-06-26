@@ -10,6 +10,29 @@
 
 ---
 
+### 2026-06-25 (session 47) — G2: превʼю court-ready документа в адмінці (issue #71)
+**Status:** COMMITTED · branch `claude/affectionate-mccarthy-ho6gqe`
+**Why:** Адмінка показувала анатомію/health, але НЕ сам документ — юрист не бачив, що реально згенерується. Таб «Документ» рендерить шаблон послуги ТИМ САМИМ рушієм, що й прод (`render-document.js`, SSoT), з порожніми полями `________`. Знімає відкладений слайс DECISIONS #66 — тепер з доказом, що рушій чистий JS (0 Node-залежностей): імпортуємо РЕАЛЬНИЙ файл через alias (без копії → без дрейфу), не другий рендерер.
+**What:**
+- Vite: alias `@doc-engine`→`n8n/templates/render-document.js` + `server.fs.allow` (читання поза apps/client) + `commonjsOptions.include` (CJS-рушій поза node_modules, `"type":"module"` робив його «ESM з 0 експортів» → opt-in у commonjs-трансформ; default-імпорт + деструктуризація, бо rollup віддає лише default).
+- `DocumentPreview.tsx` — «паперова» картка, styleHints→CSS (center/bold/...), graceful на no-template / render-error.
+- Pure `documentStyles.ts` (styleClasses/toParagraphs, тестований) + `documentPreview.ts` (рушій-обгортка) + `doc-engine.d.ts` (типи alias).
+- Таб «Документ» (дефолтний) у `ServiceAnatomy`, проброс `document_template` з `ServiceViewPage`.
+**Files:** `vite.config.admin.ts`, `src/types/doc-engine.d.ts` (new), `src/admin/lib/documentStyles.ts` + `documentPreview.ts` (new), `src/admin/components/DocumentPreview.tsx` (new), `ServiceAnatomy.tsx`, `ServiceViewPage.tsx`, `src/admin/lib/__tests__/documentStyles.test.ts` (new).
+**Tests:** `npm run build:admin` ✅ · `npm test` **260 ✅** (13 файлів) · рантайм-чек: divorce-шаблон → 3295 симв., скелет «ПОЗОВНА ЗАЯВА» з `________`.
+
+### 2026-06-25 (session 47) — Verification Protocol + P1-аудит anti-hallucination spine
+**Status:** COMMITTED · branch `claude/affectionate-mccarthy-ho6gqe`
+**Why:** Двічі за сесію спіймали завищення «вже зроблено» (критик-стек «працює»; research-док «вони це вже роблять») — обидва трималися на ОДНОМУ evidence. Сергій попросив durable-правило: будь-який claim (з доку, з ідеї, з мого ж висновку) — гіпотеза, поки не звірена з кодом/рантаймом, і перевіряти ≥2 рази. Звідси протокол + одноразовий аудит «done»-claim'ів.
+**What:**
+- `docs/architecture/VERIFICATION-PROTOCOL.md` (NEW): status-словник ✅live / ⚠️built-not-live / 📋claimed / ❌gap; правило підтвердження (≥2 незалежних evidence, що згоджуються, одне = **invocation**, не лише definition; протиріччя блокує ✅; runtime — окремий клас evidence); живий status-ledger + tiered backlog (~60 «done»-claim, P1/P2/P3).
+- `CLAUDE.md`: bullet у Session protocol → ссилка на протокол.
+- **P1-spine звірено 100% (вкл. прод):** doc-engine — **прод ≠ репо** (міграції кажуть divorce/alimony=`js`, прод-SELECT = `template`, active; ручний флип без міграції `014:32`); checklist — ✅ працює на template-гілці (`Build Document:298`), `required_checklist` залитий у прод (divorce 5 / alimony 4 пункти), ⚠️ **детектор, не гейт** (провал лише флажить `cases.checklist_failed`); citations — ✅ drift-guard `citations-drift.test.js` (dev-time), ⚠️ не в CI; критики L4 / `search_law_chunks` / `law_relations` — ⚠️ built-not-live **намірено** (future-tier scaffolding, gated на `generation_mode='hybrid'`=alimony-change=disabled). `law_relations` = monitoring-граф impact'у, НЕ retrieval, курований lawyer-verified, НЕ Microsoft GraphRAG.
+- **2 системних факти (не було в жодному доці):** (1) жива анти-галюцинація divorce/alimony = детермінізм template + мʼякий checklist-детектор, а НЕ AI-харнес; (2) **автоматичного тест-гейта немає** — у `.github/workflows/` лише `law-monitor.yml`, vitest гоняється руками → «CI green» = локально.
+**Files:** `docs/architecture/VERIFICATION-PROTOCOL.md` (new), `CLAUDE.md` (session-protocol bullet).
+**Tests:** docs-only, без коду (аудит = read-only верифікація проти коду + прод). Прод-`SELECT` services звірено наживо Сергієм.
+**Commits:** 6961531 · 0869016 · 4cf42bd · 93ecc9b · f2b8cc9 · aa333e2 · 678f100.
+
 ### 2026-06-24 (session 46, ч.8) — QA-gate: парсер цитат (ст. N, M) + «Форма клієнта» поверх оверлею
 **Status:** COMMITTED · branch `claude/wizardly-dirac-qxqw5u`
 **Why:** (1) Критик+тестувальник знайшли, що парсер цитат (`serviceAnatomy.ts`) втрачав статті у формі `ст. 110, 112 <Закон>` (одиночне `ст.` + список через кому) — діставав лише двойне `ст.ст.`. Реальні шаблони (divorce/alimony/alimony-change) усі вживають `ст.ст.`, тож goldens не зачеплені, але ручна правка шаблону могла мовчки втратити статтю. Сергій підтвердив: чинити зараз. (2) Сергій тричі повідомив, що «Форма клієнта» не клікається. Окрім відносного URL (ч.7), є друга причина: коли увімкнено режим «Залишити коментар», `CommentLayer` стелить capture-surface `absolute inset-0 pointer-events-auto` на весь контент **включно з верхньою панеллю** — і навігація перестає клікатись.

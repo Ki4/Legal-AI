@@ -430,7 +430,7 @@
       "typeVersion": 4.2,
       "position": [
         4480,
-        1580
+        2120
       ],
       "credentials": {
         "googleOAuth2Api": {
@@ -438,7 +438,8 @@
           "name": "Google OAuth2"
         }
       },
-      "onError": "continueErrorOutput"
+      "onError": "continueErrorOutput",
+      "disabled": true
     },
     {
       "parameters": {
@@ -489,14 +490,15 @@
       "typeVersion": 1.2,
       "position": [
         4720,
-        1580
+        2120
       ],
       "credentials": {
         "telegramApi": {
           "id": "6OfTH9OBUuEgKALQ",
           "name": "Telegram account"
         }
-      }
+      },
+      "disabled": true
     },
     {
       "parameters": {
@@ -806,6 +808,145 @@
         }
       },
       "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Build Replace Request').item.json._new_doc_id }}/export?mimeType=application/pdf",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "export-pdf-001",
+      "name": "Export PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4480,
+        1580
+      ],
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "google-oauth2-001",
+          "name": "Google OAuth2"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendDocument",
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {
+          "fileName": "={{ $('Get Service').item.json.title }}.pdf",
+          "caption": "=✅ Ваш документ: {{ $('Get Service').item.json.title }}"
+        }
+      },
+      "id": "send-pdf-001",
+      "name": "Send PDF",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4720,
+        1580
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Build Replace Request').item.json._new_doc_id }}/export?mimeType=application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "export-docx-001",
+      "name": "Export DOCX",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4960,
+        1580
+      ],
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "google-oauth2-001",
+          "name": "Google OAuth2"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendDocument",
+        "chatId": "={{ $('Validate').item.json._user_id }}",
+        "binaryData": true,
+        "binaryPropertyName": "data",
+        "additionalFields": {
+          "fileName": "={{ $('Get Service').item.json.title }}.docx"
+        }
+      },
+      "id": "send-docx-001",
+      "name": "Send DOCX",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5200,
+        1580
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "6OfTH9OBUuEgKALQ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://www.googleapis.com/drive/v3/files/{{ $('Build Replace Request').item.json._new_doc_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googleOAuth2Api",
+        "options": {}
+      },
+      "id": "delete-doc-001",
+      "name": "Delete Doc",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        5440,
+        1580
+      ],
+      "credentials": {
+        "googleOAuth2Api": {
+          "id": "google-oauth2-001",
+          "name": "Google OAuth2"
+        }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "prepare-l4b-001",
@@ -1187,24 +1328,6 @@
         ]
       ]
     },
-    "Share Document": {
-      "main": [
-        [
-          {
-            "node": "Send Doc Link",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Format Gen Failure",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Check Service Status": {
       "main": [
         [
@@ -1398,7 +1521,7 @@
       "main": [
         [
           {
-            "node": "Share Document",
+            "node": "Export PDF",
             "type": "main",
             "index": 0
           }
@@ -1406,6 +1529,64 @@
         [
           {
             "node": "Format Gen Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Export PDF": {
+      "main": [
+        [
+          {
+            "node": "Send PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Gen Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send PDF": {
+      "main": [
+        [
+          {
+            "node": "Export DOCX",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Export DOCX": {
+      "main": [
+        [
+          {
+            "node": "Send DOCX",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Format Gen Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send DOCX": {
+      "main": [
+        [
+          {
+            "node": "Delete Doc",
             "type": "main",
             "index": 0
           }

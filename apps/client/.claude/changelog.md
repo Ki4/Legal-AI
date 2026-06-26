@@ -10,8 +10,21 @@
 
 ---
 
+### 2026-06-26 (session 50) — Declension stem-guard: ЗАДЕПЛОЄНО live + ЗМЕРЖЕНО в main
+**Status:** MERGED to main · merge `835d282` (`--no-ff` `feat/declension-stem-guard`) · **live n8n form-submit задеплоєно + верифіковано наживо**
+**Why:** Закриття 🔴-кроку session 49 (live-деплой був свідомо відкладений до підняття Docker n8n + ngrok). Сергій підняв інфру → дотиснули.
+**What:**
+- Інфра звірена наживо: локальний n8n `/healthz` 200, ngrok-туннель `/healthz` 200 (`rosy-caution-progeny.ngrok-free.dev → :5678`), Docker `n8n` Running.
+- `node scripts/deploy-workflow.mjs form-submit` → live `D2ab06X3pVUWk1py`, 48 нод, active, credentials збережено, бэкап у `.backups/`.
+- **3 реальні webhook-прогони** (`test-webhook.mjs`): 157 minimal, 158 divorce (scenario 1), 159 alimony (a1) — усі `success`.
+**Verify (live, з executions API):**
+- **divorce 158** `_abstained=null`: guard ПРОПУСТИВ валідні AI-форми — `із Петренком Андрієм Сергійовичем`, `між мною, Петренко Оксану Іванівну` (інструментал істця/відповідача в тілі позову). Без хибного відкату.
+- **alimony 159** `_abstained=null`: `Стягнути з Іванова Івана Івановича на користь Іванової Інни Петрівни` (генитив), `уклала шлюб з Івановим Іваном Івановичем`, дитина `Олега Івановича` (генитив). Усі коректні.
+- Висновок: guard non-destructive на валідному вході (головний ризик якості знятий); деструктивний відкат галюцинацій лишається покритий 19 unit-тестами (не форсувати наживо без підміни AI-виходу).
+**⚠️ Note:** тести створили кейси під тест-identity `236581343` + реальні `sendDocument` у цей чат (як і попередні сесії).
+
 ### 2026-06-26 (session 49) — Declension stem-guard: детерм. пост-чек над AI-склоненням
-**Status:** branch `feat/declension-stem-guard` (НЕ змержено, live-деплой n8n ВІДКЛАДЕНО) · commit `06365e5`
+**Status:** branch `feat/declension-stem-guard` (НЕ змержено, live-деплой n8n ВІДКЛАДЕНО) · commit `06365e5` → **ЗМЕРЖЕНО session 50 (`835d282`), задеплоєно**
 **Why:** DO-NOW з C-EXCEPTION. Склонення ПІБ — єдиний живий LLM-крок (Groq). Сьогодні AI-вихід довіряється сліпо: порожнє поле відкочується в називний, але ГАЛЮЦИНАЦІЯ (інше імʼя / сміття / випущене слово) йде прямо в судовий документ. Guard = детермінований пост-чек: склонена форма мусить ділити СТЕМ з називним джерелом, інакше відкат у називний (як ніби AI промовчав).
 **What:**
 - `n8n/templates/render-document.js`: нові pure-функції `normalizeDeclensionWord`/`commonPrefixLen`/`wordStemOk`/`declensionStemOk`/`guardDeclension` (після `joinName`); 4 поля ПІБ у `aiSafe` (plaintiff/defendant × instrumental/genitive) обгорнуті `guardDeclension(name, ai)` — субсумує старий `|| name` empty-fallback. Tuned LENIENT (відхиляє лише явні mismatch: підмінене слово, інша к-сть слів) — асиметрія свідома: хибний відкат коректної форми псує якість, тож при сумніві ACCEPT.

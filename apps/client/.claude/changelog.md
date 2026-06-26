@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-06-25 (session 47) — G2: превʼю court-ready документа в адмінці (issue #71)
+**Status:** COMMITTED · branch `claude/affectionate-mccarthy-ho6gqe`
+**Why:** Адмінка показувала анатомію/health, але НЕ сам документ — юрист не бачив, що реально згенерується. Таб «Документ» рендерить шаблон послуги ТИМ САМИМ рушієм, що й прод (`render-document.js`, SSoT), з порожніми полями `________`. Знімає відкладений слайс DECISIONS #66 — тепер з доказом, що рушій чистий JS (0 Node-залежностей): імпортуємо РЕАЛЬНИЙ файл через alias (без копії → без дрейфу), не другий рендерер.
+**What:**
+- Vite: alias `@doc-engine`→`n8n/templates/render-document.js` + `server.fs.allow` (читання поза apps/client) + `commonjsOptions.include` (CJS-рушій поза node_modules, `"type":"module"` робив його «ESM з 0 експортів» → opt-in у commonjs-трансформ; default-імпорт + деструктуризація, бо rollup віддає лише default).
+- `DocumentPreview.tsx` — «паперова» картка, styleHints→CSS (center/bold/...), graceful на no-template / render-error.
+- Pure `documentStyles.ts` (styleClasses/toParagraphs, тестований) + `documentPreview.ts` (рушій-обгортка) + `doc-engine.d.ts` (типи alias).
+- Таб «Документ» (дефолтний) у `ServiceAnatomy`, проброс `document_template` з `ServiceViewPage`.
+**Files:** `vite.config.admin.ts`, `src/types/doc-engine.d.ts` (new), `src/admin/lib/documentStyles.ts` + `documentPreview.ts` (new), `src/admin/components/DocumentPreview.tsx` (new), `ServiceAnatomy.tsx`, `ServiceViewPage.tsx`, `src/admin/lib/__tests__/documentStyles.test.ts` (new).
+**Tests:** `npm run build:admin` ✅ · `npm test` **260 ✅** (13 файлів) · рантайм-чек: divorce-шаблон → 3295 симв., скелет «ПОЗОВНА ЗАЯВА» з `________`.
+
 ### 2026-06-25 (session 47) — Verification Protocol + P1-аудит anti-hallucination spine
 **Status:** COMMITTED · branch `claude/affectionate-mccarthy-ho6gqe`
 **Why:** Двічі за сесію спіймали завищення «вже зроблено» (критик-стек «працює»; research-док «вони це вже роблять») — обидва трималися на ОДНОМУ evidence. Сергій попросив durable-правило: будь-який claim (з доку, з ідеї, з мого ж висновку) — гіпотеза, поки не звірена з кодом/рантаймом, і перевіряти ≥2 рази. Звідси протокол + одноразовий аудит «done»-claim'ів.

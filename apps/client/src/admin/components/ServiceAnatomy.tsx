@@ -13,16 +13,18 @@ import { deriveFormFlow, type FlowStep } from '../../lib/formFlow'
 import { describeShowIf, fieldTypeLabel, type FieldDiff } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import { Card, SectionLabel } from '../ui'
+import { DocumentPreview } from './DocumentPreview'
 
-type Tab = 'anatomy' | 'graph' | 'form'
+type Tab = 'document' | 'anatomy' | 'graph' | 'form'
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'document', label: 'Документ' },
   { id: 'anatomy', label: 'Анатомія' },
   { id: 'graph', label: 'Граф звʼязків' },
   { id: 'form', label: 'Алгоритм форми' },
 ]
 
-export function ServiceAnatomy({ viz, form, diff }: { viz: VizService; form: FormConfig; diff: FieldDiff }) {
-  const [tab, setTab] = useState<Tab>('anatomy')
+export function ServiceAnatomy({ viz, form, diff, documentTemplate }: { viz: VizService; form: FormConfig; diff: FieldDiff; documentTemplate?: string | null }) {
+  const [tab, setTab] = useState<Tab>('document')
   const [formView, setFormView] = useState<'tree' | 'list'>('tree')
   const graph = useMemo(() => buildCatalogGraph([viz]), [viz])
   const flow = useMemo(() => deriveFormFlow(form, diff), [form, diff])
@@ -46,6 +48,7 @@ export function ServiceAnatomy({ viz, form, diff }: { viz: VizService; form: For
         <StatCard n={diff.unmatchedPlaceholders.length} label="бракує" tone="danger" />
       </div>
 
+      {tab === 'document' && <DocumentPreview template={documentTemplate ?? null} />}
       {tab === 'anatomy' && <ServiceDetail service={viz} />}
       {tab === 'graph' && (
         <CatalogGraph nodes={graph.nodes} edges={graph.edges} changes={[]} services={[viz]} onOpenService={() => {}} hideChanges />

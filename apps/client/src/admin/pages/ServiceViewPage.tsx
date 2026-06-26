@@ -248,7 +248,7 @@ export function ServiceViewBody({
         </Card>
 
         {/* Per-service visual lenses: anatomy (pipeline/radial/blueprint) · graph · form algorithm */}
-        <ServiceAnatomy viz={viz} form={form} diff={diff} />
+        <ServiceAnatomy viz={viz} form={form} diff={diff} documentTemplate={svc.document_template} />
 
         {/* Citations */}
         {analysis.citations.length > 0 && (

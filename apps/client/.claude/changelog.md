@@ -17,7 +17,8 @@
 - `src/admin/lib/sampleAnswers.ts` (new) — реалістичні приклади відповідей per-slug (divorce/alimony), взяті з golden BASE_ANSWERS parity-тестів (вигадані особи, display-only).
 - `DocumentPreview.tsx` — тумблер «Заповнений приклад» / «Порожній шаблон»; дефолт = заповнений, коли приклад є. Той самий рушій (`@doc-engine`), без другого рендерера → без дрейфу.
 - Проброс `slug` через `ServiceAnatomy` ← `ServiceViewPage`.
-**Files:** `src/admin/lib/sampleAnswers.ts` (new), `src/admin/lib/__tests__/sampleAnswers.test.ts` (new), `src/admin/components/DocumentPreview.tsx`, `src/admin/components/ServiceAnatomy.tsx`, `src/admin/pages/ServiceViewPage.tsx`.
+- **Fix dev-режиму (передіснуючий з G2):** превʼю падало в браузері `SyntaxError: ... does not provide an export named 'default'` — `vite serve` НЕ ганяє commonjs-плагін (він build-only), тож CJS-рушій віддавався без default-експорту. Додано `optimizeDeps.include: ['@doc-engine']` → esbuild робить CJS→ESM інтероп і в dev. (Білд працював і раніше — звідси проґавили в G2.)
+**Files:** `src/admin/lib/sampleAnswers.ts` (new), `src/admin/lib/__tests__/sampleAnswers.test.ts` (new), `src/admin/components/DocumentPreview.tsx`, `src/admin/components/ServiceAnatomy.tsx`, `src/admin/pages/ServiceViewPage.tsx`, `vite.config.admin.ts`.
 **Tests:** новий drift-guard рендерить кожен приклад через реальний doc-engine і вимагає, щоб приклад заповнював скелет (divorce 18→1 дірка [витрати — runtime-blank], alimony 23→0) + імена присутні. `npm test` **268 ✅** (14 файлів), `tsc -b` clean, `build:admin` ✅.
 
 ### 2026-06-26 (session 47) — G1+G3 live: приватна доставка PDF/DOCX, #71 merged → main (2364e29)

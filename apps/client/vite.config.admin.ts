@@ -33,6 +33,12 @@ export default defineConfig({
     // Let the dev server read the aliased engine that lives outside apps/client.
     fs: { allow: [repoRoot] },
   },
+  optimizeDeps: {
+    // Dev (vite serve) does NOT run the commonjs plugin (that's build-only), so the
+    // raw CJS engine is served without a `default` export → import crashes. Pre-bundle
+    // it here so esbuild does the CJS→ESM interop in dev too, matching the build.
+    include: ['@doc-engine'],
+  },
   build: {
     outDir: 'dist-admin',
     emptyOutDir: true,

@@ -125,11 +125,12 @@ describe('extractArticlesByLaw', () => {
     ]);
   });
 
-  it('matches the real divorce template: SK={65,105,110,112,157}, ЦПК={27,175,187,274}, ЗСЗ={4,5}', () => {
+  it('matches the real divorce template: SK={105,110,112,157}, ЦПК={27,175,187,274}, ЗСЗ={4,5}', () => {
+    // ст.65 СК dropped in #67 (Variant B): debt division deferred to a separate suit.
     const text = readFileSync(resolve(TEMPLATES_DIR, 'divorce.document.txt'), 'utf8');
     const byLaw = extractArticlesByLaw(text);
 
-    expect(byLaw.find((l) => l.url === SK_URL).articles).toEqual(['65', '105', '110', '112', '157']);
+    expect(byLaw.find((l) => l.url === SK_URL).articles).toEqual(['105', '110', '112', '157']);
     expect(byLaw.find((l) => l.url === CPK_URL).articles).toEqual(['27', '175', '187', '274']);
     expect(byLaw.find((l) => l.url === ZSZ_URL).articles).toEqual(['4', '5']);
   });

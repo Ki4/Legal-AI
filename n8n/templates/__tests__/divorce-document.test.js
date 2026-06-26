@@ -234,17 +234,18 @@ describe('buildDivorceDocument', () => {
 
   // ── Joint property ──
 
-  it('includes property division when has_joint_property and not separate', () => {
+  it('acknowledges property but defers division — no details, no 1/2 demand (Variant B, #67)', () => {
     const withProp = {
       ...baseAnswers,
       has_joint_property: true,
-      property_dispute: 'together',
-      property_details: 'квартира за адресою м. Київ, вул. Хрещатик, 1',
+      property_dispute: 'none',
     }
     const doc = buildDivorceDocument(withProp, baseAi)
     expect(doc).toContain('спільне майно')
-    expect(doc).toContain('квартира за адресою')
-    expect(doc).toContain('1/2 частку')
+    expect(doc).toContain('вимога про поділ майна не є предметом цього позову')
+    // Variant B: no division demand, and no "майно: ________" details placeholder
+    expect(doc).not.toContain('1/2 частку')
+    expect(doc).not.toContain('майно: ________')
   })
 
   it('mentions separate proceeding for property_dispute=separate', () => {
@@ -285,15 +286,17 @@ describe('buildDivorceDocument', () => {
 
   // ── Debt ──
 
-  it('includes debt section when debt_claim is true', () => {
+  it('acknowledges debt but defers division — no details, no ст.65 demand (Variant B, #67)', () => {
     const withDebt = {
       ...baseAnswers,
       debt_claim: true,
-      debt_details: 'кредитний договір № 123 від 01.01.2020',
     }
     const doc = buildDivorceDocument(withDebt, baseAi)
     expect(doc).toContain("боргові зобов'язання")
-    expect(doc).toContain('кредитний договір')
+    expect(doc).toContain('Вимога про їх розподіл не є предметом цього позову')
+    // Variant B: no division demand, no ст.65, no "зобов'язання: ________" details placeholder
+    expect(doc).not.toContain('ст.65')
+    expect(doc).not.toContain("зобов'язання: ________")
   })
 
   // ── Fallbacks when AI is empty ──

@@ -96,11 +96,11 @@ describe('analyzeTemplate', () => {
 
 // ───────────────── Real-template diff: no FALSE unmatched from computed layer ──
 // The analyzer must not flag computed-layer keys (plaintiff_name, court_fee, children…)
-// as unmatched. alimony-change is fully aligned. divorce has a REAL gap the mirror
-// surfaces: the template prints {{property_details}} / {{debt_details}} (the property/debt
-// description in the petition), but the form only asks has_joint_property/property_dispute/
-// debt_claim — never the description itself, so it renders '________' in production.
-// (Flagged to Sergey — verify vs live config + decide if the form should collect them.)
+// as unmatched. Both real services are now fully aligned: divorce previously printed
+// {{property_details}} / {{debt_details}} the form never collected (→ '________' in
+// production) — that gap was the mirror's first finding (#67) and is now closed by
+// Variant B (property/debt acknowledged but division deferred to a separate suit,
+// no inline details). If this regresses, the form/template drifted apart again.
 const COMPUTED_KEYS = ['plaintiff_name', 'defendant_name', 'children', 'has_children', 'n_children', 'court_fee', 'price_of_claim', 'ai']
 
 describe('diffFormVsTemplate — real templates', () => {
@@ -109,9 +109,9 @@ describe('diffFormVsTemplate — real templates', () => {
     expect(diff.unmatchedPlaceholders).toEqual([])
   })
 
-  it('divorce: surfaces only the real property/debt-description gap', () => {
+  it('divorce: zero unmatched after #67 (property/debt gap closed via Variant B)', () => {
     const diff = diffFormVsTemplate(divorceFormConfig, analyzeTemplate(tpl('divorce')))
-    expect(diff.unmatchedPlaceholders).toEqual(['debt_details', 'property_details'])
+    expect(diff.unmatchedPlaceholders).toEqual([])
     // never a false positive from the computed layer
     for (const k of COMPUTED_KEYS) expect(diff.unmatchedPlaceholders).not.toContain(k)
   })

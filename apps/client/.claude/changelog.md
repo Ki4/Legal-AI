@@ -10,6 +10,13 @@
 
 ---
 
+### 2026-06-26 (session 47) — G1+G3 live: приватна доставка PDF/DOCX, #71 merged → main (2364e29)
+**Status:** MERGED to main · `de3340e` (G1+G3) · one-pager `eef8882` · merge `2364e29`
+**Why:** Фінал #71. Документ більше НЕ публічна Google-ссилка (PII!) — приходить приватним файлом PDF+DOCX у Telegram, Google Doc видаляється після експорту.
+**What:** form-submit хвіст `Apply Typography → Export PDF → Send PDF → Export DOCX → Send DOCX → Delete Doc` (Drive `:export` responseFormat=file + Telegram `sendDocument` binary); публічний шлях disabled+збережено; deployed live (`D2ab06X3pVUWk1py`). G4 one-pager `docs/strategy/how-it-works-onepager.md`.
+**Tests:** divorce(#154)+alimony(#155) live: файли PDF+DOCX доставлені/відкриваються, Delete Doc→204, стара ссилка 404. n8n 907/907 ✅, client 260/260 ✅.
+**Закрито #71** (G1✅ G2✅ G3✅ G4✅). #67 — на гілці `fix/divorce-property-debt-variant-b`, Tier-2, sign-off Олі на демо 1 липня.
+
 ### 2026-06-25 (session 47) — G2: превʼю court-ready документа в адмінці (issue #71)
 **Status:** COMMITTED · branch `claude/affectionate-mccarthy-ho6gqe`
 **Why:** Адмінка показувала анатомію/health, але НЕ сам документ — юрист не бачив, що реально згенерується. Таб «Документ» рендерить шаблон послуги ТИМ САМИМ рушієм, що й прод (`render-document.js`, SSoT), з порожніми полями `________`. Знімає відкладений слайс DECISIONS #66 — тепер з доказом, що рушій чистий JS (0 Node-залежностей): імпортуємо РЕАЛЬНИЙ файл через alias (без копії → без дрейфу), не другий рендерер.

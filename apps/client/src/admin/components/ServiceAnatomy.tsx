@@ -23,7 +23,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'form', label: 'Алгоритм форми' },
 ]
 
-export function ServiceAnatomy({ viz, form, diff, documentTemplate }: { viz: VizService; form: FormConfig; diff: FieldDiff; documentTemplate?: string | null }) {
+export function ServiceAnatomy({ viz, form, diff, documentTemplate, slug }: { viz: VizService; form: FormConfig; diff: FieldDiff; documentTemplate?: string | null; slug?: string | null }) {
   const [tab, setTab] = useState<Tab>('document')
   const [formView, setFormView] = useState<'tree' | 'list'>('tree')
   const graph = useMemo(() => buildCatalogGraph([viz]), [viz])
@@ -48,7 +48,7 @@ export function ServiceAnatomy({ viz, form, diff, documentTemplate }: { viz: Viz
         <StatCard n={diff.unmatchedPlaceholders.length} label="бракує" tone="danger" />
       </div>
 
-      {tab === 'document' && <DocumentPreview template={documentTemplate ?? null} />}
+      {tab === 'document' && <DocumentPreview template={documentTemplate ?? null} slug={slug ?? null} />}
       {tab === 'anatomy' && <ServiceDetail service={viz} />}
       {tab === 'graph' && (
         <CatalogGraph nodes={graph.nodes} edges={graph.edges} changes={[]} services={[viz]} onOpenService={() => {}} hideChanges />

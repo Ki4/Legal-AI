@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-06-26 (session 48) — A5: заповнений приклад документа в превʼю адмінки (демо 1 липня)
+**Status:** COMMITTED · branch `feat/a5-sample-preview`
+**Why:** Таб «Документ» (session 47 G2) показував лише порожній скелет із `________` — на демо юристу це виглядає як «дірки», а не готовий документ. A5 з backlog-47: рендерити РЕАЛЬНИЙ заповнений приклад за замовчуванням, щоб Оля бачила фінальний вигляд.
+**What:**
+- `src/admin/lib/sampleAnswers.ts` (new) — реалістичні приклади відповідей per-slug (divorce/alimony), взяті з golden BASE_ANSWERS parity-тестів (вигадані особи, display-only).
+- `DocumentPreview.tsx` — тумблер «Заповнений приклад» / «Порожній шаблон»; дефолт = заповнений, коли приклад є. Той самий рушій (`@doc-engine`), без другого рендерера → без дрейфу.
+- Проброс `slug` через `ServiceAnatomy` ← `ServiceViewPage`.
+**Files:** `src/admin/lib/sampleAnswers.ts` (new), `src/admin/lib/__tests__/sampleAnswers.test.ts` (new), `src/admin/components/DocumentPreview.tsx`, `src/admin/components/ServiceAnatomy.tsx`, `src/admin/pages/ServiceViewPage.tsx`.
+**Tests:** новий drift-guard рендерить кожен приклад через реальний doc-engine і вимагає, щоб приклад заповнював скелет (divorce 18→1 дірка [витрати — runtime-blank], alimony 23→0) + імена присутні. `npm test` **268 ✅** (14 файлів), `tsc -b` clean, `build:admin` ✅.
+
 ### 2026-06-26 (session 47) — G1+G3 live: приватна доставка PDF/DOCX, #71 merged → main (2364e29)
 **Status:** MERGED to main · `de3340e` (G1+G3) · one-pager `eef8882` · merge `2364e29`
 **Why:** Фінал #71. Документ більше НЕ публічна Google-ссилка (PII!) — приходить приватним файлом PDF+DOCX у Telegram, Google Doc видаляється після експорту.

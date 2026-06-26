@@ -16,6 +16,7 @@
 **What:** form-submit хвіст `Apply Typography → Export PDF → Send PDF → Export DOCX → Send DOCX → Delete Doc` (Drive `:export` responseFormat=file + Telegram `sendDocument` binary); публічний шлях disabled+збережено; deployed live (`D2ab06X3pVUWk1py`). G4 one-pager `docs/strategy/how-it-works-onepager.md`.
 **Tests:** divorce(#154)+alimony(#155) live: файли PDF+DOCX доставлені/відкриваються, Delete Doc→204, стара ссилка 404. n8n 907/907 ✅, client 260/260 ✅.
 **Закрито #71** (G1✅ G2✅ G3✅ G4✅). #67 — на гілці `fix/divorce-property-debt-variant-b`, Tier-2, sign-off Олі на демо 1 липня.
+**Cleanup:** гілку `claude/affectionate-mccarthy-ho6gqe` змержено в main (`--no-ff`) → remote видалено, local лишено (на всяк випадок). Note: ця сесія працювала у спільній робочій копії з паралельним локальним Claude — фінал session-summary/changelog зробив він (`146b719`/`204b6bf`), G1-вузли+деплой+верифікація наживо (#154/#155) — ця сесія.
 
 ### 2026-06-25 (session 47) — G2: превʼю court-ready документа в адмінці (issue #71)
 **Status:** COMMITTED · branch `claude/affectionate-mccarthy-ho6gqe`

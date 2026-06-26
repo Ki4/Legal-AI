@@ -11,7 +11,7 @@
 ---
 
 ### 2026-06-26 (session 49) — Declension stem-guard: детерм. пост-чек над AI-склоненням
-**Status:** branch `feat/declension-stem-guard` (НЕ змержено, live-деплой n8n ВІДКЛАДЕНО) · commit `<hash>`
+**Status:** branch `feat/declension-stem-guard` (НЕ змержено, live-деплой n8n ВІДКЛАДЕНО) · commit `06365e5`
 **Why:** DO-NOW з C-EXCEPTION. Склонення ПІБ — єдиний живий LLM-крок (Groq). Сьогодні AI-вихід довіряється сліпо: порожнє поле відкочується в називний, але ГАЛЮЦИНАЦІЯ (інше імʼя / сміття / випущене слово) йде прямо в судовий документ. Guard = детермінований пост-чек: склонена форма мусить ділити СТЕМ з називним джерелом, інакше відкат у називний (як ніби AI промовчав).
 **What:**
 - `n8n/templates/render-document.js`: нові pure-функції `normalizeDeclensionWord`/`commonPrefixLen`/`wordStemOk`/`declensionStemOk`/`guardDeclension` (після `joinName`); 4 поля ПІБ у `aiSafe` (plaintiff/defendant × instrumental/genitive) обгорнуті `guardDeclension(name, ai)` — субсумує старий `|| name` empty-fallback. Tuned LENIENT (відхиляє лише явні mismatch: підмінене слово, інша к-сть слів) — асиметрія свідома: хибний відкат коректної форми псує якість, тож при сумніві ACCEPT.

@@ -10,8 +10,15 @@
 
 ---
 
+### 2026-06-26 (session 48) — A1: CI тест-гейт (.github/workflows/test.yml)
+**Status:** COMMITTED · branch `chore/ci-test-gate`
+**Why:** Аудит session 47 знайшов: ~1250 тестів гонялися ЛИШЕ вручну — у `.github/workflows/` був тільки `law-monitor.yml`. «CI green» = локально, не гейт. A1 з backlog-47: зробити реальний гейт на push до main + кожен PR.
+**What:** новий workflow `test.yml` (Node 22, `working-directory: apps/client`): `npm ci` → `tsc -b` → `npm test` (UI) → `npx vitest run --root ../.. scripts n8n` (root-сьют). Без root `package.json` — vitest живе в apps/client, root-тести фільтруються по шляху (`scripts`/`n8n`), CJS вантажиться самими тестами.
+**Files:** `.github/workflows/test.yml` (new).
+**Tests (локально, бо Actions не видно з хмари):** `tsc -b` clean · UI **268 ✅** · root **989 ✅** (31 файл). Перший прогон у GitHub Actions звірити після пушу.
+
 ### 2026-06-26 (session 48) — A5: заповнений приклад документа в превʼю адмінки (демо 1 липня)
-**Status:** COMMITTED · branch `feat/a5-sample-preview`
+**Status:** MERGED to main · `6f9b042` · branch `feat/a5-sample-preview`
 **Why:** Таб «Документ» (session 47 G2) показував лише порожній скелет із `________` — на демо юристу це виглядає як «дірки», а не готовий документ. A5 з backlog-47: рендерити РЕАЛЬНИЙ заповнений приклад за замовчуванням, щоб Оля бачила фінальний вигляд.
 **What:**
 - `src/admin/lib/sampleAnswers.ts` (new) — реалістичні приклади відповідей per-slug (divorce/alimony), взяті з golden BASE_ANSWERS parity-тестів (вигадані особи, display-only).

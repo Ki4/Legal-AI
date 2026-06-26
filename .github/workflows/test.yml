@@ -1,0 +1,45 @@
+name: Tests
+
+# Test gate: runs the full vitest suite (UI + root scripts/n8n) and a typecheck
+# on every push to main and every PR. Closes the audit finding that ~1250 tests
+# were only ever run by hand locally — "CI green" now actually means a gate.
+#
+# How tests are laid out (no root package.json — vitest lives in apps/client):
+#   • UI suite        → apps/client tests via `npm test`
+#   • root suite      → scripts/ + n8n/ tests via apps/client's vitest, rooted at
+#                       the repo with `scripts n8n` path filters (CJS loaded by the
+#                       tests themselves, no extra deps)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/client
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/client/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Typecheck
+        run: npx tsc -b
+      - name: UI tests (apps/client)
+        run: npm test
+      - name: Root tests (scripts + n8n)
+        run: npx vitest run --root ../.. scripts n8n

@@ -10,7 +10,16 @@
 
 ---
 
-<<<<<<< HEAD
+### 2026-06-26 (session 50) — #67 divorce: майно/борги → окреме провадження (Variant B), live + закрито
+**Status:** MERGED to main · merge `d68a92b` (`--no-ff` `fix/divorce-property-debt-variant-b`) · **шаблон залито в Supabase + live form-submit задеплоєно** · **issue #67 ЗАКРИТО**
+**Why:** Рішення Сергія — робити по власному дослідженню, sign-off Ольги пост-фактум 1 липня (фаза презентації, малий радіус помилки; деталі `docs/strategy/where-we-are-and-scaling.md`). Прод друкував `________` замість опису майна/боргів — видимий дефект.
+**What:**
+- Merge гілки session 43 (фікс `928b5fe`): майно/борги в тілі констатуються без поділу/прочерку, ПРОШУ-нумерація без пунктів майна/боргів, прибрано з додатків, ст.65 СК з citations (деталі — запис session 43 нижче).
+- Конфлікти мержу (session-summary + IMPROVEMENTS index #85/#86 + changelog) резолвлено вручну (актуальний main + збережено історичну session 43 + обидві IMPROVEMENTS-строки).
+- **Деплой:** `node scripts/upload-document-template.mjs divorce` → Supabase `services.document_template` (16562→14149 chars, verified DB===file).
+**Verify:** live smoke (exec 160, scenario 3): долгова ветка = нова формулювання без `________`, ПРОШУ 1-6 без майна/боргів. Divorce-тести **302 ✅** (parity byte-for-byte). 3 `________` у smoke легітимні (фікс-сума аліментів, судовий збір).
+**⚠️ На список Ольги (1 липня):** «спір… відсутній» — фактичне твердження; точніше «не є предметом цього позову» без «спір відсутній».
+
 ### 2026-06-26 (session 50) — Declension stem-guard: ЗАДЕПЛОЄНО live + ЗМЕРЖЕНО в main
 **Status:** MERGED to main · merge `835d282` (`--no-ff` `feat/declension-stem-guard`) · **live n8n form-submit задеплоєно + верифіковано наживо**
 **Why:** Закриття 🔴-кроку session 49 (live-деплой був свідомо відкладений до підняття Docker n8n + ngrok). Сергій підняв інфру → дотиснули.
@@ -328,10 +337,10 @@ L4 критики + **abstention** → пише `ai_summary`/`ai_impact`/`ai_con
 - IMPROVEMENTS #36/#27/#5 анотовано статусом, щоб ідеї пережили закриття issue.
 **Files:** `docs/architecture/IMPROVEMENTS.md` (#36/#27/#5 статус-пометки).
 **Tests:** none (doc + issue-метадані).
-**Note:** Гілка #67 (`fix/divorce-property-debt-variant-b`) з логом session 43 лишається held під Olga — її changelog/summary-записи приїдуть у main при мерджі тієї гілки.
-=======
+**Note:** Гілка #67 (`fix/divorce-property-debt-variant-b`) з логом session 43 лишається held під Olga — її changelog/summary-записи приїдуть у main при мерджі тієї гілки. **(→ змержено session 50, `d68a92b`.)**
+
 ### 2026-06-21 (session 43) — divorce: майно/борги без порожніх плейсхолдерів (Variant B, #67)
-**Status:** COMMITTED · branch `fix/divorce-property-debt-variant-b` · ⚠️ **НЕ змержено / НЕ задеплоєно** — чекає wording sign-off Ольги, потім merge + `upload-document-template.mjs divorce`
+**Status:** COMMITTED · branch `fix/divorce-property-debt-variant-b` → **ЗМЕРЖЕНО + задеплоєно session 50 (`d68a92b`), issue #67 ЗАКРИТО** (sign-off Ольги — пост-фактум 1 липня)
 **Why:** Дзеркало (service-mirror #66) виявило реальний прод-баг: divorce-шаблон друкував `{{property_details}}` / `{{debt_details}}`, але форма ці поля ніколи не питає (є лише `has_joint_property`/`property_dispute`/`debt_claim`) → у проді рендерилось `________`, а ПРОШУ просив суд «визнати 1/2 частку ________» / «розподілити борги ________» — нісенітниця для суду. Рішення Сергія (Variant B): деталі майна/боргів — предмет окремого позову, тож divorce-документ їх **не ділить** і не друкує плейсхолдерів.
 **What happened:**
 - **Тіло документа:** майно з `property_dispute='none'` → «Спір щодо його поділу між сторонами відсутній; вимога про поділ майна не є предметом цього позову.» (гілка `separate` — без змін); борги → «Між сторонами наявні спільні боргові зобов'язання. Вимога про їх розподіл не є предметом цього позову та може бути вирішена за домовленістю сторін або в окремому провадженні.» Жодних `________`.
@@ -341,8 +350,7 @@ L4 критики + **abstention** → пише `ai_summary`/`ai_impact`/`ai_con
 - **Паритет:** legacy-білдер `divorce-document.js` оновлено дзеркально (263 parity-тести лишились зеленими); golden `scenario-3.txt` регенеровано (engine===builder звірено перед записом).
 - `serviceAnatomy.test.ts`: divorce тепер `unmatchedPlaceholders === []` (gap закрито, як alimony-change).
 **Files:** `n8n/templates/services/divorce.document.txt`, `n8n/templates/divorce-document.js`, `n8n/templates/services/divorce.citations.json`, `n8n/templates/__tests__/{divorce-template-parity,divorce-document,divorce-children-visitation}.test.js`, `scripts/lib/__tests__/citations.test.mjs`, `apps/client/src/lib/__tests__/serviceAnatomy.test.ts`, `test-data/divorce/expected/scenario-3.txt` (regen).
-**Tests:** root vitest **1110/1110** ✅ · client **186/186** ✅ · `tsc -b` clean. **Gate перед проддеплоєм:** Ольга підтверджує формулювання (checklist item 1 issue #67), далі merge + заливка шаблону в Supabase + live form-submit smoke.
->>>>>>> fix/divorce-property-debt-variant-b
+**Tests:** root vitest **1110/1110** ✅ · client **186/186** ✅ · `tsc -b` clean. **Gate перед проддеплоєм:** Ольга підтверджує формулювання (checklist item 1 issue #67), далі merge + заливка шаблону в Supabase + live form-submit smoke. **(Виконано session 50.)**
 
 ### 2026-06-20 (session 42) — service-mirror Slice 3: заявка на послугу (`service_requests` + Storage) (#66)
 **Status:** MERGED (`a0ce654`) + live-verified · branch deleted · migration 026 applied · **issue #66 closed**

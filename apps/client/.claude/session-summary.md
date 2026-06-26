@@ -7,10 +7,15 @@
 ## 🆕 Session 50 (2026-06-26) — Declension stem-guard ЗАДЕПЛОЄНО live + ЗМЕРЖЕНО в main
 
 ### Головне — стан ЗАРАЗ
-- **main чистий + запушено** (`835d282`, `--no-ff` merge `feat/declension-stem-guard`). Guard живе у проді form-submit.
-- Закрито 🔴-крок session 49: деплой був відкладений до підняття інфри — Сергій підняв Docker n8n + ngrok, дотиснули.
+- **main чистий + запушено.** Дві одиниці змержено+задеплоєно цю сесію: (1) declension stem-guard (`835d282`), (2) **#67 divorce майно/борги Variant B** (`d68a92b`, **issue #67 ЗАКРИТО**). Обидва у проді form-submit.
+- Закрито 🔴-крок session 49 (guard) + GATED-під-Олю #67 розблоковано рішенням Сергія: **робимо по власному дослідженню, sign-off Ольги пост-фактум 1 липня** (фаза презентації, малий радіус помилки). Стратегія: `docs/strategy/where-we-are-and-scaling.md` (2 послуги = доказ пайплайна+витрина; масштаб = Service Builder + формальний sign-off, hybrid потім).
 
-### Що зроблено
+### #67 divorce — майно/борги в окреме провадження (Variant B), live
+- Merge гілки session 43 + конфлікти (session-summary/IMPROVEMENTS/changelog) резолвлено вручну. Шаблон залито: `upload-document-template.mjs divorce` → Supabase (16562→14149 chars). Прод більше не друкує `________` за майно/борги.
+- **Verify:** live smoke exec 160 (майно+борги+діти+аліменти) — нова формулювання, ПРОШУ 1-6 без пунктів майна/боргів; divorce-тести **302 ✅**.
+- ⚠️ **Список Ольги (1 липня):** «спір… відсутній» → точніше «не є предметом цього позову».
+
+### Guard — що зроблено
 1. **Інфра звірена наживо:** локальний n8n `/healthz` 200, ngrok `/healthz` 200 (`rosy-caution-progeny.ngrok-free.dev → :5678`), Docker `n8n` Running.
 2. **Деплой:** `node scripts/deploy-workflow.mjs form-submit` → live `D2ab06X3pVUWk1py` (48 нод, active, credentials збережено, бэкап у `.backups/`).
 3. **3 webhook-прогони** (`test-webhook.mjs`): 157 minimal · 158 divorce (scenario 1) · 159 alimony (a1) — усі `success`.

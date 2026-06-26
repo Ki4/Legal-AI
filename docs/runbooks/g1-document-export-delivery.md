@@ -4,9 +4,10 @@
 > Застосовується в **n8n-редакторі** (form-submit), бо ці вузли (Telegram sendDocument,
 > HTTP response=file) у проєкті ще не вживались — параметри заповнюються в UI + одразу тест.
 >
-> **Передумова (БЛОКЕР):** Google OAuth scope креденшела `Google OAuth2` (`google-oauth2-001`)
-> має включати `https://www.googleapis.com/auth/drive` (або `drive.readonly`). Copy/Share вже
-> працюють, тож scope **скоріш за все вже є** — підтвердити перед тестом (інакше `:export` дасть 403).
+> **Передумова (✅ підтверджено 2026-06-25):** Google OAuth scope креденшела `Google OAuth2`
+> (`google-oauth2-001`) = `https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/documents`.
+> Повний `drive` покриває `files.export`, тож G1 `:export` запрацює без додаткового scope. OAuth-
+> застосунок також **In Production** (Google Auth Platform → Audience) — refresh-токен не протухає.
 
 ## Поточний хвіст (як є)
 ```

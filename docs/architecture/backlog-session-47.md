@@ -35,7 +35,8 @@
 - **C1 · RUNG 1 constrained decoding для Tier-2-абзаца** — DEFERRED (абзац перечислим → B).
 - **C2 · RUNG 2 multilingual NLI** (mDeBERTa-xnli / MiniCheck) против «коварного» режима — DEFERRED (нет live LLM-абзаца для проверки).
 - **C3 · RUNG 3 evidence-sufficiency в abstention** — DEFERRED.
-- **C-EXCEPTION · RUNG 1 для СКЛОНЕНИЯ имён** — 📋 **сначала верифицировать**, является ли склонение live LLM-шагом. Если да — это ЕДИНСТВЕННОЕ место, где LLM неустраним (морфология не перечисляется) → constrained decoding/grammar здесь реально полезен и дёшев. ⚠️ риск-чек: даёт ли Groq grammar-constrained декодинг (не только JSON-mode). (Block II §4 RUNG 1)
+- **C-EXCEPTION · RUNG 1 для СКЛОНЕНИЯ имён** — ✅ **ВЕРИФИЦИРОВАНО live (session 48)**: склонение — это живой LLM-шаг. Цепочка в `form-submit`: `Prepare Declension` (промпт `*-declension-prompt.txt`) → `AI Declension` (POST `api.groq.com/.../chat/completions`) → `Build Document` (`buildContext` читает `ai.plaintiff_genitive`/`_instrumental`/`marriage_place_locative`/`children_genitive`). Это ЕДИНСТВЕННОЕ неустранимое место LLM (укр. морфология не перечисляется). Защита сегодня = детерминированный **fallback в именительный** (`buildContext`: `q.x || nominative`) — грам. неверно, но НИКОГДА не пусто/не выдумано; LLM лишь пере-склоняет ПЕРЕДАННЫЕ имена (узкая поверхность галлюцинации), но **формально не констрейнится**.
+  - ⚠️ риск-чек закрыт: **Groq даёт JSON-mode/structured-output, НЕ GBNF grammar-constrained декодинг** (как llama.cpp). → реалистичный дешёвый харнес здесь = JSON-schema + **детерминированный пост-чек** (склонённая форма должна делить стем/набор токенов с именительным; иначе LLM подменил имя → откат в именительный). Кандидат на DO-NOW, repo-only (`Build Document`/новый pure-модуль), не требует Оли. (Block II §4 RUNG 1)
 
 ## D. Вопросы юристу (pending-граф) — собрать и задать Оле
 

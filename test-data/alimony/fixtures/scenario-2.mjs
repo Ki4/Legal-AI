@@ -41,6 +41,11 @@ export const answers = {
   alimony_fixed_amount: '8000',
   defendant_employed: 'no',
   alimony_start_date: '2024-03-15',
+
+  // Реквізити рахунку позивача (ЦПК ст.175 ч.7) — є рахунок
+  plaintiff_has_account: true,
+  plaintiff_account_iban: 'UA903052992990004149123456789',
+  plaintiff_account_bank: 'АТ «Ощадбанк»',
 };
 
 export const mockAi = {

@@ -10,6 +10,20 @@
 
 ---
 
+### 2026-06-29 (session 52) — #87 ЦПК ст.175 ч.7: реквізити рахунку позивача — ALIMONY (issue #76)
+**Status:** branch `feat/87-account-requisites-alimony` · код+тести, ще НЕ задеплоєно · Refs #76
+**Why:** ст.175 ЦПК доповнено ч.7 (Закон №4833-IX) — позов про стягнення коштів має містити реквізити рахунку позивача. Аліменти = завжди стягнення → блок безумовний. Реалізуємо alimony як зразок (за `docs/research/cpk-175-7-account-requisites.md`), divorce — наступним. Placeholder-формулювання, sign-off Олі пізніше (малий радіус, як #67).
+**What:**
+- **Шаблон + legacy-білдер СИНХРОННО** (parity = engine===builder, не лише голдени!): новий блок «частина сьома ст.175» після п.10 ч.3, перед судовим збором — `n8n/templates/services/alimony.document.txt` + `n8n/templates/alimony-document.js`. Дві гілки: є рахунок (IBAN+банк) / немає (бажаний спосіб). 🪤 це **ч.7**, не «п.7 ч.3» (інша норма, лишилась).
+- **Conventions matched для байт-parity:** порожнє поле → `________` (FALLBACK движка) через `val()`; standalone if/else-теги.
+- **Голдени регенеровано** (scenario-1/2 = є рахунок, scenario-3 = немає+payout — покрито обидві гілки). Parity **117 ✅**.
+- **Форма** `scripts/upload-alimony-config.mjs` — 4 поля в таб «Позивач»: `plaintiff_has_account` (boolean) + IBAN (`validation:'iban'`, show_if has_account) + банк + `plaintiff_payout_method` (show_if !has_account).
+- **Валідатор IBAN** `apps/client/src/lib/validators.ts` — `validateIban` (UA + 27 цифр + ISO 7064 mod-97); зареєстровано в VALIDATORS; `ValidationRule` розширено (вирівняно дубль у `types/form.ts`). +6 тест-кейсів.
+- **sampleAnswers.ts** (превʼю адмінки) — приклад полів рахунку.
+**Files:** `n8n/templates/services/alimony.document.txt`, `n8n/templates/alimony-document.js`, `test-data/alimony/fixtures/scenario-{1,2,3}.mjs` (+ `expected/*.txt`), `scripts/upload-alimony-config.mjs`, `apps/client/src/lib/validators.ts` (+test), `apps/client/src/types/form.ts`, `apps/client/src/admin/lib/sampleAnswers.ts`.
+**Tests:** parity **117 ✅** · UI **274 ✅** (+iban) · root **1013 ✅** · tsc clean.
+**Залишок #76:** (1) divorce — той самий патерн під `{{#if alimony_claim}}`; (2) деплой live (`upload-document-template.mjs alimony` + `upload-alimony-config.mjs`); (3) фінальне формулювання — sign-off Олі.
+
 ### 2026-06-29 (session 52) — law-monitor CRON re-enabled + 2 находки adjudicated (issue #33)
 **Status:** branch `chore/33-reenable-law-cron` · yml + live-DB ops · Closes #33
 **Why:** Хвіст #33 — `schedule:` тримався OFF, бо Оля була відсутня (авто-флип без ревьюера). Оля повернулась (~25.06); закриваємо самі (фаза витрини, авторизовано Сергієм). Прогнали монітор живцем → зафіксували 2 реальні зміни, адъюдикували, увімкнули розклад.

@@ -35,6 +35,10 @@ export const answers = {
   alimony_type: 'percent',
   defendant_employed: 'unknown',
   alimony_start_date: '2024-03-01',
+
+  // Реквізити рахунку позивача (ЦПК ст.175 ч.7) — рахунку немає, вказано спосіб
+  plaintiff_has_account: false,
+  plaintiff_payout_method: 'поштовий переказ за адресою реєстрації позивача',
 };
 
 export const mockAi = {

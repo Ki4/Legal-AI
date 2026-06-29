@@ -13,7 +13,7 @@
 
 import type { FormField } from '../types/form'
 
-export type ValidationRule = 'email' | 'phone' | 'inn' | 'name' | 'passport'
+export type ValidationRule = 'email' | 'phone' | 'inn' | 'name' | 'passport' | 'iban'
 
 // ── Individual validators ─────────────────────────────────────────────────────
 
@@ -80,6 +80,19 @@ export function validatePassport(value: string): string | null {
   return ok ? null : 'Некоректний паспорт (АА123456 або 9 цифр)'
 }
 
+// Ukrainian IBAN: 'UA' + 27 digits (29 chars), validated by ISO 7064 mod-97-10
+// (ЦПК ст.175 ч.7 — реквізити рахунку позивача, #87).
+export function validateIban(value: string): string | null {
+  const v = value.replace(/\s/g, '').toUpperCase()
+  if (!/^UA\d{27}$/.test(v)) return 'Некоректний IBAN (UA + 27 цифр)'
+  // Move the first 4 chars to the end, map letters A–Z → 10–35, then mod 97 === 1.
+  const rearranged = v.slice(4) + v.slice(0, 4)
+  const numeric = rearranged.replace(/[A-Z]/g, (c) => String(c.charCodeAt(0) - 55))
+  let rem = 0
+  for (const ch of numeric) rem = (rem * 10 + Number(ch)) % 97
+  return rem === 1 ? null : 'Невірна контрольна сума IBAN'
+}
+
 // ── Rule resolution + dispatch ────────────────────────────────────────────────
 
 const VALIDATORS: Record<ValidationRule, (v: string) => string | null> = {
@@ -88,6 +101,7 @@ const VALIDATORS: Record<ValidationRule, (v: string) => string | null> = {
   inn: validateInn,
   name: validateName,
   passport: validatePassport,
+  iban: validateIban,
 }
 
 /**

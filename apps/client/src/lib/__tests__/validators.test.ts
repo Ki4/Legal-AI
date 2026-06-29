@@ -5,6 +5,7 @@ import {
   validateInn,
   validateName,
   validatePassport,
+  validateIban,
   resolveValidationRule,
   validateValue,
 } from '../validators'
@@ -166,6 +167,32 @@ describe('resolveValidationRule', () => {
 })
 
 // ─── validateValue ────────────────────────────────────────────────────────────
+
+// ─── validateIban (ЦПК ст.175 ч.7) ───────────────────────────────────────────
+
+describe('validateIban', () => {
+  it('accepts a valid UA IBAN (mod-97)', () => {
+    expect(validateIban('UA213996220000026007233566001')).toBeNull()
+    expect(validateIban('UA903052992990004149123456789')).toBeNull()
+  })
+  it('accepts spaced / lowercase input (normalized)', () => {
+    expect(validateIban('ua21 3996 2200 0002 6007 2335 6600 1')).toBeNull()
+  })
+  it('rejects wrong length / format', () => {
+    expect(validateIban('UA1234')).not.toBeNull()
+    expect(validateIban('DE89370400440532013000')).not.toBeNull() // not UA
+  })
+  it('rejects a bad checksum', () => {
+    expect(validateIban('UA213996220000026007233566002')).not.toBeNull()
+  })
+  it('is empty-safe (required-ness handled elsewhere)', () => {
+    expect(validateValue(f({ id: 'plaintiff_account_iban', validation: 'iban' }), '')).toBeNull()
+  })
+  it('wires via field.validation', () => {
+    expect(validateValue(f({ id: 'plaintiff_account_iban', validation: 'iban' }), 'UA213996220000026007233566001')).toBeNull()
+    expect(validateValue(f({ id: 'plaintiff_account_iban', validation: 'iban' }), 'garbage')).not.toBeNull()
+  })
+})
 
 describe('validateValue', () => {
   it('returns null for an empty value (required-ness handled elsewhere)', () => {

@@ -52,6 +52,12 @@ const formConfig = {
         { id: 'plaintiff_phone', type: 'phone', label: 'Телефон', required: false, placeholder: '+380501234567' },
         { id: 'plaintiff_email', type: 'text', label: 'Email', required: false, placeholder: 'email@gmail.com' },
         { id: 'plaintiff_official_email', type: 'choice', required: false, label: 'Офіційна електронна адреса (ЄСІТС)', options: [{ value: 'absent', label: 'Відсутня' }, { value: 'present', label: 'Наявна в ЄСІТС' }] },
+        // ЦПК ст.175 ч.7 — реквізити рахунку позивача (позов про стягнення коштів). Закон допускає
+        // для фізособи варіант «рахунку немає» + бажаний спосіб отримання. (#87 / issue #76)
+        { id: 'plaintiff_has_account', type: 'boolean', required: false, label: 'Маю рахунок для зарахування присуджених коштів', tooltip: 'IBAN у банку або небанківському надавачі платіжних послуг' },
+        { id: 'plaintiff_account_iban', type: 'text', required: false, label: 'IBAN рахунку', placeholder: 'UA21 3996 2200 0002 6007 2335 6600 1', validation: 'iban', show_if: { field: 'plaintiff_has_account', operator: '==', value: true } },
+        { id: 'plaintiff_account_bank', type: 'text', required: false, label: 'Банк / надавач платіжних послуг', placeholder: 'АТ КБ «ПриватБанк»', show_if: { field: 'plaintiff_has_account', operator: '==', value: true } },
+        { id: 'plaintiff_payout_method', type: 'text', required: false, label: 'Бажаний спосіб отримання коштів', placeholder: 'поштовий переказ за адресою реєстрації', tooltip: 'Якщо рахунку немає — вкажіть, як бажаєте отримати присуджені кошти', show_if: { field: 'plaintiff_has_account', operator: '!=', value: true } },
       ],
     },
     {

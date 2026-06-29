@@ -16,17 +16,18 @@
   `pending` → workflow `law-change-digest` (n8n id `qTOIqllA4CQvBJs5`) робить L2→L5 → юрист бачить
   `AiDraftCard` у панелі «Зміни законів». G4 (PR#74) + G5 докі (PR#75) змержено, issue #73 закрито.
 
-**🔴 Наступна задача (готова до старту):** **issue #76 = IMPROVEMENTS #87** — ЦПК ст.175 ч.7
-(Закон №4833-IX): позов про стягнення грошей має містити **реквізити рахунку позивача** (alimony +
-divorce з alimony_claim). Повний impact-аналіз + чернетки полів/блоку + питання Олі:
-`docs/research/cpk-175-7-account-requisites.md`. Tier 2 (legally-sensitive). 🪤 це **ч.7** ст.175, НЕ «п.7 ч.3».
+**🔴 Наступна задача (НОВА СЕСІЯ — issue #76, частина 2):** **#87 divorce** — той самий блок ЦПК
+ст.175 ч.7 (реквізити рахунку), але під `{{#if alimony_claim}}` (лише аліментна гілка = стягнення).
+**Alimony вже зроблено й змержено** (PR#81, `a8bb185`). Патерн: шаблон `divorce.document.txt` +
+legacy-білдер `divorce-document.js` СИНХРОННО (parity engine===builder!) + форма `divorceFormConfig.ts`
+(React, не config) + parity-голдени. План/місця: `docs/research/cpk-175-7-account-requisites.md` §3.
+Поля/валідатор `validateIban` вже існують (зроблено в alimony). Потім **деплой** + sign-off Олі.
 
-**Гілки:** `main` чистий (session 51 G4/G5 змержено). Поточна робоча гілка —
-`claude/ai-recommendations-video-oa4qzv` (AI-процес: interview-skill + гігієна памʼяті + GOTCHAS).
+**Гілки:** `main` чистий — усе сьогоднішнє змержено (AI-процес #78, DONE-rollup #79, CRON #80, alimony #81).
 
-**📋 Список Олі (sign-off 1 липня):** (1) #87 ЦПК реквізити рахунку; (2) #67 divorce wording
-«спір… відсутній» → «не є предметом цього позову»; (3) флип `alimony-change` `disabled→active`;
-(4) увімкнути CRON `schedule:` у `law-monitor.yml` (#33) — лише ПІСЛЯ розрулення 2 змін законів.
+**📋 Список Олі (sign-off 1 липня):** (1) **#87 alimony — done (live після деплою); divorce — наступним**;
+(2) #67 divorce wording «спір… відсутній» → «не є предметом цього позову»; (3) флип `alimony-change`
+`disabled→active`. **✅ #33 CRON — закрито** (schedule увімкнено, 2 находки adjudicated: СК dismissed, ЦПК→#87).
 
 **Модель (червень):** Opus + ultra-code (memory `feedback_model_opus_ultracode_june2026`; переглянути ~липень).
 
@@ -37,6 +38,28 @@ divorce з alimony_claim). Повний impact-аналіз + чернетки �
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 52 (2026-06-29) — AI-процес + гігієна памʼяті + #33 CRON + #87 alimony (5 одиниць, усе в main)
+
+### Головне — стан ЗАРАЗ
+- **main чистий**, 4 PR змержено: #78 (AI-процес), #79 (DONE-rollup), #80 (CRON #33), #81 (alimony #87).
+- Велика багатотемна сесія (свідомо роздули контекст). Наступне — **divorce #87** у НОВІЙ сесії.
+
+### Що зроблено
+1. **AI-процес (розбір `genkovich/sdd` під відео Beer::Code)** — плагін цілком НЕ ставимо (конфлікт з нашим SDD + роздуває контекст), cherry-pick: апгрейд `/interview` skill (depth-dial + probing-frames + stuck-protocol, вихід на наш `/feature-spec`), `GOTCHAS.md`, правила «Working process» у CLAUDE.md. #92/#94/#95 ✅; #93 evals ВІДКЛАДЕНО (спершу курс).
+2. **Гігієна памʼяті (#94):** `session-summary` 2011→131, `changelog` 1355→89; старе → `apps/client/.claude/archive/`. Виправлено факт: авто-«8000-char хука» немає, `/session-start` читає файл цілком.
+3. **IMPROVEMENTS DONE-rollup** (Explore-субагент + кросс-чек): таблиця ~27 зашипованих #N + superseded. Тіла/ID не чіпали.
+4. **#33 CRON — закрито:** прогнано монітор живцем (`law_change_log #6` СК dismissed, `#7` ЦПК reviewed→#87), baselines забамплено, divorce+alimony реактивовано, `schedule:` увімкнено (пн 06:00 UTC). Секрети вже були.
+5. **#87 alimony (issue #76, ч.1):** блок «частина сьома ст.175» (реквізити рахунку) синхронно в шаблон+legacy-білдер (parity engine===builder **117 ✅**), 2 гілки (є/немає рахунку), голдени регенеровано, форма +4 поля, `validateIban` (UA mod-97)+тести, sampleAnswers. UI 274 ✅ · root 1013 ✅ · tsc clean.
+
+### 🔴 Наступний крок (нова сесія)
+- **#87 divorce** — той самий патерн під `{{#if alimony_claim}}` (шаблон+legacy-білдер divorce СИНХРОННО, parity!) + `divorceFormConfig.ts` (React) + parity-голдени. validateIban/поля вже є. Деталі: `docs/research/cpk-175-7-account-requisites.md` §3. Потім деплой live (`upload-document-template.mjs alimony/divorce` + `upload-alimony-config.mjs`) + sign-off Олі.
+- **Демонстрації субагентів/паралелізму** — Сергій хоче навчитись (memory `feedback_subagents_parallel_workflow`): паттерн A показано (Explore-аудит у фоні), паттерн B (git worktree) — показати на фічі.
+- **Превью-модуль TWA** (Сергіїв фокус): превью→оплата(заглушка)→документ, картинка стр.1+блюр+watermark, доставка через Supabase signed URL (не Telegram Cloud). Стартувати через `/interview` під наш РЕАЛЬНИЙ стек (Gemini-промпт мав вигаданий NestJS/Next.js).
+
+### 🪤 Урок сесії
+- Parity для divorce/alimony = **engine===legacy-builder**, не лише голдени → нову юр-логіку вносити в ОБИДВА файли синхронно (інакше 117 parity червоніє). У GOTCHAS.
 
 ---
 ## 🆕 Session 51 (2026-06-29) — law-change-impact G4: дайджест-workflow ЗІБРАНО + ЗАДЕПЛОЄНО live

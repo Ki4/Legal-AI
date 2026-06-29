@@ -10,8 +10,17 @@
 
 ---
 
+### 2026-06-29 (session 51) — law-change-impact G5: доки (DECISIONS + IMPROVEMENTS deferred)
+**Status:** branch `docs/law-change-digest-g5` · docs-only · Closes #73
+**Why:** Закрити фічу `law-change-impact` — лишалась лише G5 (журнал рішень + deferred-беклог); код G4 уже на main (#74).
+**What:**
+- `docs/architecture/DECISIONS.md` — нове рішення «law-change-impact: дві стадії (Node diff / n8n LLM), abstention, severity юридична (#73)»: чому Node-diff у моніторі + LLM-дайджест в n8n (diff знімається до `is_stale`; LLM лише в n8n; звʼязка через `pending`-рядок як чергу); severity юридична з детерм. стелею; нуль вигадок (enum + критик L4a + abstention, advisory-only); 2 live-готчі (n8n depth-first не чекає гілки → лінійний ланцюг; `+ `-префікс ламав verbatim-evidence). + рядок у Зміст.
+- `docs/architecture/IMPROVEMENTS.md` — #2а оновлено: статус «петля + агент живі end-to-end» з посиланням на реалізацію; заведено deferred — L4b LLM-критик (не гейт), поартикульний diff як основний, email-дайджест, column-scoped review RPC.
+**Files:** `docs/architecture/DECISIONS.md`, `docs/architecture/IMPROVEMENTS.md`.
+**Tests:** docs-only.
+
 ### 2026-06-29 (session 51) — law-change-impact G4: дайджест-workflow ЗІБРАНО + ЗАДЕПЛОЄНО live (агент «що змінилось» живий end-to-end)
-**Status:** branch `feat/law-change-digest-workflow` (НЕ змержено) · workflow CREATED+active live (`qTOIqllA4CQvBJs5`) · Refs #73
+**Status:** MERGED to main · PR #74 (squash `7234981`) · CI зелений (test + Vercel) · workflow CREATED+active live (`qTOIqllA4CQvBJs5`) · Refs #73
 **Why:** Фінальна група (G4) фічі `law-change-impact` (Tier 2, roadmap v2.2 🔴) — єдиний реальний юр-ризик (проґавлена зміна закону). G1 (детерм. diff + migration 027), G2/G3 (scope/groundedness/промпти) вже на main; лишалось зібрати n8n workflow, що перетворює `pending`-рядок `law_change_log` на чернетку «що змінилось + вплив по послугах» для підпису Олі.
 **What:**
 - `scripts/build-law-change-digest.mjs` (new) — генератор workflow JSON з SSoT (анти-дрейф): інлайнить `n8n/templates/law-change-scope.js` (L2) + `law-change-groundedness.js` (L4a) + промпт `n8n/prompts/law-change-digest.txt` (L3). Connection-integrity guard. `--check` = CI-страж від дрейфу.

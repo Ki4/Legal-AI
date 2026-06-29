@@ -187,6 +187,12 @@
 - Засіяно: СК України, ЦПК України
 
 ### 2а. Моніторинг змін у законах — повна архітектура
+- **✅ Статус (session 51): петля + агент «що змінилось» живі end-to-end.** CRON-монітор (`check-law-updates.mjs`, GitHub Actions) детектить зсув редакції → канонічний `applyLawChange` пише детермінований `article_diffs` + флипає залежні послуги у `needs_review` (G1, migration 027). n8n workflow **`law-change-digest`** (`n8n/workflows/current/law-change-digest.json`, генератор `scripts/build-law-change-digest.mjs`) добирає `ai_status='pending'` рядки → L2 scope → L3 Groq чернетка → L4a детерм. groundedness (RED→abstention) → пише `ai_*`. Юрист бачить `AiDraftCard` у панелі «Зміни законів». Рішення: «law-change-impact: дві стадії…» у `DECISIONS.md`. ТЗ: `specs/features/law-change-impact/`. GitHub issue #73.
+- **Deferred (заведено session 51, ще не зроблено):**
+  - **L4b LLM-критик** (`n8n/prompts/law-change-critic.txt`) — другий, дорадчий прохід Groq, що ловить правдоподібні-але-непідтверджені інтерпретації (AMBER). Наразі НЕ підключений: AMBER не гейтить (тільки advisory), а детерм. L4a + поріг впевненості — реальний запобіжник. Підключити, коли захочемо багатшу сигналізацію якості.
+  - **Поартикульний diff як основний** — зараз `article_diffs` first-намагається поартикульно (за заголовками «Стаття N»), фолбек на law-level. Коли скрейпінг rada дозріє/стане надійнішим — зробити поартикульний гарантованим (точніший scope + менший промпт).
+  - **Email-сповіщення з дайджестом** — після `drafted` рядка слати юристу лист (а не лише чекати, поки він зайде в адмінку).
+  - **Column-scoped review RPC** — migration 013 дає `authenticated` коарсений UPDATE на `law_change_log` (юрист теоретично може писати `ai_*`). Звузити до RPC, що дозволяє людині писати лише `notes`/`action`, а `ai_*` — тільки `service_role` (дайджест).
 - **DB schema (Крок 1):** ✅ Done 2026-03-27 — `007_watched_laws.sql` виконано в Supabase. watched_laws для divorce заповнені реальними датами редакцій.
 - **CRON reference impl:** `scripts/check-law-updates.mjs` — референс для n8n workflow (сесія 8)
 - **Проблема:** Закони на zakon.rada.gov.ua регулярно оновлюються. Якщо ст. 183 СК зміниться, а шаблон залишиться старим — клієнт отримає неправильний документ. Юридична відповідальність.

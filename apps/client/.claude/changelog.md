@@ -10,6 +10,15 @@
 
 ---
 
+### 2026-06-29 (session 52) — IMPROVEMENTS: DONE roll-up (аудит актуальності беклогу)
+**Status:** branch `chore/improvements-done-rollup` · docs-only
+**Why:** IMPROVEMENTS — беклог зі стабільними ID, який не архівуємо віком; накопичилось ~27 зашипованих, але не помічених пунктів → активні ідеї тонули. Explore-субагент пройшов по `#N`, я кросс-чекнув докази (міграції/workflow/код + закриті issues з тегами `[#N]`).
+**What:**
+- `docs/architecture/IMPROVEMENTS.md` — нова секція **«✅ Реалізовано (DONE roll-up)»** після індексу: таблиця `#N → доказ` (~27 пунктів), окремо superseded (#3/#36/#27/#41/#42) + NB про #5 (issue #23 closed як відкладено, НЕ зашиповано). Тіла пунктів і стабільні ID **не чіпали** — лише навігаційна шапка.
+- Метод: `claim ≠ fact` — кожен рядок має ≥1 артефакт-доказ (підтверджено `ls migrations/`, `gh issue list --state closed`).
+**Files:** `docs/architecture/IMPROVEMENTS.md`.
+**Tests:** docs-only.
+
 ### 2026-06-29 (session 52) — AI-процес: гігієна памʼяті + апгрейд interview-skill (розбір `genkovich/sdd`)
 **Status:** branch `claude/ai-recommendations-video-oa4qzv` · docs/skill-only · Refs IMPROVEMENTS #92/#94/#95
 **Why:** Сергій дав репозиторій під відео Beer::Code (`genkovich/sdd` — повноцінний SDD-плагін). Рішення: плагін цілком НЕ ставити (18 skills + 9 агентів конфліктують з нашим зрілим SDD і роздувають контекст — антипатерн #96), а **cherry-pick** найкраще. Перевірено факти проти main: авто-SessionStart-хука з «8000 символів» немає — `/session-start` читає `session-summary.md` цілком (2011 рядків) → context rot.

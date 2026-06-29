@@ -42,6 +42,8 @@ export const answers = {
   children_dispute: 'none',
   alimony_claim: true,
   alimony_amount: 'fixed',
+  plaintiff_has_account: false,
+  plaintiff_payout_method: 'поштовий переказ за адресою реєстрації',
   divorce_reasons: ['alcohol', 'abuse', 'no_child_care', 'no_financial_support'],
   joint_household: 'no',
   has_joint_property: true,

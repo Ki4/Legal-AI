@@ -275,6 +275,14 @@ describe('parity: individual branch toggles', () => {
     'property, dispute separate': { has_joint_property: true, property_dispute: 'separate' },
     'debt claim (Variant B: defer)': { debt_claim: true },
     'property + debt together (Variant B)': { has_joint_property: true, property_dispute: 'none', debt_claim: true },
+
+    // ЦПК ст.175 ч.7 (#76): account requisites, only under alimony_claim.
+    'account: has IBAN + bank': { alimony_claim: true, plaintiff_has_account: true, plaintiff_account_iban: 'UA213223130000026007233566001', plaintiff_account_bank: 'АТ КБ «ПриватБанк»' },
+    'account: has IBAN, no bank': { alimony_claim: true, plaintiff_has_account: true, plaintiff_account_iban: 'UA213223130000026007233566001', plaintiff_account_bank: '' },
+    'account: has_account flag but empty IBAN (falls to no-account branch)': { alimony_claim: true, plaintiff_has_account: true, plaintiff_account_iban: '' },
+    'account: no account, payout method': { alimony_claim: true, plaintiff_has_account: false, plaintiff_payout_method: 'поштовий переказ за адресою реєстрації' },
+    'account: no account, payout method empty (placeholder)': { alimony_claim: true, plaintiff_has_account: false, plaintiff_payout_method: '' },
+    'account fields ignored when no alimony_claim': { alimony_claim: false, plaintiff_has_account: true, plaintiff_account_iban: 'UA213223130000026007233566001' },
   }
 
   for (const [label, patch] of Object.entries(cases)) {

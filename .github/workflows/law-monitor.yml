@@ -12,12 +12,13 @@ name: Law change monitor
 # Setup runbook: docs/runbooks/law-monitor-cron.md
 
 on:
-  # Weekly schedule is temporarily DISABLED while the reviewing lawyer (Olga) is away
-  # (~2 weeks from 2026-06-11): an auto-run would flip live services to needs_review with
-  # no one available to review/re-activate them. Re-enable by uncommenting the two lines
-  # below once a reviewer is back. The manual "Run workflow" button stays available.
-  # schedule:
-  #   - cron: '0 6 * * 1' # every Monday 06:00 UTC (~08:00–09:00 Kyiv)
+  # Weekly schedule re-enabled (session 52, 2026-06-29): reviewer (Olga) is back, and the two
+  # outstanding findings are adjudicated — СК 2026-05-25 dismissed (non-material), ЦПК 2026-04-24
+  # reviewed (material → IMPROVEMENTS #87 / issue #76). Baselines bumped, so a run won't re-flag
+  # those. A future detected change flips dependent services to needs_review → lawyer reviews in
+  # the admin panel «📋 Зміни законів». The manual "Run workflow" button stays available too.
+  schedule:
+    - cron: '0 6 * * 1' # every Monday 06:00 UTC (~08:00–09:00 Kyiv)
   workflow_dispatch: # manual "Run workflow" button
     inputs:
       dry_run:

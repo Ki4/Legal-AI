@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-29 (session 52) — law-monitor CRON re-enabled + 2 находки adjudicated (issue #33)
+**Status:** branch `chore/33-reenable-law-cron` · yml + live-DB ops · Closes #33
+**Why:** Хвіст #33 — `schedule:` тримався OFF, бо Оля була відсутня (авто-флип без ревьюера). Оля повернулась (~25.06); закриваємо самі (фаза витрини, авторизовано Сергієм). Прогнали монітор живцем → зафіксували 2 реальні зміни, адъюдикували, увімкнули розклад.
+**What:**
+- **Live monitor run** (`node scripts/check-law-updates.mjs`): детектор підтвердив 2 зміни — СК `2026-03-04→2026-05-25`, ЦПК `2025-07-17→2026-04-24` (Про судовий збір — без змін). Записано `law_change_log #6` (СК) + `#7` (ЦПК, з `article_diffs`+`ai_status=pending`), baselines (`watched_laws.last_known_date`) забамплено, divorce+alimony флипнуто `needs_review`, чанки 2947-14/1618-15 → `is_stale`.
+- **Adjudication (без Олі, авторизовано):** #6 СК → `action=dismissed` (змінені статті не наші, НЕ матеріально); #7 ЦПК → `action=reviewed` (ст.175 ч.7 реквізити рахунку = МАТЕРІАЛЬНО → IMPROVEMENTS #87 / issue #76). `reviewed_by`/`reviewed_at`/`notes` проставлено.
+- **Services reactivated:** `service-lifecycle.mjs set-status divorce|alimony active` → обидві `active`, `needs_law_review=false` (лишаються в проді для витрини; ЦПК-правка з placeholder піде окремо #87).
+- **`schedule:` re-enabled** у `.github/workflows/law-monitor.yml` (cron `0 6 * * 1`, щопонеділка) + оновлено пояснювальний коментар. Секрети (4 GitHub Actions) вже налаштовані — підтверджено успішними ручними прогонами.
+- ℹ️ `ai_status=pending` лишено навмисно — агент-дайджест (G4, n8n) дорисує AI-impact для #6/#7 при наступному hourly-прогоні (бонус, демонструє пайплайн).
+**Files:** `.github/workflows/law-monitor.yml` (+ live-DB ops, не git).
+**Tests:** ops-задача; код детектора не змінювався (1013 ✅ з session 51).
+
 ### 2026-06-29 (session 52) — IMPROVEMENTS: DONE roll-up (аудит актуальності беклогу)
 **Status:** branch `chore/improvements-done-rollup` · docs-only
 **Why:** IMPROVEMENTS — беклог зі стабільними ID, який не архівуємо віком; накопичилось ~27 зашипованих, але не помічених пунктів → активні ідеї тонули. Explore-субагент пройшов по `#N`, я кросс-чекнув докази (міграції/workflow/код + закриті issues з тегами `[#N]`).

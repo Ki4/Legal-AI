@@ -113,6 +113,55 @@
 
 ---
 
+## ✅ Реалізовано (DONE roll-up)
+
+> Зведення пунктів, що вже **зашиповані** (live або змержено), щоб активний беклог читався, а ідеї не
+> тонули. **Тіла пунктів лишаються на місці** нижче (стабільні ID + посилання issues/changelog не
+> чіпаємо) — це лише навігаційна шапка. Складено аудитом session 52 (Explore-субагент + кросс-чек
+> доказів: міграції/workflow/код у репо + закриті GitHub-issues з тегами `[#N]`). Принцип `claim ≠ fact`:
+> кожен рядок має ≥1 артефакт-доказ.
+
+| ID | Що | Доказ (артефакт / issue) |
+|----|----|----|
+| #2 | RAG: чанки законів + hybrid search | `migrations/002_law_chunks.sql`, `003_law_documents.sql` |
+| #2а | Моніторинг змін законів (CRON + дайджест-агент) | `027_law_change_impact_fields.sql`, `n8n/workflows/current/law-change-digest.json`, issues #6 #73 closed |
+| #2б | Агент-критик після генерації | issue #7 (`[#2б]`) closed |
+| #4 / #4b | Мінімізація галюцинацій (гібрид: шаблон 95% + AI лише declension) | `n8n/templates/doc-engine.js`, `render-document.js` |
+| #4a | Read-path guard старих посилань на форму | `apps/client/src/App.tsx` (read-path kill-switch) |
+| #4с | divorce: майно/борги без порожніх `____` (Variant B) | issue #67 closed, merge `d68a92b` |
+| #8 | Тихий fail збереження → toast | issue #18 (`[#8]`) closed |
+| #10а | DatePickerField — ручне введення року | issue #27 (`[#10а]`) closed |
+| #11 / #11а | Form preview без refresh + admin UX | live (адмінка) |
+| #16 | GDPR: шифрування PII (AES-256-GCM) | `008_encrypt_cases_data.sql` |
+| #17 | JS-білдер → doc-engine + Google Docs | issues #17 #34 #35 closed |
+| #28 | Model Debt — модель у Global Config | issue #9 (`[#28]`) closed |
+| #29 | Retrieval Debt — `is_stale` + CRON | issue #11 (`[#29]`) closed |
+| #30 / #73 | Control Debt — abstention tracking + admin UI | `020_abstention_tracking.sql`, issues #10 #46 closed |
+| #35 | Parent-Child chunking | issue #12 (`[#35]`) closed |
+| #38 | Faithfulness/groundedness gate (L4a) | issue #14 (`[#38]`) closed |
+| #39 | Валідатор істотних умов (checklist) | issue #4 (`[#39]`) closed |
+| #44 | RLS policies | `005_enable_rls.sql` |
+| #49 | declension stem-guard | `render-document.js` (guardDeclension), live s.50 |
+| #50 | Типографіка `{{!style:}}` → Google Docs | issue #42 (`[#50]`) closed |
+| #58 | initData HMAC-верифікація (write-path) | issue #56 closed, live s.37 |
+| #71 | Model-agnostic harness (GROQ_MODEL) | issue #40 (`[#71]`) closed |
+| #74 | E2e integration тест hybrid pipeline | issue #44 (`[#74]`) closed |
+| #75 | Telegram bot UX (alive feel / каталог / progress) | issues #55 #61 #65 closed |
+| #84 | Адмінка-дзеркало (read-only огляд + feedback intake) | issue #66 closed |
+| #92 / #94 / #95 | AI-процес: interview-skill + гігієна памʼяті + CLAUDE.md | merge `6196d51` (s.52) |
+
+**Superseded (ідею перекрито іншим підходом — лишаємо для історії):**
+| ID | Чим перекрито |
+|----|----|
+| #3 / #36 | темпоральні `valid_from/valid_to` → `is_stale` + CRON-моніторинг (issue #3 closed); повне версіонування відкладено до GraphRAG v2 (#23/#46) |
+| #27 | Prompt-versioning → промпти в `n8n/prompts/` під git + doc-engine (issue #8 closed) |
+| #41 / #42 | частково: `status` authoritative над `needs_law_review`; `law_deps` лишається в JSONB до GraphRAG (#23) — норм для MVP |
+
+> **NB:** #5 (монетизація lawyer_type/revenue_share) — issue #23 closed як **відкладено**, НЕ зашиповано:
+> запис у `lawyers` при реєстрації юриста ще не створюється (#7). Лишається відкритим у беклозі.
+
+---
+
 ## 🤖 AI та якість документів
 
 > Це найважливіший розділ — якість документу = репутація продукту.

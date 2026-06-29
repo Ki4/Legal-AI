@@ -60,6 +60,13 @@ scripts/        ← Repo-level utility scripts (not part of any app)
 - **Verify before "done" (claim ≠ fact):** any "already done" — from a doc, your idea, or my own earlier conclusion — is a hypothesis until checked against code/runtime. Tag status ✅ live / ⚠️ built-not-live / 📋 claimed / ❌ gap; ✅ needs ≥2 *agreeing* evidence (one showing **invocation**, not just *definition*), and any contradicting evidence blocks it. Protocol + living status-ledger: `docs/architecture/VERIFICATION-PROTOCOL.md`.
 - Language: UI = Ukrainian, chat = Russian OK, code comments = English
 
+## Working process (context hygiene)
+
+- **Interview before guessing.** Before a non-trivial/legally-sensitive task — ask clarifying questions first, don't invent. Not sure? Say "I don't know" rather than supplying a guessed fact (law article, field name, library). Use `/interview <idea>` for the full Socratic pass → spec.
+- **Heavy research via subagent.** Big grep/file-sweep research goes to an Explore/Plan subagent (separate context window); only the distilled answer comes back to the main window.
+- **One task = one fresh chat.** `/clear` between unrelated tasks; after 2 failed corrections, `/clear` + a better starting prompt rather than piling on.
+- **Recurring gotchas land once** in `docs/architecture/GOTCHAS.md` (fix the cause, not the symptom in chat). Session-summary stays lean: only "Стан зараз" + last ~3 sessions; older → `apps/client/.claude/archive/`.
+
 ## Issue tracking (GitHub)
 
 GitHub Issues = status board for units of work. The repo docs stay the source of truth — issues **point** to them, never duplicate them.

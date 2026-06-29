@@ -11,7 +11,7 @@
 ---
 
 ### 2026-06-30 (session 53) — #87 ЦПК ст.175 ч.7: реквізити рахунку позивача — DIVORCE (issue #76, ч.2)
-**Status:** branch `feat/87-account-requisites-divorce` · код+тести, ще НЕ задеплоєно · Refs #76
+**Status:** MERGED to main · merge `e708f83` (`--no-ff`) · **обидва шаблони залиті в Supabase + form-submit задеплоєно + live smoke зелений** · **issue #76 ЗАКРИТО**
 **Why:** Завершення issue #76: той самий блок ст.175 ч.7 (реквізити рахунку), що й в alimony (session 52), але для divorce — **лише під аліментною вимогою** (`alimony_claim`), бо стягнення коштів у розлученні виникає тільки з аліментної гілки. Розірвання шлюбу без аліментів — не грошова вимога, блок не зʼявляється.
 **What:**
 - **Шаблон + legacy-білдер СИНХРОННО** (parity = engine===builder!): новий блок «частина сьома ст.175» після п.10 ч.3, перед судовим збором, обгорнутий `{{#if alimony_claim}}` / `if (isTrue(a.alimony_claim))` — `n8n/templates/services/divorce.document.txt` + `n8n/templates/divorce-document.js`. Дві гілки (є IBAN / немає → бажаний спосіб) — дзеркало alimony. 🪤 це **ч.7**, не «п.7 ч.3».
@@ -22,7 +22,8 @@
 - **validateIban + типи форми** — вже були (зроблено в alimony, session 52).
 **Files:** `n8n/templates/services/divorce.document.txt`, `n8n/templates/divorce-document.js`, `n8n/workflows/current/form-submit.json`, `test-data/divorce/fixtures/scenario-{2,3}.mjs` (+ `expected/scenario-{2,3}.txt`), `apps/client/src/data/divorceFormConfig.ts`, `apps/client/src/admin/lib/sampleAnswers.ts`, `n8n/templates/__tests__/divorce-template-parity.test.js`.
 **Tests:** parity **269 ✅** · root **1019 ✅** · UI **274 ✅** · tsc clean.
-**Залишок #76:** деплой live (`upload-document-template.mjs divorce` → Supabase; форма ходить з Vercel-білда `divorceFormConfig.ts`; `deploy-workflow.mjs form-submit` якщо потрібна оновлена нода) + smoke + sign-off Олі (формулювання блоку).
+**Deploy + live verify:** `upload-document-template.mjs alimony` (10225→10788) + `… divorce` (14149→14945) → Supabase (DB===file); `deploy-workflow.mjs form-submit` (48 нод, active, креди збережено). 3 webhook-smoke: exec 169 divorce-без-аліментів = блок ВІДСУТНІЙ ✅, exec 170 divorce+аліменти = гілка payout ✅, exec 171 alimony = гілка payout ✅ (`________` — легітимний fallback, бо сценарії без полів рахунку; IBAN-гілку покрито 269 parity-тестами). Форма divorce ходить з Vercel-білда `divorceFormConfig.ts`.
+**Sign-off Олі (1 липня):** формулювання блоку ст.175 ч.7 — фідбек збираємо пост-фактум (фаза витрини).
 
 ### 2026-06-29 (session 52) — #87 ЦПК ст.175 ч.7: реквізити рахунку позивача — ALIMONY (issue #76)
 **Status:** branch `feat/87-account-requisites-alimony` · код+тести, ще НЕ задеплоєно · Refs #76

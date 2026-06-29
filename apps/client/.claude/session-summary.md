@@ -16,15 +16,19 @@
   `pending` → workflow `law-change-digest` (n8n id `qTOIqllA4CQvBJs5`) робить L2→L5 → юрист бачить
   `AiDraftCard` у панелі «Зміни законів». G4 (PR#74) + G5 докі (PR#75) змержено, issue #73 закрито.
 
-**🔴 Наступна задача (issue #76 — фінал):** **ДЕПЛОЙ** обох послуг ст.175 ч.7 + sign-off Олі.
-**Код готовий для ОБОХ:** alimony (session 52, PR#81 змержено) + **divorce (session 53, гілка
-`feat/87-account-requisites-divorce` — НЕ змержено)**. Блок ст.175 ч.7 синхронно в шаблон+legacy-білдер
-обох послуг (parity divorce **269 ✅**), форма divorce +4 поля (`divorceFormConfig.ts`, під `alimony_claim`),
-Build Document нода re-synced. Залишок: merge гілки → **деплой** (`upload-document-template.mjs alimony` +
-`… divorce` → Supabase; `deploy-workflow.mjs form-submit` для оновленої ноди; форма divorce ходить з
-Vercel-білда) + live smoke + формулювання блоку на sign-off Олі 1 липня.
+**✅ issue #76 ЗАКРИТО (ст.175 ч.7 реквізити рахунку):** блок live в ОБОХ послугах — alimony (безумовно)
++ divorce (під `alimony_claim`). Шаблони залиті в Supabase (DB===file), form-submit задеплоєно (48 нод,
+active), live smoke зелений (exec 169 divorce-без-аліментів=відсутній, 170 divorce+аліменти=payout,
+171 alimony=payout). Sign-off формулювання Олею — пост-фактум 1 липня (фаза витрини).
 
-**Гілки:** `feat/87-account-requisites-divorce` (session 53, код+тести, НЕ змержено). `main` чистий до неї.
+**🔴 Наступна задача (нова сесія — вибір Сергія):** кандидати —
+(1) **Превью-модуль TWA** (Сергіїв фокус): превью→оплата(заглушка)→документ, стр.1+блюр+watermark,
+доставка через Supabase signed URL. Стартувати через `/interview` під РЕАЛЬНИЙ стек.
+(2) **Розчистка застарілих issues** (#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 — беклог-пачка 2026-06-07,
++ #5 lawyers-запис 🔴).
+(3) Демо субагентів/git-worktree (паттерн B) — Сергій хоче навчитись.
+
+**Гілки:** `main` чистий — divorce ст.175 ч.7 змержено+задеплоєно (`e708f83`, Closes #76).
 
 **📋 Список Олі (sign-off 1 липня):** (1) **#87 alimony — done (live після деплою); divorce — наступним**;
 (2) #67 divorce wording «спір… відсутній» → «не є предметом цього позову»; (3) флип `alimony-change`
@@ -41,6 +45,34 @@ Vercel-білда) + live smoke + формулювання блоку на sign-
 (memory `feedback_reports_to_file`).
 
 ---
+## 🆕 Session 53 (2026-06-30) — #87 divorce ст.175 ч.7 + ДЕПЛОЙ обох послуг (issue #76 закрито)
+
+### Головне — стан ЗАРАЗ
+- **main чистий + запушено** (`e708f83`, Closes #76). Блок ст.175 ч.7 (реквізити рахунку) тепер live в
+  ОБОХ послугах: alimony (безумовно, session 52) + divorce (під `alimony_claim`, ця сесія).
+- Одна задача = один фокус. Деплой alimony (хвіст session 52) + divorce зроблено разом.
+
+### Що зроблено
+1. **divorce ст.175 ч.7** — дзеркало alimony, блок під `{{#if alimony_claim}}` / `if (isTrue(a.alimony_claim))`
+   (стягнення у розлученні = лише аліментна гілка). Шаблон + legacy-білдер СИНХРОННО (parity engine===builder,
+   **269 ✅** +6 toggle), Build Document нода re-synced (`sync-build-document-node.mjs`, 78133→78938).
+   Голдени: scenario-2=гілка IBAN, scenario-3=гілка payout, scenario-1/4 без аліментів=відсутній.
+2. **Форма** `divorceFormConfig.ts` +4 поля (таб «Шлюб і сімʼя», під `alimony_claim==true`): has_account /
+   IBAN (`validation:'iban'`) / банк / payout (каскад show_if). `sampleAnswers.ts` +приклад (фікс preview-тесту).
+3. **Деплой live:** обидва шаблони → Supabase (alimony 10225→10788, divorce 14149→14945, DB===file);
+   `deploy-workflow.mjs form-submit` (48 нод, active, креди збережено).
+4. **Live smoke (3 webhook, executions API):** exec 169 divorce-без-аліментів=блок ВІДСУТНІЙ ✅,
+   170 divorce+аліменти=гілка payout ✅, 171 alimony=гілка payout ✅ (`________` fallback бо сценарії без
+   полів рахунку; IBAN-гілка — у 269 parity-тестах).
+
+### 🪤 Урок
+- Telegram: 3 документи = 3 окремі smoke-входи, НЕ баг «1 сабміт=3 доки». Один сабміт = 1 документ (PDF+DOCX).
+
+### 🔴 Наступний крок (нова сесія, вибір Сергія)
+- Превью-модуль TWA (фокус Сергія, через `/interview`) · розчистка застарілих issues · демо git-worktree.
+
+---
+
 ## 🆕 Session 52 (2026-06-29) — AI-процес + гігієна памʼяті + #33 CRON + #87 alimony (5 одиниць, усе в main)
 
 ### Головне — стан ЗАРАЗ

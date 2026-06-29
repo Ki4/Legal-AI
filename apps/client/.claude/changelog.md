@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-29 (session 52) — AI-процес: гігієна памʼяті + апгрейд interview-skill (розбір `genkovich/sdd`)
+**Status:** branch `claude/ai-recommendations-video-oa4qzv` · docs/skill-only · Refs IMPROVEMENTS #92/#94/#95
+**Why:** Сергій дав репозиторій під відео Beer::Code (`genkovich/sdd` — повноцінний SDD-плагін). Рішення: плагін цілком НЕ ставити (18 skills + 9 агентів конфліктують з нашим зрілим SDD і роздувають контекст — антипатерн #96), а **cherry-pick** найкраще. Перевірено факти проти main: авто-SessionStart-хука з «8000 символів» немає — `/session-start` читає `session-summary.md` цілком (2011 рядків) → context rot.
+**What:**
+- **Гігієна памʼяті (#94):** `session-summary.md` стиснуто **2011 → 131 рядок** — новий блок «📌 Стан зараз» (жива витримка для старту) + останні 3 сесії (51/50/49). Сесії 7–48 перенесено дослівно в `apps/client/.claude/archive/session-log-2026-H1.md` (append-only, не читається авто — `grep` за потреби). Контент не втрачено.
+- **`docs/architecture/GOTCHAS.md` (new, #94):** файл повторюваних грабель (формат 🪤 Симптом→Причина→Правило), засіяно реальними (PowerShell-кирилиця, n8n fan-out depth-first, ч.7≠п.7ч.3, lenient stem-guard, claim≠fact).
+- **Interview-skill апгрейджено (#92):** механіку запозичено з `genkovich/sdd` — depth-dial (easy/medium/hard), hard-rules (`AskUserQuestion` з `(Recommended)`, по одному питанню), probing frames (`references/probing-frames.md`, заточені під юр-контекст), stuck-protocol, формат фінального резюме. Вихід — на НАШ `/feature-spec` + тири, не їх `/sdd:specify`.
+- **CLAUDE.md (#95):** нова секція «Working process (context hygiene)» — interview-before-guessing, важкий ресёрч у субагент, `/clear` між задачами, граблі → GOTCHAS (4 буліти, компактно).
+- **IMPROVEMENTS.md:** #92/#94/#95 → ✅ done; виправлено факт про «8000-char хук»; **#93 (evals) ВІДКЛАДЕНО** за рішенням Сергія (спершу базовий курс).
+**Files:** `apps/client/.claude/session-summary.md` (+ `archive/session-log-2026-H1.md`), `docs/architecture/GOTCHAS.md`, `.claude/skills/interview/{SKILL.md,references/probing-frames.md}`, `CLAUDE.md`, `docs/architecture/IMPROVEMENTS.md`.
+**Tests:** docs/skill-only — код не зачеплено.
+
 ### 2026-06-29 (session 51) — law-change-impact G5: доки (DECISIONS + IMPROVEMENTS deferred)
 **Status:** branch `docs/law-change-digest-g5` · docs-only · Closes #73
 **Why:** Закрити фічу `law-change-impact` — лишалась лише G5 (журнал рішень + deferred-беклог); код G4 уже на main (#74).

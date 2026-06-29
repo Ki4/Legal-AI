@@ -23,7 +23,8 @@
 - Тестовий рядок прибрано (`law_change_log`=0). migration 027 застосована (підтверджено наживо), 21 active chunk, 0 verified relations (scope через direct `service_slugs`).
 
 ### 🔴 Наступний крок
-1. **Merge гілки** `feat/law-change-digest-workflow` (PR для ревью з телефона?). Тести 1013 ✅, нуль ризику для прод-генерації (окремий workflow).
+0. **▶ НАСТУПНА СЕСІЯ (готово до старту): IMPROVEMENTS #87 → issue #76** — ЦПК ст.175 ч.7 реквізити рахунку позивача в alimony + divorce. Повний impact-аналіз + чернетки полів/блоку + parity-вплив + питання Олі: `docs/research/cpk-175-7-account-requisites.md`. План: G1 alimony (зразок) → G2 divorce → G3 IBAN-валідатор → G4 деплой+smoke. Tier 2 (legally-sensitive), фінальне формулювання — sign-off Олі (кодити можна з placeholder, як #67). 🪤 це **ч.7** ст.175, НЕ «п.7 ч.3» (вже в шаблоні).
+1. **Merge гілки** `feat/law-change-digest-workflow` ✅ ЗМЕРЖЕНО (PR #74) + G5 докі (PR #75), issue #73 закрито. Тести 1013 ✅.
 2. **G5 доки:** DECISIONS (2-стадійність Node-diff/n8n-LLM, abstention-контракт, severity юридична) + IMPROVEMENTS deferred (L4b LLM-критик — наразі лише advisory AMBER, не гейт; поартикульний diff як основний; column-scoped review RPC).
 3. **Звʼязка з монітором (опц.):** GH-Actions `law-monitor.yml` може POST-ити webhook `law-change-digest` після `check-law-updates` (зараз workflow і так бере pending за Schedule щогодини).
 4. **Список Олі (1 липня):** #87 (ЦПК реквізити рахунку), #67 wording, флип `alimony-change`, увімкнення CRON `schedule:`.

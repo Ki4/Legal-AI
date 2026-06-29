@@ -418,6 +418,47 @@ export const divorceFormConfig: FormConfig = {
       animation: 'slide-down',
     },
 
+    // --- Реквізити рахунку позивача (ЦПК ст.175 ч.7, лише за наявності аліментної вимоги) ---
+    {
+      id: 'plaintiff_has_account',
+      tab: 'marriage',
+      type: 'boolean',
+      label: 'Маю рахунок для зарахування присуджених коштів',
+      hint: 'IBAN у банку або небанківському надавачі платіжних послуг.',
+      explanation: 'ст. 175 ч. 7 ЦПК: позов про стягнення коштів має містити реквізити рахунку позивача (або інформацію про його відсутність).',
+      show_if: { field: 'alimony_claim', operator: '==', value: true },
+      animation: 'slide-down',
+    },
+    {
+      id: 'plaintiff_account_iban',
+      tab: 'marriage',
+      type: 'text',
+      label: 'IBAN рахунку',
+      placeholder: 'UA21 3996 2200 0002 6007 2335 6600 1',
+      validation: 'iban',
+      show_if: { field: 'plaintiff_has_account', operator: '==', value: true },
+      animation: 'slide-down',
+    },
+    {
+      id: 'plaintiff_account_bank',
+      tab: 'marriage',
+      type: 'text',
+      label: 'Банк / надавач платіжних послуг',
+      placeholder: 'АТ КБ «ПриватБанк»',
+      show_if: { field: 'plaintiff_has_account', operator: '==', value: true },
+      animation: 'slide-down',
+    },
+    {
+      id: 'plaintiff_payout_method',
+      tab: 'marriage',
+      type: 'text',
+      label: 'Бажаний спосіб отримання коштів',
+      placeholder: 'поштовий переказ за адресою реєстрації',
+      hint: 'Якщо рахунку немає — вкажіть, як бажаєте отримати присуджені кошти.',
+      show_if: { field: 'plaintiff_has_account', operator: '!=', value: true },
+      animation: 'slide-down',
+    },
+
     // --- Причини розлучення (Алгоритм п.5) ---
     {
       id: 'divorce_reasons',

@@ -16,14 +16,15 @@
   `pending` → workflow `law-change-digest` (n8n id `qTOIqllA4CQvBJs5`) робить L2→L5 → юрист бачить
   `AiDraftCard` у панелі «Зміни законів». G4 (PR#74) + G5 докі (PR#75) змержено, issue #73 закрито.
 
-**🔴 Наступна задача (НОВА СЕСІЯ — issue #76, частина 2):** **#87 divorce** — той самий блок ЦПК
-ст.175 ч.7 (реквізити рахунку), але під `{{#if alimony_claim}}` (лише аліментна гілка = стягнення).
-**Alimony вже зроблено й змержено** (PR#81, `a8bb185`). Патерн: шаблон `divorce.document.txt` +
-legacy-білдер `divorce-document.js` СИНХРОННО (parity engine===builder!) + форма `divorceFormConfig.ts`
-(React, не config) + parity-голдени. План/місця: `docs/research/cpk-175-7-account-requisites.md` §3.
-Поля/валідатор `validateIban` вже існують (зроблено в alimony). Потім **деплой** + sign-off Олі.
+**🔴 Наступна задача (issue #76 — фінал):** **ДЕПЛОЙ** обох послуг ст.175 ч.7 + sign-off Олі.
+**Код готовий для ОБОХ:** alimony (session 52, PR#81 змержено) + **divorce (session 53, гілка
+`feat/87-account-requisites-divorce` — НЕ змержено)**. Блок ст.175 ч.7 синхронно в шаблон+legacy-білдер
+обох послуг (parity divorce **269 ✅**), форма divorce +4 поля (`divorceFormConfig.ts`, під `alimony_claim`),
+Build Document нода re-synced. Залишок: merge гілки → **деплой** (`upload-document-template.mjs alimony` +
+`… divorce` → Supabase; `deploy-workflow.mjs form-submit` для оновленої ноди; форма divorce ходить з
+Vercel-білда) + live smoke + формулювання блоку на sign-off Олі 1 липня.
 
-**Гілки:** `main` чистий — усе сьогоднішнє змержено (AI-процес #78, DONE-rollup #79, CRON #80, alimony #81).
+**Гілки:** `feat/87-account-requisites-divorce` (session 53, код+тести, НЕ змержено). `main` чистий до неї.
 
 **📋 Список Олі (sign-off 1 липня):** (1) **#87 alimony — done (live після деплою); divorce — наступним**;
 (2) #67 divorce wording «спір… відсутній» → «не є предметом цього позову»; (3) флип `alimony-change`

@@ -10,6 +10,20 @@
 
 ---
 
+### 2026-06-30 (session 53) — #87 ЦПК ст.175 ч.7: реквізити рахунку позивача — DIVORCE (issue #76, ч.2)
+**Status:** branch `feat/87-account-requisites-divorce` · код+тести, ще НЕ задеплоєно · Refs #76
+**Why:** Завершення issue #76: той самий блок ст.175 ч.7 (реквізити рахунку), що й в alimony (session 52), але для divorce — **лише під аліментною вимогою** (`alimony_claim`), бо стягнення коштів у розлученні виникає тільки з аліментної гілки. Розірвання шлюбу без аліментів — не грошова вимога, блок не зʼявляється.
+**What:**
+- **Шаблон + legacy-білдер СИНХРОННО** (parity = engine===builder!): новий блок «частина сьома ст.175» після п.10 ч.3, перед судовим збором, обгорнутий `{{#if alimony_claim}}` / `if (isTrue(a.alimony_claim))` — `n8n/templates/services/divorce.document.txt` + `n8n/templates/divorce-document.js`. Дві гілки (є IBAN / немає → бажаний спосіб) — дзеркало alimony. 🪤 це **ч.7**, не «п.7 ч.3».
+- **Build Document нода re-sync** (`sync-build-document-node.mjs`): інлайнений divorce-білдер у `form-submit.json` оновлено (78133→78938 chars).
+- **Голдени регенеровано:** scenario-2 = гілка «є рахунок» (IBAN+банк), scenario-3 = гілка «немає рахунку» (payout); scenario-1/4 без alimony → блок відсутній (контент незмінний). Parity **269 ✅** (+6 toggle-кейсів гілок рахунку, у т.ч. «ignored when no alimony_claim»).
+- **Форма** `apps/client/src/data/divorceFormConfig.ts` — 4 поля в таб «Шлюб і сімʼя» після `alimony_amount`: `plaintiff_has_account` (boolean, show_if `alimony_claim==true`) + IBAN (`validation:'iban'`) + банк + `plaintiff_payout_method` (каскад show_if на `plaintiff_has_account`).
+- **sampleAnswers.ts** (превʼю адмінки) — приклад полів рахунку у divorce-блоці.
+- **validateIban + типи форми** — вже були (зроблено в alimony, session 52).
+**Files:** `n8n/templates/services/divorce.document.txt`, `n8n/templates/divorce-document.js`, `n8n/workflows/current/form-submit.json`, `test-data/divorce/fixtures/scenario-{2,3}.mjs` (+ `expected/scenario-{2,3}.txt`), `apps/client/src/data/divorceFormConfig.ts`, `apps/client/src/admin/lib/sampleAnswers.ts`, `n8n/templates/__tests__/divorce-template-parity.test.js`.
+**Tests:** parity **269 ✅** · root **1019 ✅** · UI **274 ✅** · tsc clean.
+**Залишок #76:** деплой live (`upload-document-template.mjs divorce` → Supabase; форма ходить з Vercel-білда `divorceFormConfig.ts`; `deploy-workflow.mjs form-submit` якщо потрібна оновлена нода) + smoke + sign-off Олі (формулювання блоку).
+
 ### 2026-06-29 (session 52) — #87 ЦПК ст.175 ч.7: реквізити рахунку позивача — ALIMONY (issue #76)
 **Status:** branch `feat/87-account-requisites-alimony` · код+тести, ще НЕ задеплоєно · Refs #76
 **Why:** ст.175 ЦПК доповнено ч.7 (Закон №4833-IX) — позов про стягнення коштів має містити реквізити рахунку позивача. Аліменти = завжди стягнення → блок безумовний. Реалізуємо alimony як зразок (за `docs/research/cpk-175-7-account-requisites.md`), divorce — наступним. Placeholder-формулювання, sign-off Олі пізніше (малий радіус, як #67).

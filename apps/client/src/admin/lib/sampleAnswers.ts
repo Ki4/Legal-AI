@@ -44,6 +44,9 @@ export const SAMPLE_ANSWERS: Record<string, Record<string, unknown>> = {
     children_dispute: 'none',
     alimony_claim: true,
     alimony_amount: 'percent',
+    plaintiff_has_account: true,
+    plaintiff_account_iban: 'UA213996220000026007233566001',
+    plaintiff_account_bank: 'АТ КБ «ПриватБанк»',
     divorce_reasons: ['no_understanding', 'different_views', 'no_financial_support'],
     joint_household: 'no',
 

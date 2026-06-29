@@ -1,0 +1,364 @@
+{
+  "name": "law-change-digest",
+  "nodes": [
+    {
+      "id": "schedule-trigger-001",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1040,
+        1380
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "notes": "Hourly. Idempotent — only picks up ai_status=pending rows; nothing pending = no-op."
+    },
+    {
+      "id": "webhook-trigger-001",
+      "name": "Webhook Kick",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        1620
+      ],
+      "webhookId": "law-change-digest-kick",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "law-change-digest",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "notes": "Manual / GH-Actions kick (POST /webhook/law-change-digest). Responds 200 immediately; digest runs async."
+    },
+    {
+      "id": "global-config-001",
+      "name": "Global Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        1500
+      ],
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════\n// GLOBAL CONFIG — law-change-digest. Keys injected by scripts/deploy-workflow.mjs.\n// ═══════════════════════════════════════════════════════\nreturn [{ json: {\n  SUPABASE_URL:         'https://nexkairsedqtczievxpa.supabase.co',\n  SUPABASE_SERVICE_KEY: 'YOUR_SUPABASE_SERVICE_ROLE_KEY',\n  GROQ_API_KEY:         'YOUR_GROQ_API_KEY',\n  GROQ_MODEL:           'llama-3.3-70b-versatile',\n  // Abstention threshold (requirements §3.3): overall_confidence below this → no draft.\n  CONFIDENCE_THRESHOLD: '0.5',\n}}];"
+      },
+      "notes": "⚙️ Keys + model + abstention threshold. deploy-workflow.mjs injects real keys (Starter plan has no Variables)."
+    },
+    {
+      "id": "fetch-chunks-001",
+      "name": "Fetch Chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        1500
+      ],
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Global Config').first().json.SUPABASE_URL + '/rest/v1/law_chunks?select=id,law_code,article_num,service_slugs&is_stale=eq.false' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "notes": "L2 input: live law_chunks (id, law_code, article_num, service_slugs). Small table — fetched whole."
+    },
+    {
+      "id": "fetch-relations-001",
+      "name": "Fetch Relations",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -340,
+        1500
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Global Config').first().json.SUPABASE_URL + '/rest/v1/law_relations?select=from_chunk_id,to_chunk_id,relation_type,verified_by&verified_by=not.is.null' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "notes": "L2 input: lawyer-verified graph edges only. executeOnce (fires once despite upstream fan-out); may be empty (GraphRAG not yet live) → direct service_slugs path still works."
+    },
+    {
+      "id": "fetch-pending-001",
+      "name": "Fetch Pending",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -120,
+        1500
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $('Global Config').first().json.SUPABASE_URL + '/rest/v1/law_change_log?ai_status=eq.pending&article_diffs=not.is.null&select=*&order=detected_at.asc' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "notes": "L0 queue: pending rows that already carry a deterministic article_diffs. executeOnce + alwaysOutputData (single fetch, chain survives an empty queue)."
+    },
+    {
+      "id": "compute-scopes-001",
+      "name": "Compute Scopes",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        1500
+      ],
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════\n// Compute Scopes (L2) — GENERATED by scripts/build-law-change-digest.mjs\n// Edit n8n/templates/law-change-scope.js / n8n/prompts/law-change-digest.txt and re-run.\n// ═══════════════════════════════════════════════════════\n\n// L2 scope (mirror: n8n/templates/law-change-scope.js)\n/**\n * law-change-scope.js\n * L2 — deterministic impact scope + severity for the law-change-impact agent. No LLM.\n *\n * Given the changed articles of a law plus the relevant law_chunks / law_relations rows\n * (as the digest fetches them from Supabase), computes:\n *   - which services are affected, and\n *   - a per-service severity CEILING that is LEGAL, not demand-based (closes the viz-session\n *     note that edge thickness conflated demand with risk).\n *\n * Severity model (max over all paths from the changed article to the service):\n *   - the changed article directly serves the service (its service_slugs)  → high\n *   - reached via a verified `requires` / `overrides` relation              → high\n *   - via `clarifies`                                                       → medium\n *   - via `references`                                                      → low\n * Modulation: if the diff touches no substantive tokens (money / % / dates / terms / subsistence\n *   minimum), soften one step — a wording/structure edit is lower risk than a number change.\n * Only lawyer-verified relations (verified_by set) are traversed — an unverified graph edge\n * never drives an impact claim. The LLM (L3) proposes its own severity but is bounded ABOVE\n * by this ceiling.\n *\n * n8n entry point (paste into Code Node):\n *   const scope = computeImpactScope({\n *     changedArticles: $json.article_diffs.changed_articles,\n *     lawCode:         $json.law_code,\n *     lawChunks:       $json.law_chunks,     // [{ id, law_code, article_num, service_slugs }]\n *     lawRelations:    $json.law_relations,  // [{ from_chunk_id, to_chunk_id, relation_type, verified_by }]\n *     touchesNumbers:  diffTouchesNumbers($json.article_diffs),\n *   });\n *   return [{ json: { ...$json, scope } }];\n */\n\nconst SEVERITY_RANK = { low: 1, medium: 2, high: 3 };\nconst RELATION_CEILING = { requires: 'high', overrides: 'high', clarifies: 'medium', references: 'low' };\n\n// Tokens that make a change legally \"substantive\" (quantitative / temporal). A diff touching\n// none of these is treated as wording/structure → severity softened one step.\nconst SUBSTANTIVE_RE = /(грн|\\d+\\s*%|відсотк|\\d+\\/\\d+|\\d{2}\\.\\d{2}\\.\\d{4}|місяц|\\bрок|\\bдн[ів]|прожитков|мінімум|неоподатк)/i;\n\nfunction maxSeverity(a, b) {\n  return SEVERITY_RANK[a] >= SEVERITY_RANK[b] ? a : b;\n}\nfunction softer(sev) {\n  return sev === 'high' ? 'medium' : 'low';\n}\n\n/** True if any diff hunk line touches a substantive (numeric / temporal) token. */\nfunction diffTouchesNumbers(articleDiffs) {\n  if (!articleDiffs || !Array.isArray(articleDiffs.hunks)) return false;\n  return articleDiffs.hunks.some((h) =>\n    [...(h.removed || []), ...(h.added || [])].some((line) => SUBSTANTIVE_RE.test(String(line))),\n  );\n}\n\n/**\n * @param {object} args\n * @param {string[]} args.changedArticles\n * @param {string} args.lawCode\n * @param {Array} args.lawChunks       [{ id, law_code, article_num, service_slugs }]\n * @param {Array} args.lawRelations    [{ from_chunk_id, to_chunk_id, relation_type, verified_by }]\n * @param {boolean} [args.touchesNumbers=true]  default true = no softening (safe)\n * @returns {{ services: Array, changed_articles: string[], norms: string[] }}\n */\nfunction computeImpactScope({ changedArticles, lawCode, lawChunks, lawRelations, touchesNumbers = true }) {\n  const changed = new Set((changedArticles || []).map(String));\n  const chunks = lawChunks || [];\n  const relations = (lawRelations || []).filter((r) => r && r.verified_by);\n\n  const changedChunks = chunks.filter((c) => c.law_code === lawCode && changed.has(String(c.article_num)));\n  const changedIds = new Set(changedChunks.map((c) => c.id));\n  const chunkById = new Map(chunks.map((c) => [c.id, c]));\n\n  const acc = new Map(); // slug → { slug, severity, articles:Set, relations:Set }\n  const bump = (slug, severity, articleNum, relation) => {\n    if (!slug) return;\n    const cur = acc.get(slug) || { slug, severity: 'low', articles: new Set(), relations: new Set() };\n    cur.severity = maxSeverity(cur.severity, severity);\n    if (articleNum != null) cur.articles.add(String(articleNum));\n    if (relation) cur.relations.add(relation);\n    acc.set(slug, cur);\n  };\n\n  // 1. Direct: the changed article itself serves these services → high.\n  for (const c of changedChunks) {\n    for (const slug of c.service_slugs || []) bump(slug, 'high', c.article_num, 'direct');\n  }\n\n  // 2. Ripple: verified relations incident to a changed chunk → the neighbor's services, at\n  //    the relation type's ceiling.\n  for (const r of relations) {\n    const ceiling = RELATION_CEILING[r.relation_type] || 'low';\n    let neighborId = null;\n    if (changedIds.has(r.to_chunk_id)) neighborId = r.from_chunk_id;\n    else if (changedIds.has(r.from_chunk_id)) neighborId = r.to_chunk_id;\n    if (!neighborId) continue;\n    const neighbor = chunkById.get(neighborId);\n    if (!neighbor) continue;\n    for (const slug of neighbor.service_slugs || []) bump(slug, ceiling, neighbor.article_num, r.relation_type);\n  }\n\n  const byArticleNum = (a, b) => parseInt(a, 10) - parseInt(b, 10);\n  const services = [...acc.values()]\n    .map((s) => ({\n      slug: s.slug,\n      severity: touchesNumbers ? s.severity : softer(s.severity),\n      articles: [...s.articles].sort(byArticleNum),\n      relations: [...s.relations],\n    }))\n    .sort((a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || a.slug.localeCompare(b.slug));\n\n  const norms = [...new Set([...changed, ...services.flatMap((s) => s.articles)])].sort(byArticleNum);\n  return { services, changed_articles: [...changed].sort(byArticleNum), norms };\n}\n\n// ── Exports (for Node.js testing; ignored in n8n Code Node) ───────────────────\nif (typeof module !== 'undefined' && module.exports) {\n  module.exports = { computeImpactScope, diffTouchesNumbers };\n}\n\n\nconst DIGEST_PROMPT_TEMPLATE = \"Ти — юрист-аналітик. Закон змінився. Твоє завдання — НА ОСНОВІ НАДАНОГО DIFF коротко описати юристу-рецензенту, ЩО саме змінилося і ЯК це ймовірно впливає на кожну зачеплену послугу. Це ПОПЕРЕДНЯ чернетка для перевірки людиною, а не остаточний висновок.\\n\\n=== ВХІДНІ ДАНІ (підставляються автоматично) ===\\n\\nЗакон: {{LAW_TITLE}} (код {{LAW_CODE}})\\nЗмінені статті: {{CHANGED_ARTICLES}}\\n\\nТекст змін (DIFF — рядки, що вилучені/додані; ЦЕ ЄДИНЕ ДЖЕРЕЛО ФАКТІВ):\\n{{DIFF_HUNKS}}\\n\\nЗачеплені послуги та норми (L2-scope — лише ці послуги дозволено згадувати):\\n{{SCOPE_SERVICES}}\\n\\nДозволені ідентифікатори статей (суворий список — лише ці можна цитувати):\\n{{ALLOWED_ARTICLES}}\\n\\nДозволені slug послуг (суворий список):\\n{{ALLOWED_SLUGS}}\\n\\n=== ПРАВИЛА (КРИТИЧНО — порушення → reject критиком L4a → abstention) ===\\n\\n1. **Тільки наданий DIFF.** Описуй ВИКЛЮЧНО те, що видно в `DIFF_HUNKS`. Не додавай знань «із пам'яті» про цей закон. Якщо diff незрозумілий або порожній — це сигнал утриматися (див. п.8).\\n\\n2. **Тільки дозволені цитати.** Згадуй статті ВИКЛЮЧНО з `ALLOWED_ARTICLES`. Жодних інших номерів статей.\\n\\n3. **Тільки дозволені послуги.** У `per_service[].slug` — ВИКЛЮЧНО значення з `ALLOWED_SLUGS`.\\n\\n4. **Жодних вигаданих чисел / дат / формул.** Якщо називаєш число, дату чи формулу — вона має бути ДОСЛІВНО присутня в `DIFF_HUNKS`. Не реконструюй «правильне» значення.\\n\\n5. **`evidence` — дослівна цитата з diff.** Поле `evidence` кожної послуги має бути фрагментом, скопійованим ДОСЛІВНО з `DIFF_HUNKS` (критик звіряє посимвольно).\\n\\n6. **severity — НЕ вище за стелю scope.** Для кожної послуги `severity` (`high`/`medium`/`low`) не може перевищувати стелю, вказану в `SCOPE_SERVICES`. Можна нижче — не вище.\\n\\n7. **Без юридичних гарантій.** Не пиши «суд зобов'язаний», «послуга зламана», «треба негайно». Пиши обережно: «ймовірно зачіпає», «потребує перевірки», «можливо стосується».\\n\\n8. **Невпевнений → коротше + нижча confidence.** Краще скромний правдивий опис, ніж впевнена вигадка. Якщо diff не дає підстав для висновку про конкретну послугу — НЕ вигадуй гіпотезу, постав `confidence` низько або не включай послугу.\\n\\n9. **Мова — українська.** Стиль — стислий, діловий. `summary` — 1–3 речення.\\n\\n=== ФОРМАТ ВІДПОВІДІ (суворий JSON, без markdown, без коментарів) ===\\n\\n{\\n  \\\"summary\\\": \\\"<1–3 речення: що змінилось у законі, людською мовою>\\\",\\n  \\\"per_service\\\": [\\n    {\\n      \\\"slug\\\": \\\"<∈ ALLOWED_SLUGS>\\\",\\n      \\\"severity\\\": \\\"high|medium|low\\\",\\n      \\\"confidence\\\": <0..1>,\\n      \\\"articles\\\": [\\\"<∈ ALLOWED_ARTICLES>\\\"],\\n      \\\"hypothesis\\\": \\\"<як ймовірно впливає на цю послугу — обережно>\\\",\\n      \\\"evidence\\\": \\\"<ДОСЛІВНИЙ фрагмент з DIFF_HUNKS>\\\"\\n    }\\n  ],\\n  \\\"overall_confidence\\\": <0..1>\\n}\\n\";\n\nfunction fillDigestPrompt(t, c) {\n  return t\n    .replace('{{LAW_TITLE}}',        c.LAW_TITLE)\n    .replace('{{LAW_CODE}}',         c.LAW_CODE)\n    .replace('{{CHANGED_ARTICLES}}', c.CHANGED_ARTICLES)\n    .replace('{{DIFF_HUNKS}}',       c.DIFF_HUNKS)\n    .replace('{{SCOPE_SERVICES}}',   c.SCOPE_SERVICES)\n    .replace('{{ALLOWED_ARTICLES}}', c.ALLOWED_ARTICLES)\n    .replace('{{ALLOWED_SLUGS}}',    c.ALLOWED_SLUGS);\n}\n\n// law_chunks.article_num is stored as \"Стаття 182\"; article_diffs.changed_articles are bare\n// numbers (\"182\"). Normalise chunk article numbers so computeImpactScope can match them.\nconst artNum = (a) => { const m = String(a == null ? '' : a).match(/\\d+(?:-\\d+)?/); return m ? m[0] : ''; };\n\n// n8n entry point. The fetch nodes run on a linear spine with alwaysOutputData, so an\n// empty result still emits a placeholder item — filter those out by real-row shape.\nconst pending   = $('Fetch Pending').all().map((i) => i.json).filter((r) => r && r.id != null && r.article_diffs);\nconst chunksRaw = $('Fetch Chunks').all().map((i) => i.json).filter((c) => c && c.article_num != null);\nconst relations = $('Fetch Relations').all().map((i) => i.json).filter((r) => r && r.relation_type);\nconst model     = $('Global Config').first().json.GROQ_MODEL || 'llama-3.3-70b-versatile';\n\nconst chunks = chunksRaw.map((c) => ({ ...c, article_num: artNum(c.article_num) }));\n\nconst out = [];\nfor (const row of pending) {\n  const ad = row.article_diffs || {};\n  const changedArticles = (ad.changed_articles || []).map(String);\n  const scope = computeImpactScope({\n    changedArticles,\n    lawCode: ad.law_code,\n    lawChunks: chunks,\n    lawRelations: relations,\n    touchesNumbers: diffTouchesNumbers(ad),\n  });\n\n  const allowedArticles = [...new Set([...changedArticles, ...scope.norms.map(String)])];\n  const allowedSlugs = scope.services.map((s) => s.slug);\n\n  // Present removed/added lines VERBATIM (no inline +/− markers) under labelled blocks so\n  // the model can copy an `evidence` line exactly — the deterministic critic matches it\n  // character-for-character against the raw diff corpus.\n  const diffText = (ad.hunks || [])\n    .map((h) => {\n      const rem = (h.removed || []).length ? 'ВИЛУЧЕНО:\\n' + h.removed.join('\\n') : '';\n      const add = (h.added || []).length ? 'ДОДАНО:\\n' + h.added.join('\\n') : '';\n      return '[ст.' + (h.article_num || '?') + ' | ' + (h.op || 'changed') + ']\\n' + [rem, add].filter(Boolean).join('\\n');\n    })\n    .join('\\n\\n');\n\n  const scopeText = scope.services.length\n    ? scope.services.map((s) => '- ' + s.slug + ' (стеля severity: ' + s.severity + '; статті: ' + s.articles.join(', ') + ')').join('\\n')\n    : '(жодної послуги в scope)';\n\n  const prompt = fillDigestPrompt(DIGEST_PROMPT_TEMPLATE, {\n    LAW_TITLE:        row.law_title || ad.law_code || '',\n    LAW_CODE:         ad.law_code || '',\n    CHANGED_ARTICLES: changedArticles.join(', ') || '(невідомо)',\n    DIFF_HUNKS:       diffText || '(порожній diff)',\n    SCOPE_SERVICES:   scopeText,\n    ALLOWED_ARTICLES: allowedArticles.join(', ') || '(порожньо)',\n    ALLOWED_SLUGS:    allowedSlugs.join(', ') || '(порожньо)',\n  });\n\n  out.push({ json: {\n    _row_id: row.id,\n    _article_diffs: ad,\n    _scope: scope,\n    _allowed_slugs: allowedSlugs,\n    _model: model,\n    _groq_body: {\n      model,\n      temperature: 0.2,\n      response_format: { type: 'json_object' },\n      messages: [{ role: 'user', content: prompt }],\n    },\n  } });\n}\nreturn out;"
+      },
+      "notes": "L2: per pending row → deterministic impact scope + severity ceiling + filled Groq prompt. One output item per pending row."
+    },
+    {
+      "id": "l3-reasoning-001",
+      "name": "L3 Reasoning",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        320,
+        1500
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Global Config').first().json.GROQ_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json._groq_body) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "notes": "L3: Groq strict-JSON \"what changed\" draft. One call per pending row (item pairing preserved)."
+    },
+    {
+      "id": "critique-decide-001",
+      "name": "Critique & Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        540,
+        1500
+      ],
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════\n// Critique & Decide (L4) — GENERATED by scripts/build-law-change-digest.mjs\n// Edit n8n/templates/law-change-groundedness.js and re-run.\n// ═══════════════════════════════════════════════════════\n\n// L4a deterministic groundedness (mirror: n8n/templates/law-change-groundedness.js)\n/**\n * law-change-groundedness.js\n * L4a critic — deterministic groundedness for the law-change-impact agent draft. No LLM.\n *\n * Verifies the L3 \"what changed\" draft against the GROUND TRUTH (the deterministic\n * article_diffs + the L2 scope). Any claim that can't be backed → RED span → abstention (L4c):\n * the digest then withholds the draft (ai_status='abstained') and the lawyer sees the diff only.\n *\n * Checks:\n *   1. each per_service.slug ∈ scope services (allowed_slugs)               → else RED\n *   2. each cited article (per_service.articles + \"ст.N\" in the prose) ∈\n *      allowed_articles (diff changed_articles ∪ scope.norms)              → else RED\n *   3. each per_service.evidence appears VERBATIM in the diff hunks         → else RED\n *\n * n8n entry point (paste into Code Node):\n *   const result = checkLawChangeGroundedness($json.ai_draft, {\n *     articleDiffs: $json.article_diffs,\n *     scope:        $json.scope,\n *   });\n *   return [{ json: { ...$json, groundedness: result } }];\n *\n * result.has_red === true → abstain.\n */\n\n// \"ст.182\", \"ст. 182\", \"статті 182\", \"стаття 182-1\" → captures the article number.\nconst ARTICLE_CITE_RE = /(?:ст\\.?|статт[іяею])\\s*(\\d+(?:-\\d+)?)/gi;\n\n/** Flatten every diff hunk line (removed + added) into one searchable corpus. */\nfunction buildDiffCorpus(articleDiffs) {\n  if (!articleDiffs || !Array.isArray(articleDiffs.hunks)) return '';\n  const lines = [];\n  for (const h of articleDiffs.hunks) {\n    for (const l of h.removed || []) lines.push(String(l));\n    for (const l of h.added || []) lines.push(String(l));\n  }\n  return lines.join('\\n');\n}\n\n/** Set of article numbers cited in a free-text string. */\nfunction citedArticles(text) {\n  const out = new Set();\n  for (const m of String(text || '').matchAll(ARTICLE_CITE_RE)) out.add(m[1]);\n  return out;\n}\n\nfunction makeSpan(text, type, status, reason) {\n  return { text, type, status, reason };\n}\n\n/**\n * @param {object} draft  L3 output { summary, per_service:[{slug,articles,hypothesis,evidence}] }\n * @param {object} ctx    { articleDiffs, scope }\n * @returns {{ spans: object[], has_red: boolean, has_amber: boolean }}\n */\nfunction checkLawChangeGroundedness(draft, ctx = {}) {\n  const spans = [];\n  const d = draft || {};\n  const articleDiffs = ctx.articleDiffs || {};\n  const scope = ctx.scope || {};\n\n  const allowedSlugs = new Set((scope.services || []).map((s) => s.slug));\n  const allowedArticles = new Set([\n    ...(articleDiffs.changed_articles || []).map(String),\n    ...(scope.norms || []).map(String),\n  ]);\n  const corpus = buildDiffCorpus(articleDiffs);\n\n  // 1–3: per-service items.\n  for (const item of d.per_service || []) {\n    if (item.slug && !allowedSlugs.has(item.slug)) {\n      spans.push(makeSpan(item.slug, 'service', 'RED',\n        `Послуга \"${item.slug}\" поза scope (L2). Можлива вигадка.`));\n    }\n    for (const a of item.articles || []) {\n      if (!allowedArticles.has(String(a))) {\n        spans.push(makeSpan(`ст.${a}`, 'citation', 'RED',\n          `Стаття \"${a}\" поза дозволеним набором (diff ∪ scope). Можлива галюцинація.`));\n      }\n    }\n    if (item.evidence && !corpus.includes(String(item.evidence).trim())) {\n      spans.push(makeSpan(item.evidence, 'evidence', 'RED',\n        'Цитата-доказ відсутня дослівно в diff. Можлива вигадка.'));\n    }\n  }\n\n  // 2 (prose): articles cited in summary + each hypothesis must be allowed.\n  const proseArticles = citedArticles(d.summary);\n  for (const item of d.per_service || []) {\n    for (const a of citedArticles(item.hypothesis)) proseArticles.add(a);\n  }\n  for (const a of proseArticles) {\n    if (!allowedArticles.has(a)) {\n      spans.push(makeSpan(`ст.${a}`, 'citation', 'RED',\n        `Стаття \"${a}\" у тексті поза дозволеним набором. Можлива галюцинація.`));\n    }\n  }\n\n  const has_red = spans.some((s) => s.status === 'RED');\n  const has_amber = spans.some((s) => s.status === 'AMBER');\n  return { spans, has_red, has_amber };\n}\n\n// ── Exports (for Node.js testing; ignored in n8n Code Node) ───────────────────\nif (typeof module !== 'undefined' && module.exports) {\n  module.exports = { checkLawChangeGroundedness };\n}\n\n\n// n8n entry point (one item per pending row; row context via paired item):\nconst ctx = $('Compute Scopes').item.json;\nconst threshold = parseFloat($('Global Config').first().json.CONFIDENCE_THRESHOLD || '0.5');\nconst nowIso = new Date().toISOString();\nconst base = { _row_id: ctx._row_id, _model: ctx._model, _generated_at: nowIso };\n\n// Parse the Groq strict-JSON response. Malformed/missing → error (diff still stands).\nlet draft = null;\ntry {\n  const content = $json.choices && $json.choices[0] && $json.choices[0].message && $json.choices[0].message.content;\n  draft = JSON.parse(content);\n} catch (e) {\n  return [{ json: { ...base, _status: 'error', _summary: null, _impact: null, _confidence: null } }];\n}\nif (!draft || typeof draft !== \"object\") {\n  return [{ json: { ...base, _status: 'error', _summary: null, _impact: null, _confidence: null } }];\n}\n\n// L4a — deterministic groundedness against the diff + L2 scope.\nconst g = checkLawChangeGroundedness(draft, { articleDiffs: ctx._article_diffs, scope: ctx._scope });\nconst conf = typeof draft.overall_confidence === 'number' ? draft.overall_confidence : 0;\n\n// Clamp per-service severity to the deterministic L2 ceiling (LLM may go lower, never higher).\nconst RANK = { low: 1, medium: 2, high: 3 };\nconst ceil = {};\nfor (const s of (ctx._scope.services || [])) ceil[s.slug] = s.severity;\nconst clampedImpact = (draft.per_service || []).map((it) => {\n  const c = ceil[it.slug];\n  let sev = it.severity;\n  if (c && RANK[sev] > RANK[c]) sev = c;\n  return { ...it, severity: sev };\n});\n\n// Abstention (requirements §3.3): a RED span OR confidence below threshold → no draft.\nif (g.has_red || conf < threshold) {\n  return [{ json: { ...base, _status: 'abstained', _summary: null, _impact: null, _confidence: conf } }];\n}\n\nreturn [{ json: { ...base, _status: 'drafted', _summary: draft.summary || null, _impact: clampedImpact, _confidence: conf } }];"
+      },
+      "notes": "L4: deterministic groundedness (RED → abstain) + confidence gate + severity clamp → PATCH payload."
+    },
+    {
+      "id": "write-result-001",
+      "name": "Write Result",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        1500
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Global Config').first().json.SUPABASE_URL + '/rest/v1/law_change_log?id=eq.' + $json._row_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $('Global Config').first().json.SUPABASE_SERVICE_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ ai_status: $json._status, ai_summary: $json._summary, ai_impact: $json._impact, ai_confidence: $json._confidence, ai_model: $json._model, ai_generated_at: $json._generated_at }) }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "notes": "L5 handoff: write ai_* columns only (never notes/action). Lawyer reviews the draft in the admin panel."
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Global Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Kick": {
+      "main": [
+        [
+          {
+            "node": "Global Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Global Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Chunks": {
+      "main": [
+        [
+          {
+            "node": "Fetch Relations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Relations": {
+      "main": [
+        [
+          {
+            "node": "Fetch Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Pending": {
+      "main": [
+        [
+          {
+            "node": "Compute Scopes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Scopes": {
+      "main": [
+        [
+          {
+            "node": "L3 Reasoning",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "L3 Reasoning": {
+      "main": [
+        [
+          {
+            "node": "Critique & Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Critique & Decide": {
+      "main": [
+        [
+          {
+            "node": "Write Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

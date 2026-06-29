@@ -10,6 +10,32 @@
 
 ---
 
+### 2026-06-29 (session 51) — law-change-impact G5: доки (DECISIONS + IMPROVEMENTS deferred)
+**Status:** branch `docs/law-change-digest-g5` · docs-only · Closes #73
+**Why:** Закрити фічу `law-change-impact` — лишалась лише G5 (журнал рішень + deferred-беклог); код G4 уже на main (#74).
+**What:**
+- `docs/architecture/DECISIONS.md` — нове рішення «law-change-impact: дві стадії (Node diff / n8n LLM), abstention, severity юридична (#73)»: чому Node-diff у моніторі + LLM-дайджест в n8n (diff знімається до `is_stale`; LLM лише в n8n; звʼязка через `pending`-рядок як чергу); severity юридична з детерм. стелею; нуль вигадок (enum + критик L4a + abstention, advisory-only); 2 live-готчі (n8n depth-first не чекає гілки → лінійний ланцюг; `+ `-префікс ламав verbatim-evidence). + рядок у Зміст.
+- `docs/architecture/IMPROVEMENTS.md` — #2а оновлено: статус «петля + агент живі end-to-end» з посиланням на реалізацію; заведено deferred — L4b LLM-критик (не гейт), поартикульний diff як основний, email-дайджест, column-scoped review RPC.
+**Files:** `docs/architecture/DECISIONS.md`, `docs/architecture/IMPROVEMENTS.md`.
+**Tests:** docs-only.
+
+### 2026-06-29 (session 51) — law-change-impact G4: дайджест-workflow ЗІБРАНО + ЗАДЕПЛОЄНО live (агент «що змінилось» живий end-to-end)
+**Status:** MERGED to main · PR #74 (squash `7234981`) · CI зелений (test + Vercel) · workflow CREATED+active live (`qTOIqllA4CQvBJs5`) · Refs #73
+**Why:** Фінальна група (G4) фічі `law-change-impact` (Tier 2, roadmap v2.2 🔴) — єдиний реальний юр-ризик (проґавлена зміна закону). G1 (детерм. diff + migration 027), G2/G3 (scope/groundedness/промпти) вже на main; лишалось зібрати n8n workflow, що перетворює `pending`-рядок `law_change_log` на чернетку «що змінилось + вплив по послугах» для підпису Олі.
+**What:**
+- `scripts/build-law-change-digest.mjs` (new) — генератор workflow JSON з SSoT (анти-дрейф): інлайнить `n8n/templates/law-change-scope.js` (L2) + `law-change-groundedness.js` (L4a) + промпт `n8n/prompts/law-change-digest.txt` (L3). Connection-integrity guard. `--check` = CI-страж від дрейфу.
+- `n8n/workflows/current/law-change-digest.json` (new, 10 нод): **Schedule (щогодини) + Webhook** (GH-Actions kick / тест) → Global Config → **Fetch Chunks → Fetch Relations → Fetch Pending** (лінійний ланцюг, бо n8n v1 depth-first НЕ чекає паралельні гілки; `executeOnce`+`alwaysOutputData` → один фетч, ланцюг переживає порожню чергу/граф) → **Compute Scopes** (L2: per-row scope+severity-стеля+заповнений промпт; нормалізує `"Стаття N"`→`"N"`) → **L3 Reasoning** (Groq strict-JSON, per-row) → **Critique & Decide** (L4a groundedness RED→abstain + confidence-гейт + severity clamp) → **Write Result** (PATCH лише `ai_*`, ніколи `notes`/`action`).
+- Self-contained: 0 n8n-credentials — усі секрети через Global Config-expression (`Bearer {{GROQ_API_KEY}}`, Supabase apikey/Bearer). Закомічений JSON має лише `YOUR_*` плейсхолдери (deploy інжектить у памʼяті).
+- `scripts/deploy-workflow.mjs` — `+ target law-change-digest` (id `qTOIqllA4CQvBJs5`) + `--create` режим (POST нового workflow → друкує id) + винесено `injectKeys()`.
+**Live verify (3 прогони наживо через webhook, тестовий рядок ЦПК ст.175 ч.7 = реальна зміна #87):**
+- exec 163 **drafted**: summary + per-service (alimony/court_search/divorce), `evidence` дослівний, severity clamped→medium, confidence 0.7 → `ai_*` записані.
+- exec 162 **abstained**: RED-span спрацював (LLM скопіював evidence з декоративним `+ ` префіксом → не verbatim; **полагоджено** — diff тепер подається без інлайн-маркерів, блоки ДОДАНО/ВИЛУЧЕНО).
+- exec 164 **порожня черга** → success no-op (ланцюг живе без pending).
+- G4 UI `AiDraftCard` (`LawChangeLogPage.tsx:208`) **вже на main** → handoff живий end-to-end. Тестовий рядок прибрано, `law_change_log` = 0.
+**Files:** `scripts/build-law-change-digest.mjs` (new), `n8n/workflows/current/law-change-digest.json` (new), `scripts/deploy-workflow.mjs`, `n8n/templates/__tests__/law-change-digest-workflow.test.js` (new, 5 guard-тестів), `specs/roadmap.md`.
+**Tests:** root `scripts`+`n8n` **1013 ✅** (+5 guard: sync/secrets/connections/JS-parse/advisory-only). build `--check` зелений.
+**Залишок (G5):** DECISIONS-запис (2-стадійність, abstention-контракт) + IMPROVEMENTS deferred (L4b LLM-критик — наразі лише advisory AMBER, не гейт; поартикульний diff як основний). Prod-тригер: workflow active зі Schedule; для звʼязки з монітором — GH-Actions може POST-ити webhook після `check-law-updates`.
+
 ### 2026-06-27 (session 50) — law-monitor верифікація + 403-фікс + diff СК/ЦПК
 **Status:** MERGED to main · 403-фікс `31a5ed6` (`--no-ff` `fix/rada-403-user-agent`) · аналіз read-only · находка → IMPROVEMENTS #87
 **Why:** Сергій попросив переконатися, що моніторинг законів і CRON реально працюють, + полагодити 403 з session-50-верифікації.

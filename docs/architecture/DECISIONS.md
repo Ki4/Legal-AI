@@ -29,6 +29,7 @@
 - [Checklist validator: детермінований regex-чек замість LLM-регенерації (#4 / #39)](#checklist-validator-детермінований-regex-чек-замість-llm-регенерації-4--39)
 - [Розлучення з дітьми: графік побачень як ОСТАННІЙ пункт нумерації, без hybrid (#28)](#розлучення-з-дітьми-графік-побачень-як-останній-пункт-нумерації-без-hybrid-28)
 - [initData HMAC-верифікація: fail-closed і на підробку, і на відсутність (#56)](#initdata-hmac-верифікація-fail-closed-і-на-підробку-і-на-відсутність-56)
+- [law-change-impact: дві стадії (Node diff / n8n LLM), abstention, severity юридична (#73)](#law-change-impact-дві-стадії-node-diff--n8n-llm-abstention-severity-юридична-73)
 
 ---
 
@@ -728,3 +729,24 @@ hardcode значення: `PM_ABLE_BODIED_2026 = 3328` (прожитковий 
 2. **Шаблони — table-stakes, не ров.** Детермінізм-first = **стартовий клин**, не стратегія. Кандидати в ров: (a) мережа юристів + flywheel ескалації (D), (b) **моніторинг змін закону** (`law_relations` як monitoring-граф — диференційований актив, не «просто monitoring»), (c) authoring-UX, якщо юрист справді самообслуговується.
 
 **Перший пілот:** медичні документи — **реальні клієнти цього юриста** (попит підтверджений), детермінований пакет → ідеальний тест authoring-формату (July+). Застереження: «дев швидко заведе детерміновану послугу» ≠ «юрист сам заведе» — різні KPI, не плутати.
+
+## law-change-impact: дві стадії (Node diff / n8n LLM), abstention, severity юридична (#73)
+
+**Рішення:** агент «що змінилось» (коли CRON-монітор бачить зсув редакції закону → пише юристу попередню чернетку «що саме змінилось + вплив по послугах» для підпису) розбито на **дві свідомо розділені стадії**, а LLM-крок огороджено детермінованими запобіжниками так, що деградація завжди ≥ сьогоднішньої.
+
+**1. Чому дві стадії (Node-diff у моніторі / LLM-дайджест в n8n), а не все в одному місці.**
+- **Diff треба зняти в МИТЬ детекту.** `applyLawChange` позначає `law_chunks`/`law_documents` `is_stale=true` — після цього стара редакція втрачена. Тож детермінований `article_diffs` (стара з БД vs свіжа з rada) рахується **до** позначки, у Node-моніторі, де детект і фетч уже відбуваються. Це ground truth, який юрист бачить навіть коли AI потім промовчить.
+- **LLM живе тільки в n8n** (конвенція проєкту: Groq-креди, промпти, критики вже там; жодного LLM-виклику в `scripts/`). Тож reasoning + критики — окремий workflow `law-change-digest`.
+- **Звʼязка — append-only рядок `law_change_log` як черга:** монітор кладе `ai_status='pending'` + `article_diffs`; дайджест добирає `pending` рядки за Schedule (щогодини) і дописує `ai_*`. Ідемпотентно (бере лише `pending`). n8n/Groq лежить → у рядку все одно детерм. diff + флип у `needs_review` = «сьогодні + diff».
+
+**2. Severity — юридична, з детермінованою стелею (не попит).** Закриває зауваження viz-сесії 45, де товщина ребра графа = попит (бізнес), а тут потрібен **ризик**. Стеля рахується детерміновано (`law-change-scope.js`): стаття напряму обслуговує послугу або зв'язок `requires`/`overrides` → `high`, `clarifies` → `medium`, `references` → `low`; пом'якшується на щабель, якщо diff не зачіпає substantive-токени (гроші/%/дати/строки); traversal лише по **verified** рёбрах `law_relations`. LLM пропонує свою severity, але код **обмежує її згори** цією стелею (нижче — можна, вище — ні).
+
+**3. Нуль вигадок конструкцією (enum-констрейнт + детерм. критик + abstention).** L3 отримує закриті списки `allowed_articles` (= diff changed-set ∪ scope.norms) і `allowed_slugs` (= L2) і пише strict-JSON. Детермінований критик L4a (`law-change-groundedness.js`) звіряє: кожен `slug` ∈ scope, кожна цитована стаття ∈ allowed, кожен `evidence` присутній **дослівно** в diff — інакше RED → **abstention**: `ai_status='abstained'`, `ai_summary=NULL`, у рядку лишається лише детерм. diff («AI утримався — потрібен ручний аналіз»). Поріг впевненості (`CONFIDENCE_THRESHOLD`, конфіг ноди) — другий тригер abstention. **Advisory-only:** дайджест пише ВИКЛЮЧНО `ai_*`-колонки, ніколи `notes`/`action` — рішення завжди за Олею.
+
+**4. Готча, знайдена ЛИШЕ live-прогоном (не unit-тестами).** (а) n8n v1 execution order — **depth-first, не чекає паралельні гілки**: коли три fetch-ноди (chunks/relations/pending) фан-аутились від Global Config, Compute Scopes стартував одразу після першої гілки → `Node 'Fetch Chunks' hasn't been executed`. Фікс: **лінійний ланцюг** fetch-ів (`executeOnce`+`alwaysOutputData`, щоб порожній граф/черга не вбили ланцюг). (б) Презентація diff моделі з декоративними `+ `/`− ` префіксами → LLM копіював `evidence` **разом із префіксом** → детерм. критик не знаходив його дослівно в сирому diff → хибна abstention. Фікс: подавати рядки diff без інлайн-маркерів (блоки ДОДАНО/ВИЛУЧЕНО). Обидва видно лише наживо — урок #56/#59 знову: unit-тести підтверджують логіку, не топологію n8n.
+
+**Anti-drift:** workflow JSON **генерується** з SSoT (`scripts/build-law-change-digest.mjs` інлайнить `law-change-scope.js` + `law-change-groundedness.js` + `law-change-digest.txt`); `--check` + guard-тест (`law-change-digest-workflow.test.js`) ловлять і дрейф, і випадковий комміт секрету. Self-contained: 0 n8n-credentials, секрети через Global Config-expression.
+
+**Deferred (IMPROVEMENTS #2а):** L4b LLM-критик (другий advisory-прохід, наразі не гейтить — не підключений); поартикульний diff як гарантований (коли скрейпінг дозріє); email-сповіщення; column-scoped review RPC (щоб `authenticated` не міг писати `ai_*`).
+
+**Файли:** `scripts/build-law-change-digest.mjs`, `n8n/workflows/current/law-change-digest.json`, `n8n/templates/law-change-scope.js` (+тести), `n8n/templates/law-change-groundedness.js` (+тести), `n8n/prompts/law-change-{digest,critic}.txt`, `scripts/lib/{law-text,law-diff,law-change}.mjs`, `supabase/migrations/027_law_change_impact_fields.sql`, `apps/client/src/admin/pages/LawChangeLogPage.tsx` (`AiDraftCard`). ТЗ: `specs/features/law-change-impact/`.

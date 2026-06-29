@@ -26,6 +26,7 @@ const ROOT = resolve(__dirname, '..');
 const TARGETS = {
   'form-submit': { id: 'D2ab06X3pVUWk1py', file: 'n8n/workflows/current/form-submit.json' },
   'main-bot': { id: 'Ns5VXWiG8Myg3O6S', file: 'n8n/workflows/current/main-bot.json' },
+  'law-change-digest': { id: 'qTOIqllA4CQvBJs5', file: 'n8n/workflows/current/law-change-digest.json' },
 };
 const TARGET = process.argv.find((a) => TARGETS[a]) || 'form-submit';
 const WORKFLOW_ID = TARGETS[TARGET].id;
@@ -92,7 +93,45 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-console.log(`→ n8n: ${N8N_BASE}  target: ${TARGET} (${WORKFLOW_ID})`);
+console.log(`→ n8n: ${N8N_BASE}  target: ${TARGET} (${WORKFLOW_ID || 'no id yet'})`);
+
+// Inject real keys into a workflow's Global Config node, in memory only.
+function injectKeys(repo) {
+  const gc = repo.nodes.find((n) => n.name === 'Global Config');
+  if (!gc) return;
+  let code = gc.parameters.jsCode;
+  for (const [placeholder, envKey] of Object.entries(KEY_MAP)) {
+    if (!code.includes(placeholder)) continue;
+    const val = env[envKey];
+    if (!val) throw new Error(`Env ${envKey} missing for placeholder ${placeholder}`);
+    code = code.split(placeholder).join(val);
+  }
+  if (code.includes('YOUR_')) throw new Error('A YOUR_ placeholder remains unresolved in Global Config');
+  gc.parameters.jsCode = code;
+  console.log('✓ injected real keys into Global Config');
+}
+
+// --- CREATE: brand-new workflow (no id yet) → POST, print id, activate -------
+const CREATE = process.argv.includes('--create');
+if (CREATE || WORKFLOW_ID === null) {
+  if (!CREATE) {
+    console.error(`✗ ${TARGET} has no workflow id yet. First run: node scripts/deploy-workflow.mjs ${TARGET} --create`);
+    process.exit(1);
+  }
+  const repo = JSON.parse(readFileSync(WORKFLOW_FILE, 'utf8'));
+  injectKeys(repo);
+  const created = await api('POST', '/workflows', {
+    name: repo.name,
+    nodes: repo.nodes,
+    connections: repo.connections,
+    settings: repo.settings ?? {},
+  });
+  console.log(`✓ workflow CREATED (${TARGET}) → id: ${created.id}`);
+  await api('POST', `/workflows/${created.id}/activate`);
+  console.log('✓ workflow active');
+  console.log(`\n⚠️  Paste this id into TARGETS['${TARGET}'].id in scripts/deploy-workflow.mjs:\n    ${created.id}`);
+  process.exit(0);
+}
 
 // --- 1. backup live ----------------------------------------------------------
 const live = await api('GET', `/workflows/${WORKFLOW_ID}`);

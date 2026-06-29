@@ -43,6 +43,11 @@ export const answers = {
   defendant_position: 'менеджера',
   defendant_salary: '25000',
   alimony_start_date: '2024-02-01',
+
+  // Реквізити рахунку позивача (ЦПК ст.175 ч.7) — є рахунок
+  plaintiff_has_account: true,
+  plaintiff_account_iban: 'UA213996220000026007233566001',
+  plaintiff_account_bank: 'АТ КБ «ПриватБанк»',
 };
 
 export const mockAi = {

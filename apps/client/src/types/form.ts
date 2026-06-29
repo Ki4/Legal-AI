@@ -11,7 +11,7 @@ export type FieldType =
 export type AnimationType = 'slide-down' | 'fade-in'
 
 /** Optional format check applied to a field's value (see lib/validators.ts) */
-export type ValidationRule = 'email' | 'phone' | 'inn'
+export type ValidationRule = 'email' | 'phone' | 'inn' | 'name' | 'passport' | 'iban'
 
 export interface FieldOption {
   value: string

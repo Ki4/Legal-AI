@@ -18,6 +18,12 @@
  *   {{!style: ...}}            phase-2 paragraph style directive — IGNORED in
  *                              phase 1 (reserved: right center bold indent
  *                              keep-with-next keep-together page-break-before)
+ *   {{!style: keep-block}} … {{!style: /keep-block}}
+ *                              paired range macro: keep a whole block (e.g.
+ *                              "Додатки:" → signature) together across page
+ *                              breaks. Desugars to a keep-with-next chain on
+ *                              every paragraph of the range except the last,
+ *                              so no downstream renderer needs keep-block support.
  *
  * Block tags / comments standing alone on a line consume that line (so the
  * template reads like the document and output stays byte-exact).
@@ -389,6 +395,13 @@ function renderDocument(template, context) {
  * paraIdx is the 0-based paragraph index in the output text (split by '\n').
  * A {{!style: center bold}} before a line means that line's paragraph has those styles.
  * Used by the typography phase-2 pipeline to build Google Docs batchUpdate requests.
+ *
+ * keep-block desugaring: a {{!style: keep-block}} … {{!style: /keep-block}} pair
+ * is a range macro — it adds `keep-with-next` to every paragraph from the open
+ * marker up to (but excluding) the block's last paragraph, gluing the block into
+ * one unit that never splits across a page (research §3, the orphaned-signature
+ * fix). Downstream adapters (Google Docs today, HTML/DOCX later) only ever see
+ * keep-with-next, so none of them needs to understand keep-block.
  */
 function renderDocumentWithStyles(template, context) {
   const ast = parseTemplate(template);
@@ -396,9 +409,28 @@ function renderDocumentWithStyles(template, context) {
   renderNodesInto(ast, [{ item: context, meta: null }], sb);
 
   const styleHints = {};
+  const addStyle = (paraIdx, kw) => {
+    if (!styleHints[paraIdx]) styleHints[paraIdx] = [];
+    if (!styleHints[paraIdx].includes(kw)) styleHints[paraIdx].push(kw);
+  };
+
+  const blockStack = []; // open keep-block paraIdx markers (supports nesting)
+
   for (const { charOffset, styles } of sb.styleEvents) {
     const paraIdx = sb.text.slice(0, charOffset).split('\n').length - 1;
-    styleHints[paraIdx] = styles;
+    for (const kw of styles) {
+      if (kw === 'keep-block') {
+        blockStack.push(paraIdx);
+      } else if (kw === '/keep-block') {
+        const start = blockStack.pop();
+        if (start === undefined) continue; // unbalanced close — ignore defensively
+        // close marker sits one paragraph past the block's last line, so the
+        // block spans [start .. paraIdx-1]; glue all but the last paragraph.
+        for (let p = start; p <= paraIdx - 2; p++) addStyle(p, 'keep-with-next');
+      } else {
+        addStyle(paraIdx, kw);
+      }
+    }
   }
   return { text: sb.text, styleHints };
 }

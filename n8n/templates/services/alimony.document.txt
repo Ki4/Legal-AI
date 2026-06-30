@@ -139,7 +139,7 @@
 1. Стягнути з {{ai.defendant_genitive}}, {{formatDate defendant_birth_date}} року народження, на користь {{ai.plaintiff_genitive}}, {{formatDate birth_date}} року народження, аліменти на утримання {{ai.children_genitive}} в розмірі {{alimonyFraction n_children}} частини з усіх видів заробітку (доходу), але не менше 50 відсотків прожиткового мінімуму для дитини відповідного віку, щомісячно, починаючи стягнення з {{formatDate alimony_start_date}} року і до повноліття {{plural n_children 'дитини' 'дітей'}}.
 
 {{/if}}
-{{!style: keep-with-next}}
+{{!style: keep-block}}
 Додатки:
 {{#if marital_status != 'never_married'}}
 - копія свідоцтва про укладення шлюбу — 2 примірники;
@@ -155,6 +155,6 @@
 {{/if}}
 - 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.
 
-{{!style: keep-together}}
 
 «___» _______ 20__ року                                              (підпис)    {{plaintiff_name}}
+{{!style: /keep-block}}

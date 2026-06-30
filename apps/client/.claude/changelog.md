@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-06-30 (session 56) — #83 preview-module: бот opt-in toggle + дружнє імʼя файлу + бот-повідомлення
+**Status:** branch `feat/preview-module` · preview-pay (16 нод) + form-submit (48 нод) задеплоєно live · 12/12 demo + guard 10 ✅ + сют 1101 ✅ · commits `138d78c`/`76d67ee` · Refs #83
+**Why:** Закрити те, що Сергій бачив у демо-доставці: (1) у PreviewPage не було UI-перемикача opt-in бот-доставки; (2) файл у Telegram приходив як `{uuid}.pdf`; (3) бот зависав на «📝 Формую документ…» (залишок старого потоку).
+**What:**
+- **Opt-in toggle (`138d78c`):** у PreviewPage чекбокс «Надіслати документ у Telegram» (default OFF) + GDPR-тултип (реюз `Tooltip`): «…копія документа зберігатиметься на серверах Telegram. За замовчуванням — лише захищене посилання (24 год)». Керує `deliver_to_bot` у `requestPreviewPay`.
+- **Дружнє імʼя файлу (`76d67ee`):** 🪤 Telegram **ігнорує** Supabase Content-Disposition при sendDocument **по URL** (бере basename шляху → `{uuid}.pdf`). Тому preview-pay тепер **завантажує PDF бінарником** (нова нода `Download PDF`; `?download=<name>` на signed URL задає імʼя бінарника через Content-Disposition) і шле **multipart**-ом — лишаючись 0-cred. Telegram показує «Позовна заява.pdf» (verified: message_id 437, 78 KB).
+- **Бот-повідомлення (`76d67ee`):** після зняття бот-доставки (session 54) термінальне повідомлення зависало на «📝 Формую документ…». Перетекстовано ноду `Progress: Building` → «✅ Заявку прийнято! … Перегляд документа та отримання — у застосунку.» Deploy-diff: 48=48 нод, лише текст; бекап знято.
+- **🪤 IDE-перемикання гілки (знову!):** посеред сесії IDE зробив `checkout main` → файли «зникли», form-submit виглядав «застарілим» (це була версія з main). Спіймав через `git branch --show-current`, повернувся на `feat/preview-module`, коміти цілі. Урок із session 54 підтверджено — звіряти гілку перед кожним комітом.
+**Files:** `apps/client/src/components/PreviewPage.tsx`, `apps/client/src/lib/previewPay.ts`, `scripts/build-preview-pay.mjs`, `n8n/workflows/current/preview-pay.json`, `n8n/workflows/current/form-submit.json`, `n8n/templates/__tests__/preview-pay-workflow.test.js`.
+**Tests:** guard **10 ✅** · n8n+scripts **1101 ✅** · UI **284 ✅** · live demo 12/12 (filename + bot message verified у Telegram).
+
 ### 2026-06-30 (session 56) — #83 preview-module G5: TWA превʼю→оплата UI (PreviewPage)
 **Status:** branch `feat/preview-module` · React/TWA · tsc clean · UI 284 ✅ (+10) · commit `9f05807` · Refs #83
 **Why:** Замкнути наскрізний потік превʼю-модуля на фронті — після сабміту юзер бачить вітрину якості (A4-витяг) і проходить «Сплатити»→«Отримати документ», а не зависає на «Формую…». Витяг уже приходить у ранній webhook-відповіді form-submit (G3), preview-pay (G4) живий → лишалась UI.

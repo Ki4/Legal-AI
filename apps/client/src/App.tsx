@@ -3,6 +3,7 @@ import './index.css'
 import { DynamicLegalFormBuilder } from './components/DynamicLegalFormBuilder'
 import { SkeletonLoader } from './components/SkeletonLoader'
 import { PrivacyPolicyModal } from './components/PrivacyPolicyModal'
+import { PreviewPage } from './components/PreviewPage'
 import { supabase } from './lib/supabase'
 import { enableClosingConfirmation, disableClosingConfirmation, hideBackButton } from './lib/telegram'
 import type { Answers, FormConfig } from './types/form'
@@ -218,6 +219,8 @@ function UnavailableScreen({ message }: { message: string }) {
 export default function App() {
   const [submitted, setSubmitted] = useState(false)
   const [submitPending, setSubmitPending] = useState(false)
+  // G5: after submit, the server returns the safe excerpt + case_id → preview→pay flow.
+  const [preview, setPreview] = useState<{ caseId: string; excerpt: string } | null>(null)
   const [consented, setConsented] = useState(false)
   const [consentedAt, setConsentedAt] = useState('')
   const [userName, setUserName] = useState('')
@@ -318,6 +321,14 @@ export default function App() {
           return
         }
         console.log('[Legal AI] Submitted, case_id:', data.case_id)
+        // G5: the server returns the safe excerpt in the early response (G3).
+        // Go straight to the preview → pay flow instead of the generic success
+        // screen. Falls through to SuccessScreen if no excerpt (older deploy).
+        if (data.case_id && data.preview_excerpt) {
+          setUserName(tg?.initDataUnsafe?.user?.first_name || '')
+          setPreview({ caseId: String(data.case_id), excerpt: String(data.preview_excerpt) })
+          return
+        }
       } catch (err) {
         clearTimeout(timeout)
         if ((err as Error).name === 'AbortError') {
@@ -345,27 +356,29 @@ export default function App() {
 
   // ── Closing confirmation: enable when form has data, disable on success ──
   useEffect(() => {
-    if (consented && !submitted) {
+    // Data is saved once we reach the preview/pay flow, so closing is safe there too.
+    if (consented && !submitted && !preview) {
       enableClosingConfirmation()
     } else {
       disableClosingConfirmation()
     }
-  }, [consented, submitted])
+  }, [consented, submitted, preview])
 
-  // ── BackButton: hide on success/error/unavailable/loading screens ──
+  // ── BackButton: hide on success/preview/error/unavailable/loading screens ──
   useEffect(() => {
-    if (!consented || submitted || loadError || unavailableMsg || !config) {
+    if (!consented || submitted || preview || loadError || unavailableMsg || !config) {
       hideBackButton()
     }
-  }, [consented, submitted, loadError, unavailableMsg, config])
+  }, [consented, submitted, preview, loadError, unavailableMsg, config])
 
-  // ── Clear draft on successful submit ──
+  // ── Clear draft once the submission lands (success screen or preview flow) ──
   useEffect(() => {
-    if (submitted && !submitPending) {
+    if ((submitted && !submitPending) || preview) {
       try { localStorage.removeItem(`draft_${serviceSlug}`) } catch { /* ignore */ }
     }
-  }, [submitted, submitPending, serviceSlug])
+  }, [submitted, submitPending, preview, serviceSlug])
 
+  if (preview && config) return <PreviewPage serviceTitle={config.title} caseId={preview.caseId} excerpt={preview.excerpt} />
   if (submitted)     return <SuccessScreen name={userName || 'Клієнт'} pending={submitPending} />
   if (unavailableMsg) return <UnavailableScreen message={unavailableMsg} />
   if (loadError)     return <ErrorScreen />

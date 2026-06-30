@@ -102,6 +102,43 @@ describe('preview-module form-submit (G3 core)', () => {
     expect(sendsDoc).toHaveLength(0)
   })
 
+  // ── G3b: per-profile rate limit ──────────────────────────────────────────────
+  it('gates the Has Profile?=true branch through the rate-limit check', () => {
+    // true → Check Rate Limit (not straight to Encrypt Data); false → Respond No Profile.
+    expect(wf.connections['Has Profile?'].main[0]).toEqual([
+      { node: 'Check Rate Limit', type: 'main', index: 0 },
+    ])
+    expect(wf.connections['Has Profile?'].main[1].map((c) => c.node)).toContain('Respond No Profile')
+    expect(wf.connections['Check Rate Limit'].main[0]).toEqual([
+      { node: 'Rate Limit Gate', type: 'main', index: 0 },
+    ])
+    expect(wf.connections['Rate Limit Gate'].main[0]).toEqual([
+      { node: 'Under Rate Limit?', type: 'main', index: 0 },
+    ])
+  })
+
+  it('counts this profile\'s cases in the last 24h (service-role, no literal key)', () => {
+    const url = node('Check Rate Limit').parameters.url
+    expect(url).toContain("/rest/v1/cases?user_id=eq.")
+    expect(url).toContain("$('Get Profile').first().json.user_id")
+    expect(url).toContain('created_at=gt.')
+    const hdrs = JSON.stringify(node('Check Rate Limit').parameters.headerParameters)
+    expect(hdrs).toContain('SUPABASE_SERVICE_KEY')
+    expect(/eyJ[A-Za-z0-9_-]{20}/.test(hdrs)).toBe(false)
+  })
+
+  it('under the limit → Encrypt Data; at/over → 429 Respond Rate Limited (no case inserted)', () => {
+    const branch = wf.connections['Under Rate Limit?'].main
+    expect(branch[0].map((c) => c.node)).toContain('Encrypt Data')
+    expect(branch[1].map((c) => c.node)).toContain('Respond Rate Limited')
+    // The gate is a strict < comparison (at the limit is rejected) and fails open.
+    const gate = node('Rate Limit Gate').parameters.jsCode
+    expect(gate).toMatch(/count < LIMIT/)
+    expect(node('Respond Rate Limited').parameters.options.responseCode).toBe(429)
+    // Rejection path must NOT reach Insert Case.
+    expect((branch[1] || []).map((c) => c.node)).not.toContain('Insert Case')
+  })
+
   // ── safety: secrets + graph ──────────────────────────────────────────────────
   it('commits no real secrets — only the Global Config placeholder', () => {
     const raw = readFileSync(wfPath, 'utf8')

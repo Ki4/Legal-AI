@@ -82,6 +82,7 @@
 - [ ] Rich картки в відповіді: стаття закону, посилання, попередження
 - [ ] CopilotKit Controlled UI: DocumentResultCard після генерації
 - [ ] **Гарний вивід документа (PDF/DOCX + лімітований предперегляд)** 🟡 — експорт PDF/DOCX і відправка файлом у бот; *лімітований предперегляд* (перша сторінка / watermark як вітрина якості перед збереженням); **цілісність ключових блоків** — шапка / «ПРОШУ» / дата+підпис / додатки на одній сторінці, без розриву (keep-together). Деталі: IMPROVEMENTS #77 (+ #50 типографіка) + research `docs/research/document-typography-and-toolchain.md` (рішення 2026-06-25: рендерер `docx`+Gotenberg, NBSP-пасс, один-источник→багато-рендерерів, ДСТУ=тригер міграції; журнал `docs/architecture/document-generation-design-notes.md` Q1–Q6)
+  - [x] **Превʼю-модуль (монетизація: превʼю→оплата→signed URL) — issue #83, гілка `feat/preview-module` (session 54-56)** 🟢 — лімітований предперегляд як HTML-витяг (рів = відсутність суті #86) + A4-вітрина (blur+watermark) у TWA + оплата-заглушка (preview-pay workflow) + приватний Storage + signed URL (TTL 24год) + opt-in бот-доставка (GDPR). G1-G6 + rate-limit (G3b) **live + верифіковано**. Залишок #77: keep-together типографіка + image-превʼю через Gotenberg (при міграції рендеру).
 
 ### 3.3 Skill автоматизації
 - [ ] Claude Code skill для автооновлення changelog 🟡

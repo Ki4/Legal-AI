@@ -8,73 +8,48 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
-**🔴 АКТИВНА ФІЧА: preview-module (issue #83) — гілка `feat/preview-module` (НЕ змержено).**
-Превʼю(HTML-витяг)→оплата(заглушка)→документ(signed URL). Спека: `specs/features/preview-module/`.
-Зроблено й **верифіковано наживо** (session 54): **G1** (міграція 029) + **G2** (екстрактор) + **G3-core**
-(form-submit задеплоєно). Лишилось: **G4** (preview-pay workflow), **G5** (TWA-UI)+бот-UX, **G6** (докі),
-**G3b** (rate-limit). ⚠️ **Наскрізний потік НЕПОВНИЙ до G4+G5** — юзер бачить «📝 Формую…» у боті й
-**не отримує документ** (бот-доставку знято). Фаза витрини, трафік контролює Сергій. Rollback form-submit:
-редеплой `.backups/form-submit.live-2026-06-29T23-56-37*.json`.
+**🟢 ФІЧА preview-module (issue #83) — ВСІ ГРУПИ LIVE + ВЕРИФІКОВАНО. Гілка `feat/preview-module` (НЕ змержено).**
+Наскрізний монетизаційний потік працює end-to-end: TWA форма → **витяг превʼю в ранній webhook-відповіді** →
+PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pay** флипає paid + мінтить signed URL (24год) →
+«Отримати документ» / opt-in бот-доставка PDF. Зроблено й верифіковано наживо (sessions 54-56):
+- **G1** міграція 029 (поля cases + приватний bucket + rate-limit індекс) · **G2** екстрактор витягу ·
+  **G3-core** form-submit реструктуризація (витяг у відповіді + Storage upload) · **G4** preview-pay workflow
+  (n8n id **`snm45SKeVo5X2AqU`**, 16 нод, active, 12/12 smoke) · **G5** TWA PreviewPage + opt-in toggle + GDPR-тултип ·
+  **G3b** per-profile rate-limit (20/24год, 429) · **G6** докі (DECISIONS+IMPROVEMENTS+roadmap).
+- Інваріанти live: paid НІКОЛИ не флипається без готового документа (4xx); ідемпотентний re-mint (paid_at не
+  перезаписується); бот-доставка opt-in (default OFF, GDPR); дружнє імʼя файлу «Позовна заява.pdf» (бінарний
+  multipart, бо Telegram ігнорує Content-Disposition по URL).
 
-**🔒 G4 РІШЕННЯ ЗАФІКСОВАНІ (інтервʼю session 55) — кодити без здогадок:**
-- **A4/GDPR (інваріант 7):** документ у Telegram-чат **за замовч. НЕ йде** (Telegram Cloud=GDPR-ризик);
-  основний канал = signed URL у TWA; бот-доставка PDF = лише opt-in за згодою юзера (param default off).
-- **A3 TTL = 24год**, ре-мінт дозволено поки case живий. **A5 = лише PDF** цю ітерацію (DOCX-через-URL →
-  окрема група IMPROVEMENTS #99: перевідкриває bucket-MIME 029 + DOCX-export form-submit).
-- **Edge не-готового case:** preview-pay відмовляє 4xx, **НІКОЛИ не флінає `paid` без готового документа**;
-  TWA — доброзичливе «технічні труднощі, спробуйте пізніше» (не сирий 500). Ідемпотентність: pay на `paid`
-  → re-mint без 2-го флипу. Окремий rate-limit на preview-pay НЕ треба (initData+upstream limit).
-- **Verify-рівень:** повний цикл (guard-тести + deploy `--create` + webhook-smoke). Потрібні Docker n8n+ngrok.
-- Деталі — `specs/features/preview-module/` (requirements §5 + plan G4 = locked). Беклог-наслідки: #97
-  (failure-UX retry+email), #98 (failure stats+evals), #99 (DOCX-група).
+**🔴 ГОЛОВНЕ РІШЕННЯ НА НАСТУПНУ СЕСІЮ — MERGE feat/preview-module → main:**
+- **main↔live ДРЕЙФ:** `main` має СТАРИЙ `form-submit.json` (session-53 стан: Send PDF, без Storage/rate-limit).
+  LIVE n8n = новий стан (з гілки). **Якщо хтось задеплоїть form-submit з `main` — live ВІДКОТИТЬСЯ** (бот знову
+  слатиме доки до оплати, зникне rate-limit). Це landmine. Merge гілки в main усуває дрейф (main стане == live).
+  Трафік контролюється на рівні бота, НЕ репо-гілки → merge нічого не «відкриває». Рекомендація: змержити.
 
-**📦 Теплі факти для G4 (preview-pay) — щоб стартувати зі свіжого вікна:**
-- **Схема `cases`** (міграція 029 жива): owner = **`user_id`** (НЕ profile_id); `status` — **free-text**
-  (БЕЗ CHECK, legacy='submitted'); lifecycle `generating→preview_ready→paid→delivered|failed`; нові поля
-  `paid/paid_at/preview_excerpt/doc_storage_path/preview_meta`. `service_id` (НЕ slug) на рядку.
-- **Storage:** приватний bucket **`generated-documents`** (public=false, PDF-only, service-role-only).
-  Шлях = **`cases/{case_id}.pdf`** (== `doc_storage_path`). Підпис: `POST /storage/v1/object/sign/generated-documents/{path}` (service key) → signed URL. **Жоден anon-доступ** (RLS deny — перевірено).
-- **Секрети:** `Global Config` нода дає `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` (deploy інжектить реальні,
-  у JSON лише `YOUR_*`). Supabase n8n-cred id `2hBYjVwFlJbTj7AK`.
-- **initData verify (#56):** реюз `n8n/templates/verify-init-data.js` (`resolveSubmission`/`verifyInitData`)
-  — точно як у form-submit. Bot token = `Global Config.TELEGRAM_BOT_TOKEN`.
-- **Деплой нового workflow:** `deploy-workflow.mjs <target> --create` (POST, друкує id) — як law-change-digest.
-  Self-contained, 0 n8n-creds, секрети через Global Config-expression. Guard-тест за стилем
-  `law-change-digest-workflow.test.js`. Ідемпотентний sync/build-скрипт + `--check`.
-- **preview-pay контракт:** Webhook → Verify initData → Get Case (`user_id==telegram_id`, assert
-  `doc_storage_path` set / status∈{preview_ready,paid}) → Set Paid (`paid=true,paid_at,status='paid'`)
-  → Mint Signed URL (TTL 24год) → (A4) опц. Send PDF у бот → Respond `{signed_url, expires_at}`.
-  Ідемпотентність: повторний виклик на paid → re-mint, без подвійного флипу.
-- **🪤 n8n depth-first clobber** (GOTCHAS): sibling-нода fan-out виконується ОСТАННЬОЮ → не давати їй
-  писати спільну колонку (status). Перевіряти рядок БД наживо.
-- **🪤 IDE перемикає гілку** (session 54 інцидент): WebStorm/Git-tool зробив `checkout main` між комітами
-  → коміт ліг на main. Тримати активну гілку `feat/preview-module`; перед кожним комітом звіряти
-  `git branch --show-current`.
+**📦 Теплі факти (виправлено) — для роботи з preview-flow:**
+- **🪤 ВИПРАВЛЕНО факт:** `cases.user_id` = **profile UUID** (НЕ telegram id!). Telegram id → profile через
+  `identities.external_id` → `identities.user_id`. form-submit резолвить через ноду `Get Profile`; preview-pay —
+  через `Get Identity`. Owner-check і rate-limit рахуються по цьому UUID.
+- **Storage:** приватний bucket `generated-documents` (PDF-only, service-role). Шлях `cases/{case_id}.pdf`.
+  Sign: `POST /storage/v1/object/sign/generated-documents/{path}` + `?download=<імʼя>` (для Content-Disposition).
+- **Скрипти:** `build-preview-pay.mjs` (генерує preview-pay, 0-cred) + `sync-preview-module-form-submit.mjs`
+  (патчер form-submit: витяг+Storage+rate-limit; `PREVIEW_RATE_LIMIT` env-override) + `test-preview-pay.mjs`
+  (e2e smoke). Деплой: `deploy-workflow.mjs preview-pay|form-submit`.
+- **🪤 IDE перемикає гілку (повторилось session 56!):** WebStorm зробив `checkout main` посеред роботи → файли
+  «зникли», form-submit виглядав застарілим. Звіряти `git branch --show-current` ПЕРЕД кожним комітом.
 
-**Що live у проді (form-submit `D2ab06X3pVUWk1py`):**
-- **2 послуги** — divorce + alimony. **⚠️ змінено session 54:** документ більше НЕ йде файлом у бот до
-  оплати — повний PDF паркується в приватний Storage, витяг повертається в ранній webhook-відповіді.
-  Склонення ПІБ = живий LLM-крок Groq + детермінований **stem-guard**. #67 divorce: майно/борги → окреме
-  провадження (Variant B). #76: ст.175 ч.7 реквізити рахунку — live в обох послугах.
-- **Агент «що змінилось» (law-change-impact) — живий end-to-end:** монітор rada → `law_change_log`
-  `pending` → workflow `law-change-digest` (n8n id `qTOIqllA4CQvBJs5`) робить L2→L5 → юрист бачить
-  `AiDraftCard` у панелі «Зміни законів». G4 (PR#74) + G5 докі (PR#75) змержено, issue #73 закрито.
+**Що live у проді (form-submit `D2ab06X3pVUWk1py`, 52 ноди, active):**
+- **2 послуги** — divorce + alimony. Документ НЕ йде в бот до оплати (повний PDF у приватний Storage, витяг у
+  ранній відповіді). Бот-повідомлення: «✅ Заявку прийнято! … Перегляд — у застосунку» (більше НЕ «Формую…»).
+  Per-profile rate-limit 20/24год. Склонення ПІБ = Groq + stem-guard. #67/#76 live.
+- **Агент «що змінилось» (law-change-impact)** — живий end-to-end (n8n `qTOIqllA4CQvBJs5`). issue #73 закрито.
 
-**✅ issue #76 ЗАКРИТО (ст.175 ч.7 реквізити рахунку):** блок live в ОБОХ послугах — alimony (безумовно)
-+ divorce (під `alimony_claim`). Шаблони залиті в Supabase (DB===file), form-submit задеплоєно (48 нод,
-active), live smoke зелений (exec 169 divorce-без-аліментів=відсутній, 170 divorce+аліменти=payout,
-171 alimony=payout). Sign-off формулювання Олею — пост-фактум 1 липня (фаза витрини).
+**🔴 Наступна сесія (вибір Сергія):** (1) **merge feat/preview-module → main** (усуває дрейф) — рекомендовано;
+(2) реальний платіж замість заглушки (шов чистий: замінити флип на Telegram Payments); (3) розчистка stale-issues
+(#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 + #5 🔴); (4) демо git-worktree. Беклог-наслідки preview: #97/#98/#99.
 
-**🔴 Наступна задача (СВІЖИЙ чат):** **імплементувати G4 preview-pay** — рішення зафіксовані інтервʼю
-session 55 (блок «🔒 G4 РІШЕННЯ» вгорі). Підняти Docker n8n + ngrok перед стартом. Потім G5 (TWA-UI), G6.
-Інші кандидати (на потім): розчистка stale-issues (#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 + #5 🔴),
-демо git-worktree.
-
-**Гілки:** `main` чистий — divorce ст.175 ч.7 змержено+задеплоєно (`e708f83`, Closes #76).
-
-**📋 Список Олі (sign-off 1 липня):** (1) **#87 alimony — done (live після деплою); divorce — наступним**;
-(2) #67 divorce wording «спір… відсутній» → «не є предметом цього позову»; (3) флип `alimony-change`
-`disabled→active`. **✅ #33 CRON — закрито** (schedule увімкнено, 2 находки adjudicated: СК dismissed, ЦПК→#87).
+**📋 Список Олі (sign-off):** (1) формулювання превʼю-витягу (точка обрізки) + блоку ст.175 ч.7; (2) #67 divorce
+wording «спір… відсутній» → «не є предметом цього позову». **✅ #33/#76 закрито.**
 
 **Модель (червень):** Opus + ultra-code (memory `feedback_model_opus_ultracode_june2026`; переглянути ~липень).
 
@@ -85,6 +60,38 @@ session 55 (блок «🔒 G4 РІШЕННЯ» вгорі). Підняти Dock
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 56 (2026-06-30) — preview-module G4+G5+G6+G3b: ВСЯ ФІЧА LIVE (наскрізний потік працює)
+
+### Головне — стан ЗАРАЗ
+- **Уся preview-module фіча жива й верифікована** (деталі — блок «📌 Стан зараз» вгорі). Гілка
+  `feat/preview-module` (НЕ змержено). Тести: n8n+scripts **1104 ✅**, UI **284 ✅**, tsc clean.
+- 🔴 Головне рішення наступної сесії: **merge у main** (усуває main↔live дрейф form-submit.json).
+
+### Що зроблено (усе верифіковано наживо)
+1. **G4 preview-pay** (новий workflow `snm45SKeVo5X2AqU`, 16 нод, 0-cred): Webhook→Verify initData→**Get
+   Identity** (telegram→profile UUID)→Get Case→Assert(owner+ready)→Set Paid→Mint Signed URL(24год)→Send to
+   bot?→Respond. Live smoke **12/12**: not-ready→422 (paid=false), wrong-owner→422, happy→200+signed_url качає
+   68KB PDF, re-mint→paid_at незмінний.
+2. **G5 TWA**: `PreviewPage.tsx` (A4-витяг+blur+ЗРАЗОК watermark, state-machine preview→paying(авто-ретрай
+   not_ready)→paid→download/error) + `lib/previewPay.ts` (10 тестів) + вшивка в App.tsx (case_id+excerpt з
+   webhook-відповіді, БЕЗ Supabase-polling — узгоджено з s54). **+ opt-in toggle «Надіслати у Telegram» + GDPR-тултип.**
+3. **Дружнє імʼя файлу**: 🪤 Telegram ІГНОРУЄ Content-Disposition по URL → preview-pay тепер завантажує PDF
+   бінарником (Download PDF) + multipart (Send PDF) → «Позовна заява.pdf» (verified message_id 437).
+4. **Бот-повідомлення** form-submit: «📝 Формую документ…» (зависало) → «✅ Заявку прийнято! … у застосунку».
+5. **G3b rate-limit**: гейт на Has Profile?=true — count(cases per profile/24год) ≥ PREVIEW_RATE_LIMIT(20) →
+   429, case не вставляється. Fail-open. Live: під лімітом(12<20)→200, над(forced 2,13)→429, count лишився 13.
+6. **G6 докі**: DECISIONS (вже s54), IMPROVEMENTS #77 Gotenberg (вже), roadmap v3.2 +shipped-нотатка.
+
+### 🪤 Уроки сесії
+- **IDE знову зробив `checkout main`** посеред роботи → файли «зникли», form-submit виглядав «застарілим»
+  (читав версію main). Спіймав через `git branch --show-current`, повернувся, коміти цілі. ЗВІРЯТИ ГІЛКУ.
+- `cases.user_id` = **profile UUID**, не telegram id (резолв через `identities`). Старий теплий факт був оманливий — виправлено.
+- Telegram sendDocument по URL ігнорує Content-Disposition → для імені файлу потрібен бінарний multipart.
+
+### 🔴 Наступний крок
+- **Merge feat/preview-module → main** (рекомендовано, усуває дрейф). Потім: реальний платіж / stale-issues / worktree-демо.
 
 ---
 ## 🆕 Session 55 (2026-06-30) — preview-module G4: інтервʼю-локдаун (spec-only, перед кодингом)

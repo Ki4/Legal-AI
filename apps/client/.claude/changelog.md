@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-30 (session 56) — #83 preview-module G3b (rate-limit) + G6 (докі) — фіча завершена
+**Status:** branch `feat/preview-module` · form-submit (52 нод) задеплоєно live · guard 14 ✅ · сют 1104 ✅ · commit `1d60d79` · Refs #83
+**Why:** Закрити дві останні групи preview-module: анти-abuse rate-limit + документація. Після цього вся фіча (G1-G6+G3b) жива end-to-end.
+**What:**
+- **G3b — per-profile rate-limit:** гейт на гілці `Has Profile?=true` у form-submit (через патчер `sync-preview-module-form-submit.mjs`, анти-дрейф): `Check Rate Limit` (httpRequest, рахує cases цього profile за 24год; service-role з Global Config, 0 extra creds) → `Rate Limit Gate` (Code, `count < LIMIT`) → `Under Rate Limit?` (IF) → Encrypt Data | `Respond Rate Limited` (429). Ліміт `PREVIEW_RATE_LIMIT`=20/24год (env-override для smoke). Рахунок по `cases.user_id`=profile UUID (індекс 029 `(user_id,created_at)`).
+  - **Fail-open — навмисно** (зафіксовано після security-review): це вторинний троттл, справжній анти-бот = fail-closed HMAC (#56) вище; обхід неможливий, бо Insert Case б'є в ту саму Supabase, що й count (БД лежить → документ не генерується). Fail-closed 429-ив би легіт-юзера на блипі. Причина задокументована в коментарі гейта.
+- **G6 — докі:** DECISIONS (вже s54), IMPROVEMENTS #77 Gotenberg-нотатка (вже) — підтверджено наявні; `specs/roadmap.md` v3.2 +shipped-нотатка (preview-module G1-G6 live; залишок #77 = keep-together + image-превʼю); session-summary «Стан зараз» переписано (фіча live, виправлено факт `cases.user_id`=profile UUID, зафіксовано **main↔live дрейф** → merge-рекомендація).
+**Files:** `scripts/sync-preview-module-form-submit.mjs`, `n8n/workflows/current/form-submit.json`, `n8n/templates/__tests__/preview-module-form-submit.test.js`, `specs/roadmap.md`, `apps/client/.claude/session-summary.md`.
+**Tests:** guard **14 ✅** (+3 rate-limit) · n8n+scripts **1104 ✅**.
+**Live smoke:** під лімітом (12<20)→200+case; над лімітом (forced 2, 13 cases)→429, case НЕ вставлено (count лишився 13). Прод-ліміт 20 відновлено (committed==live).
+**🔴 Залишок #83 → наступна сесія:** **merge feat/preview-module → main** (усуває дрейф form-submit.json; main має старий стан, deploy з main відкотив би live). Беклог: реальний платіж (#заглушка), #97/#98/#99.
+
 ### 2026-06-30 (session 56) — #83 preview-module: бот opt-in toggle + дружнє імʼя файлу + бот-повідомлення
 **Status:** branch `feat/preview-module` · preview-pay (16 нод) + form-submit (48 нод) задеплоєно live · 12/12 demo + guard 10 ✅ + сют 1101 ✅ · commits `138d78c`/`76d67ee` · Refs #83
 **Why:** Закрити те, що Сергій бачив у демо-доставці: (1) у PreviewPage не було UI-перемикача opt-in бот-доставки; (2) файл у Telegram приходив як `{uuid}.pdf`; (3) бот зависав на «📝 Формую документ…» (залишок старого потоку).

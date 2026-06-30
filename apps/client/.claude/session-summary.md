@@ -8,10 +8,12 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
-**🟢 ФІЧА preview-module (issue #83) — ВСІ ГРУПИ LIVE + ВЕРИФІКОВАНО. Гілка `feat/preview-module` (НЕ змержено).**
-Наскрізний монетизаційний потік працює end-to-end: TWA форма → **витяг превʼю в ранній webhook-відповіді** →
+**🟢 ФІЧА preview-module (issue #83) — ЗАВЕРШЕНА, ЗМЕРЖЕНА В MAIN, ВЕРИФІКОВАНА E2E. issue #83 ЗАКРИТО.**
+Merge `feat/preview-module → main` зроблено (session 57, `032981e` `--no-ff`); гілка видалена; **дрейф form-submit
+усунено** (`sync-preview-module-form-submit.mjs --check` = `✓ in sync`, committed==live). Наскрізний
+монетизаційний потік працює end-to-end: TWA форма → **витяг превʼю в ранній webhook-відповіді** →
 PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pay** флипає paid + мінтить signed URL (24год) →
-«Отримати документ» / opt-in бот-доставка PDF. Зроблено й верифіковано наживо (sessions 54-56):
+«Отримати документ» / opt-in бот-доставка PDF. Зроблено й верифіковано наживо (sessions 54-57):
 - **G1** міграція 029 (поля cases + приватний bucket + rate-limit індекс) · **G2** екстрактор витягу ·
   **G3-core** form-submit реструктуризація (витяг у відповіді + Storage upload) · **G4** preview-pay workflow
   (n8n id **`snm45SKeVo5X2AqU`**, 16 нод, active, 12/12 smoke) · **G5** TWA PreviewPage + opt-in toggle + GDPR-тултип ·
@@ -20,11 +22,8 @@ PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pa
   перезаписується); бот-доставка opt-in (default OFF, GDPR); дружнє імʼя файлу «Позовна заява.pdf» (бінарний
   multipart, бо Telegram ігнорує Content-Disposition по URL).
 
-**🔴 ГОЛОВНЕ РІШЕННЯ НА НАСТУПНУ СЕСІЮ — MERGE feat/preview-module → main:**
-- **main↔live ДРЕЙФ:** `main` має СТАРИЙ `form-submit.json` (session-53 стан: Send PDF, без Storage/rate-limit).
-  LIVE n8n = новий стан (з гілки). **Якщо хтось задеплоїть form-submit з `main` — live ВІДКОТИТЬСЯ** (бот знову
-  слатиме доки до оплати, зникне rate-limit). Це landmine. Merge гілки в main усуває дрейф (main стане == live).
-  Трафік контролюється на рівні бота, НЕ репо-гілки → merge нічого не «відкриває». Рекомендація: змержити.
+**✅ MERGE ЗРОБЛЕНО (session 57)** — main `b1888ec`, дрейф form-submit усунено (committed==live). Landmine знято.
+Наступний фокус — на вибір Сергія (див. нижче).
 
 **📦 Теплі факти (виправлено) — для роботи з preview-flow:**
 - **🪤 ВИПРАВЛЕНО факт:** `cases.user_id` = **profile UUID** (НЕ telegram id!). Telegram id → profile через
@@ -32,6 +31,12 @@ PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pa
   через `Get Identity`. Owner-check і rate-limit рахуються по цьому UUID.
 - **Storage:** приватний bucket `generated-documents` (PDF-only, service-role). Шлях `cases/{case_id}.pdf`.
   Sign: `POST /storage/v1/object/sign/generated-documents/{path}` + `?download=<імʼя>` (для Content-Disposition).
+  Чистка файлів: Storage API `DELETE /storage/v1/object/generated-documents` body `{prefixes:[...]}` (тригер
+  `protect_delete` блокує SQL DELETE на `storage.objects`, але НЕ на бакет через API).
+- **🪤 ВИПРАВЛЕНО факт (session 57):** `protect_delete` тригер — лише на `storage.objects`, **НЕ на таблиці
+  `cases`**. Тестові `cases` ВИДАЛЯЮТЬСЯ звичайним SQL DELETE під service-role (Supabase SQL Editor):
+  `DELETE FROM cases WHERE user_id IN (SELECT user_id FROM identities WHERE external_id='236581343')`.
+  Старі заметки «protect_delete блокує cases» були помилкові.
 - **Скрипти:** `build-preview-pay.mjs` (генерує preview-pay, 0-cred) + `sync-preview-module-form-submit.mjs`
   (патчер form-submit: витяг+Storage+rate-limit; `PREVIEW_RATE_LIMIT` env-override) + `test-preview-pay.mjs`
   (e2e smoke). Деплой: `deploy-workflow.mjs preview-pay|form-submit`.
@@ -44,9 +49,10 @@ PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pa
   Per-profile rate-limit 20/24год. Склонення ПІБ = Groq + stem-guard. #67/#76 live.
 - **Агент «що змінилось» (law-change-impact)** — живий end-to-end (n8n `qTOIqllA4CQvBJs5`). issue #73 закрито.
 
-**🔴 Наступна сесія (вибір Сергія):** (1) **merge feat/preview-module → main** (усуває дрейф) — рекомендовано;
-(2) реальний платіж замість заглушки (шов чистий: замінити флип на Telegram Payments); (3) розчистка stale-issues
-(#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 + #5 🔴); (4) демо git-worktree. Беклог-наслідки preview: #97/#98/#99.
+**🔴 Наступна сесія (вибір Сергія):** (1) **реальний платіж замість заглушки** (шов чистий: замінити флип
+preview-pay на Telegram Payments) — найлогічніше продовження; (2) розчистка stale-issues
+(#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 + #5 🔴); (3) демо git-worktree (паттерн B, memory
+`feedback_subagents_parallel_workflow`); (4) keep-together типографіка / image-превʼю (#77). Беклог: #97/#98/#99.
 
 **📋 Список Олі (sign-off):** (1) формулювання превʼю-витягу (точка обрізки) + блоку ст.175 ч.7; (2) #67 divorce
 wording «спір… відсутній» → «не є предметом цього позову». **✅ #33/#76 закрито.**
@@ -60,6 +66,43 @@ wording «спір… відсутній» → «не є предметом ць
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 57 (2026-06-30) — MERGE preview-module → main + повний e2e UX-verify + чистка
+
+### Головне — стан ЗАРАЗ
+- **preview-module ЗАВЕРШЕНА:** merge `feat/preview-module → main` (`032981e` `--no-ff`, Closes #83), гілка
+  видалена, дрейф form-submit усунено (`--check` = `✓ in sync`). Changelog s57 на main (`b1888ec`). issue #83 закрито.
+- **Повний e2e верифіковано наживо** (Docker n8n + ngrok up, 4 active workflows). Тести перед merge: n8n+scripts
+  1104 ✅, UI 284 ✅, tsc clean. main чистий + запушено.
+
+### Що зроблено
+1. **Merge + push:** 17 комітів гілки в main, issue #83 закрито з фінальним коментарем, гілка видалена.
+   Дрейф підтверджено усунутим (committed form-submit == live n8n).
+2. **E2e backend** `test-preview-pay.mjs` — **12/12**: not-ready→422 (paid не флипається), wrong-owner→422,
+   happy→200 + signed_url (24год) качає 68KB PDF, re-mint ідемпотентний (paid_at незмінний).
+3. **UX-контент verify** (ручний прогін divorce з реальними ключами полів через `sampleAnswers.ts`):
+   витяг = шапка+сторони+завязка, **0 leak** (нема ПРОШУ/цитат статей/дір `________`), склонення коректне;
+   фінальний PDF повністю заповнений, усі відмінки вірні; **opt-in бот-доставка** (`deliver_to_bot=true`) →
+   `Send PDF` message_id 443, імʼя «Позовна заява.pdf».
+4. **Візуальний UX PreviewPage** (DOM-верифікація в реальному браузері, prod-build): A4 440px/serif/justify,
+   watermark «ЗРАЗОК» −45°/5%, blur-fade + lock-текст, opt-in toggle default-OFF→клік вмикає, GDPR-тултип
+   present, «Сплатити» #2563EB. ⚠️ Пиксельний скриншот НЕ вийшов — розширення Chrome не досягає `document_idle`
+   на localhost (dev+prod, свіжа вкладка, window.stop() — баг окружения, не апки). Verify через DOM/JS.
+5. **Чистка тест-сміття:** 13 PDF з Storage `generated-documents/cases/` видалено через API (бакет порожній);
+   тестові `cases` (identity 236581343) видалив Сергій через SQL Editor (DELETE спрацював — `protect_delete`
+   НЕ на cases). Telegram-повідомлення з PDF — лишаються (не відкликаються).
+
+### 🪤 Уроки сесії
+- **`protect_delete` тригер — лише на `storage.objects`, НЕ на `cases`.** Тестові cases видаляються звичайним
+  SQL DELETE під service-role. Старі заметки були помилкові (виправлено в «Теплих фактах» + memory).
+- **Тест-харнес з вигаданими ключами полів** дав хибну тривогу (`________` замість імен) → НЕ баг продукту.
+  SSoT для форм-ключів = `apps/client/src/admin/lib/sampleAnswers.ts`. «claim ≠ fact» спрацював.
+- **Chrome-розширення не скриншотить localhost** (`document_idle` не настає) → для візуального verify юзати
+  `javascript_tool` (DOM/computed-styles) замість screenshot, або відкрити URL вручну.
+
+### 🔴 Наступний крок (нова сесія, вибір Сергія)
+- Реальний платіж (Telegram Payments замість заглушки) — найлогічніше · розчистка stale-issues · git-worktree демо · #77 типографіка.
 
 ---
 ## 🆕 Session 56 (2026-06-30) — preview-module G4+G5+G6+G3b: ВСЯ ФІЧА LIVE (наскрізний потік працює)

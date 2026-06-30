@@ -10,6 +10,20 @@
 
 ---
 
+### 2026-06-30 (session 57) — #83 MERGE feat/preview-module → main + повний e2e UX-verify live
+**Status:** main `032981e` (merge `--no-ff`, Closes #83) запушено · гілка видалена · дрейф усунено (`sync-preview-module-form-submit.mjs --check` = `✓ in sync`) · n8n+scripts 1104 ✅ · UI 284 ✅ · tsc clean
+**Why:** Завершити preview-module: змержити гілку в main, щоб усунути main↔live дрейф `form-submit.json` (deploy з main відкотив би live), і верифікувати наскрізний монетизаційний UX наживо на піднятому n8n.
+**What:**
+- **Merge** 17 комітів гілки в main (--no-ff), issue #83 закрито, гілка `feat/preview-module` видалена. Дрейф підтверджено усунутим (патчер `--check` зелений → committed form-submit == live).
+- **Повний e2e наживо** (Docker n8n + ngrok up, 4 active workflows: form-submit 52 ноди, preview-pay 16 нод): прогнав `scripts/test-preview-pay.mjs` (**12/12** — not-ready→422 paid-незмінний, wrong-owner→422, happy→200+signed_url качає 68KB PDF, re-mint ідемпотентний) + ручний прогін divorce з реальними ключами полів (`sampleAnswers`).
+**Verify (live):**
+- **Витяг** (PreviewPage): шапка+сторони+завязка, **0 leak** (нема «ПРОШУ», нема цитат статей, нема дір `________`), склонення коректне («я, Коваленко Марія Олександрівна … зареєструвала шлюб із Коваленко Віктором Петровичем»).
+- **Фінальний PDF**: повністю заповнений, склонення у всіх відмінках вірне (instrumental/accusative), діти/прізвище/місце проживання на місці.
+- **Opt-in бот-доставка** (`deliver_to_bot=true`): preview-pay exec 207 нода `Send PDF` → `{ok:true, message_id:443, document.file_name:"Позовна заява.pdf"}` у чат 236581343. Дружнє імʼя ✅.
+- **🪤 Урок:** перший прогін показав `________` замість імен → НЕ баг продукту, а мій тест-харнес з вигаданими ключами полів (`plaintiff_name` замість `last_name/first_name/middle_name`, `divorce_reasons` тощо). Виправлено через `sampleAnswers.ts` як SSoT для форми. «claim ≠ fact» спрацював.
+**Files:** merge-коміт (без нових файлів коду); `apps/client/.claude/changelog.md`.
+**⚠️ Тест-сміття:** smoke створив ~3 тест-кейси в `cases` (identity 236581343) + PDF у Storage `cases/*.pdf` + реальні sendDocument у чат (message_id 443) — прибрати за потреби (Storage API/Dashboard; `protect_delete` блокує SQL DELETE).
+
 ### 2026-06-30 (session 56) — #83 preview-module G3b (rate-limit) + G6 (докі) — фіча завершена
 **Status:** branch `feat/preview-module` · form-submit (52 нод) задеплоєно live · guard 14 ✅ · сют 1104 ✅ · commit `1d60d79` · Refs #83
 **Why:** Закрити дві останні групи preview-module: анти-abuse rate-limit + документація. Після цього вся фіча (G1-G6+G3b) жива end-to-end.

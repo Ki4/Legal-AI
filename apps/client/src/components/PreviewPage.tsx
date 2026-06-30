@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Lock, FileCheck, Clock, Download, ShieldCheck, Loader2 } from 'lucide-react'
 import { derivePreviewPayUrl, requestPreviewPay } from '../lib/previewPay'
 import { hapticImpact, hapticSuccess, hapticError } from '../lib/telegram'
+import { Tooltip } from './form/Tooltip'
 
 // preview-module G5 (#83). Shown after the form is submitted: the safe excerpt
 // (G2/G3, already in the form-submit response) styled as a document page with a
@@ -39,6 +40,8 @@ export function PreviewPage({
   const [signedUrl, setSignedUrl] = useState('')
   const [errMsg, setErrMsg] = useState('')
   const [waiting, setWaiting] = useState(false)
+  // GDPR opt-in: off by default. When on, preview-pay also sends the PDF to the chat.
+  const [deliverToBot, setDeliverToBot] = useState(false)
 
   const payUrl = derivePreviewPayUrl(
     import.meta.env.VITE_N8N_WEBHOOK_URL || '',
@@ -52,7 +55,7 @@ export function PreviewPage({
     const initData = window.Telegram?.WebApp?.initData || ''
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const outcome = await requestPreviewPay(payUrl, { caseId, initData })
+      const outcome = await requestPreviewPay(payUrl, { caseId, initData, deliverToBot })
       if (outcome.kind === 'paid') {
         setSignedUrl(outcome.signedUrl)
         setPhase('paid')
@@ -144,13 +147,27 @@ export function PreviewPage({
       {/* Bottom CTA bar */}
       <div className="flex-shrink-0 bg-white border-t border-gray-100 px-5 py-4">
         {phase === 'preview' && (
-          <button
-            type="button"
-            onClick={handlePay}
-            className="w-full py-3.5 rounded-btn bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all duration-200"
-          >
-            Сплатити
-          </button>
+          <>
+            <label className="flex items-start gap-2.5 mb-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={deliverToBot}
+                onChange={(e) => { hapticImpact('light'); setDeliverToBot(e.target.checked) }}
+                className="mt-0.5 w-4 h-4 accent-primary-600 flex-shrink-0"
+              />
+              <span className="text-xs text-gray-600 leading-snug">
+                Надіслати документ у Telegram
+                <Tooltip text="Якщо увімкнено, готовий документ надійде файлом у цей чат. Зверніть увагу: тоді копія документа зберігатиметься на серверах Telegram. За замовчуванням документ доступний лише за захищеним посиланням у застосунку (24 год)." />
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={handlePay}
+              className="w-full py-3.5 rounded-btn bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all duration-200"
+            >
+              Сплатити
+            </button>
+          </>
         )}
 
         {phase === 'paying' && (

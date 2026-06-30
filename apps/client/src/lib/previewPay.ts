@@ -53,14 +53,16 @@ export function classifyPayResponse(status: number, body: unknown): PayOutcome {
  */
 export async function requestPreviewPay(
   url: string,
-  args: { caseId: string; initData: string },
+  args: { caseId: string; initData: string; deliverToBot?: boolean },
 ): Promise<PayOutcome> {
   if (!url) return { kind: 'error', message: GENERIC_ERROR }
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ case_id: args.caseId, init_data: args.initData }),
+      // deliver_to_bot is the GDPR opt-in: only when the user explicitly ticks
+      // «Надіслати у Telegram» does the server send the PDF to their chat.
+      body: JSON.stringify({ case_id: args.caseId, init_data: args.initData, deliver_to_bot: !!args.deliverToBot }),
     })
     let body: unknown = null
     try { body = await res.json() } catch { body = null }

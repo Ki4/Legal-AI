@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-06-30 (session 54) — #83 preview-module G1 + G3-core: міграція + form-submit реструктуризація (ЖИВЕ)
+**Status:** branch `feat/preview-module` · G1 міграція 029 ЗАСТОСОВАНА · G3-core ЗАДЕПЛОЄНО в form-submit + smoke зелений · Refs #83
+**Why:** G1 — поля/Storage під превʼю-потік; G3-core — витяг у ранній webhook-відповіді + повний PDF у приватний bucket замість бот-доставки до оплати. Рішення (session 54): `cases` лишається service-role-only, статус+витяг їдуть синхронною відповіддю (БЕЗ клієнтського RLS/polling — `cases` тримає шифровані PII, у TWA немає Supabase Auth/auth.uid()).
+**What:**
+- **G1 `supabase/migrations/029_preview_module.sql` (new, applied)** — `cases` +`paid/paid_at/preview_excerpt/doc_storage_path/preview_meta`; приватний bucket `generated-documents` (public=false, PDF-only, service-role-only); індекс `(user_id,created_at)`. 🪤 БЕЗ CHECK на `status` (legacy 'submitted' → помилка 23514); owner=`user_id`, НЕ profile_id.
+- **G3-core `scripts/sync-preview-module-form-submit.mjs` (new, ідемпотентний +`--check`)** — нова `Derive Excerpt` нода (інлайн G2)→рання відповідь `{case_id,status,preview_excerpt}`; `Update Case Abstention` +`preview_excerpt`; хвіст `Export PDF→Upload PDF до Storage→Set Preview Ready(doc_storage_path+status='preview_ready')→Delete Doc`; знято `Send PDF/Export DOCX/Send DOCX`. Insert `submitted→generating`. 11 guard-тестів.
+- **🪤 Фікс (live):** `Update Case Abstention` писала `status='generating'` → через n8n depth-first виконувалась ПІСЛЯ `Set Preview Ready` і затирала `preview_ready`. Прибрано status звідти (веде лише Insert→Set Preview Ready). GOTCHAS +запис «fan-out siblings clobber».
+**Files:** `supabase/migrations/029_preview_module.sql`, `scripts/sync-preview-module-form-submit.mjs`, `n8n/workflows/current/form-submit.json`, `n8n/templates/__tests__/preview-module-form-submit.test.js`, `docs/architecture/GOTCHAS.md`.
+**Tests:** workflow guard 11 + excerpt 61 · повний n8n+scripts **1091 ✅**.
+**Live verify (smoke, 4 кейси через webhook):** рання відповідь = витяг без суті (998/1237 симв.); case `status=preview_ready`, `doc_storage_path=cases/{id}.pdf`, PDF у приватному bucket (73665/79684 байти); anon SELECT cases → 0 рядків (privacy). form-submit (48 нод, active, бекап у `.backups/`).
+**Залишок #83:** G4 (preview-pay workflow), G5 (TWA-UI)+бот-UX (бот завис на «Формую…», task #8), G6 (докі), G3b (rate-limit). Наскрізний потік неповний до G4+G5.
+
 ### 2026-06-30 (session 54) — #83 preview-module G2: детермінований екстрактор безпечного витягу (#86-критичний)
 **Status:** branch `feat/preview-module` · код+тести, ізольована pure-функція · Refs #83
 **Why:** Перша (найризиковіша за змістом) група превью-модуля — рів проти «скрін → ШІ дозаповнює» (#86). Витяг, що йде на клієнт ДО оплати, мусить фізично не містити операційної суті (ПРОШУ, цитат, нумерованих вимог). Робимо й тестуємо ізольовано першим (детермінований, без I/O), як вимагає plan.md.

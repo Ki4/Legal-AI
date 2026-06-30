@@ -10,6 +10,21 @@
 
 ---
 
+### 2026-06-30 (session 56) — #83 preview-module G4: preview-pay workflow ЖИВИЙ + верифікований
+**Status:** branch `feat/preview-module` · workflow CREATED+active (`snm45SKeVo5X2AqU`, 15 нод) · 12/12 live-smoke зелений · commit `2d4ef0b` · Refs #83
+**Why:** Завершити монетизаційний шов превʼю-модуля — новий ізольований n8n workflow `preview-pay`, що після превʼю приймає «оплату» (заглушка, сервер-верифікований флип), мінтить signed URL до приватного PDF. Рішення locked на інтервʼю session 55 (A3 TTL 24год, A4 GDPR opt-in, edge=4xx-без-флипу, ідемпотентність).
+**What:**
+- **`scripts/build-preview-pay.mjs` (new)** — генератор self-contained workflow JSON за патерном `build-law-change-digest.mjs`: 0 n8n-credentials, секрети через Global Config-expression (deploy інжектить). Анти-дрейф: initData-верифікатор інлайниться з SSoT `n8n/templates/verify-init-data.js`. `--check` = CI-страж.
+- **`n8n/workflows/current/preview-pay.json` (new, 15 нод):** Webhook → Global Config → **Verify initData** (#56 реюз, fail-closed) → Is Verified? → **Get Identity** (telegram id → profile UUID, дзеркало form-submit Get Profile) → Get Case → **Assert & Decide** (owner + ready-гейт) → Is Ready? → **Set Paid** (PATCH paid/status; paid_at ЛИШЕ на 1-му флипі) → **Mint Signed URL** (Storage createSignedUrl, TTL 24год) → Build Response → **Send to bot?** (opt-in) → Respond OK/Error.
+- **Інваріанти:** (1) `paid` НІКОЛИ не флипається без готового документа — флип строго на гілці Is Ready?=true; будь-яка відмова (auth/not-owner/not-ready) = один 4xx (422), paid недоторканий. (2) Ідемпотентність: 2-й pay на paid → re-mint URL без перезапису paid_at. (3) GDPR (інваріант 7): бот-доставка лише за `deliver_to_bot===true`, основний канал = signed URL.
+- **🪤 Знайдено наживо:** `cases.user_id` тримає **profile UUID** (не telegram id) — резолвиться через `identities.external_id`. Перша версія owner-check порівнювала з telegram id напряму → not_owner навіть власнику. Додано Get Identity (як form-submit). Виправити теплий факт у session-summary («owner = user_id» було оманливо).
+- **`scripts/deploy-workflow.mjs`** — `+preview-pay` target (id `snm45SKeVo5X2AqU`).
+- **`scripts/test-preview-pay.mjs` (new)** — повний e2e live-smoke на одному свіжому case.
+**Files:** `scripts/build-preview-pay.mjs` (new), `n8n/workflows/current/preview-pay.json` (new), `scripts/test-preview-pay.mjs` (new), `scripts/deploy-workflow.mjs`, `n8n/templates/__tests__/preview-pay-workflow.test.js` (new, 10 guard-тестів).
+**Tests:** preview-pay guard **10 ✅** · повний n8n+scripts **1101 ✅** (+10).
+**Live smoke (12/12, один свіжий case через webhook):** not-ready pay→422 (paid=false) · wrong-owner→422 (not_owner) · poll→preview_ready+PDF у Storage · happy pay→200 {signed_url,expires_at}; signed_url качає 68KB `%PDF-` · case→paid+paid_at · re-mint→200, paid_at НЕзмінний · expires_at = +24год.
+**Залишок #83:** G5 (TWA-UI: generating→preview_ready→paid, PreviewPage A4+blur+watermark, polling, кнопки) + бот-UX (бот завис на «Формую…»), G6 (докі), G3b (rate-limit).
+
 ### 2026-06-30 (session 55) — #83 preview-module G4: інтервʼю-локдаун рішень (spec-only, перед кодингом)
 **Status:** branch `feat/preview-module` · spec/docs-only · Refs #83
 **Why:** Перед стартом G4 (preview-pay workflow) — `/interview` (medium) зафіксував відкриті A3/A4/A5 + edge-кейси, щоб свіжий чат кодив без здогадок. Виплив GDPR-нюанс (бот-доставка) і другопорядковий наслідок PDF+DOCX (перевідкриває G1/G3).

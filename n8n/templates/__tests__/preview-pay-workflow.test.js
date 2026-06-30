@@ -92,11 +92,14 @@ describe('preview-pay workflow', () => {
     expect((wf.connections['Is Ready?'].main[1] || []).map((c) => c.node)).toContain('Respond Error')
   })
 
-  it('keeps bot delivery opt-in (Send PDF gated on deliver_to_bot === true)', () => {
-    // Send PDF sits ONLY on the true output of "Send to bot?".
+  it('keeps bot delivery opt-in (Download/Send PDF gated on deliver_to_bot === true)', () => {
+    // The bot-delivery path (Download PDF → Send PDF) hangs ONLY off the true
+    // output of "Send to bot?"; the false output goes straight to the response.
     const branch = wf.connections['Send to bot?'].main
-    expect((branch[0] || []).map((c) => c.node)).toContain('Send PDF')
+    expect((branch[0] || []).map((c) => c.node)).toContain('Download PDF')
+    expect((branch[1] || []).map((c) => c.node)).not.toContain('Download PDF')
     expect((branch[1] || []).map((c) => c.node)).not.toContain('Send PDF')
+    expect((wf.connections['Download PDF'].main[0] || []).map((c) => c.node)).toContain('Send PDF')
     // The delivery flag is set only when the request explicitly opts in.
     expect(node('Verify initData').parameters.jsCode).toContain('deliver_to_bot === true')
     // The IF gates on that flag.

@@ -1030,7 +1030,7 @@
         "messageType": "message",
         "chatId": "={{ $('Validate').item.json._user_id }}",
         "messageId": "={{ $('Notify User').item.json.result.message_id }}",
-        "text": "=📝 Формую документ…\n📋 {{ $('Get Service').item.json.title }}",
+        "text": "=✅ Заявку прийнято!\n📋 {{ $('Get Service').item.json.title }}\n\nПерегляд документа та отримання — у застосунку.",
         "additionalFields": {
           "appendAttribution": false,
           "parse_mode": "HTML"

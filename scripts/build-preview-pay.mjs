@@ -178,9 +178,15 @@ const BUILD_RESPONSE_CODE = [
   '// Supabase sign endpoint returns { signedURL: "/object/sign/<bucket>/<path>?token=…" }.',
   'const signed = $json.signedURL || ($json.body && $json.body.signedURL) || null;',
   'const ttl = Number(gc.SIGNED_URL_TTL) || 86400;',
+  "const fullUrl = signed ? gc.SUPABASE_URL + '/storage/v1' + signed : null;",
+  '',
+  '// Friendly download name: Supabase honours ?download=<name> (Content-Disposition),',
+  '// so Telegram shows «Позовна заява.pdf» instead of the raw case-id path.',
+  "const DOC_NAME = 'Позовна заява.pdf';",
   '',
   'return [{ json: {',
-  "  _signed_url: signed ? gc.SUPABASE_URL + '/storage/v1' + signed : null,",
+  '  _signed_url: fullUrl,',
+  "  _bot_doc_url: fullUrl ? fullUrl + '&download=' + encodeURIComponent(DOC_NAME) : null,",
   '  _expires_at: new Date(Date.now() + ttl * 1000).toISOString(),',
   '  _deliver: a._deliver === true,',
   '  _user_id: a._user_id,',
@@ -347,22 +353,41 @@ const nodes = [
     notes: 'GDPR opt-in (invariant 7): true ONLY when the request carried deliver_to_bot===true. Default path skips the bot.',
   },
   {
+    id: 'download-pdf-001',
+    name: 'Download PDF',
+    type: 'n8n-nodes-base.httpRequest',
+    typeVersion: 4.2,
+    position: [1600, 360],
+    onError: 'continueRegularOutput',
+    parameters: {
+      method: 'GET',
+      url: "={{ $('Build Response').first().json._bot_doc_url }}",
+      options: { response: { response: { responseFormat: 'file', outputPropertyName: 'data' } } },
+    },
+    notes: 'Fetch the PDF as binary. The ?download=<name> on the URL sets Content-Disposition, so n8n names the binary «Позовна заява.pdf» — which Telegram then shows (sending by URL would show the raw case-id path instead).',
+  },
+  {
     id: 'send-pdf-001',
     name: 'Send PDF',
     type: 'n8n-nodes-base.httpRequest',
     typeVersion: 4.2,
-    position: [1600, 400],
+    position: [1820, 360],
     onError: 'continueRegularOutput',
     parameters: {
       method: 'POST',
       url: "={{ 'https://api.telegram.org/bot' + $('Global Config').first().json.TELEGRAM_BOT_TOKEN + '/sendDocument' }}",
       sendBody: true,
-      specifyBody: 'json',
-      jsonBody:
-        "={{ JSON.stringify({ chat_id: $('Build Response').first().json._user_id, document: $('Build Response').first().json._signed_url, caption: 'Ваш документ готовий ✅' }) }}",
-      options: { timeout: 30000 },
+      contentType: 'multipart-form-data',
+      bodyParameters: {
+        parameters: [
+          { name: 'chat_id', value: "={{ $('Build Response').first().json._user_id }}" },
+          { name: 'caption', value: 'Ваш документ готовий ✅' },
+          { parameterType: 'formBinaryData', name: 'document', inputDataFieldName: 'data' },
+        ],
+      },
+      options: { timeout: 60000 },
     },
-    notes: 'Opt-in bot delivery: Telegram fetches the signed URL itself (no binary handling). onError=continue so a Telegram hiccup still returns the URL.',
+    notes: 'Opt-in bot delivery: multipart upload of the downloaded binary (keeps the friendly filename). 0-cred — token from Global Config. onError=continue so a Telegram hiccup still returns the URL.',
   },
   {
     id: 'respond-ok-001',
@@ -418,10 +443,11 @@ const connections = {
   'Build Response': { main: [[{ node: 'Send to bot?', type: 'main', index: 0 }]] },
   'Send to bot?': {
     main: [
-      [{ node: 'Send PDF', type: 'main', index: 0 }],
+      [{ node: 'Download PDF', type: 'main', index: 0 }],
       [{ node: 'Respond OK', type: 'main', index: 0 }],
     ],
   },
+  'Download PDF': { main: [[{ node: 'Send PDF', type: 'main', index: 0 }]] },
   'Send PDF': { main: [[{ node: 'Respond OK', type: 'main', index: 0 }]] },
 };
 

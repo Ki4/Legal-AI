@@ -626,3 +626,88 @@ describe('renderDocumentWithStyles', () => {
     expect(r(tpl)).toBe('before\nafter')
   })
 })
+
+// ─── keep-block: paired range macro → keep-with-next chain (research §3) ──────
+
+describe('renderDocumentWithStyles — keep-block', () => {
+  it('glues every block paragraph except the last (the orphan fix)', () => {
+    const tpl = '{{!style: keep-block}}\nA\nB\nC\n{{!style: /keep-block}}\nD'
+    const { text, styleHints } = rs(tpl)
+    expect(text).toBe('A\nB\nC\nD') // markers produce no text
+    // A,B glued to the next; C is the block's last (no glue → can break after it);
+    // D is outside the block.
+    expect(styleHints).toEqual({ 0: ['keep-with-next'], 1: ['keep-with-next'] })
+  })
+
+  it('works when the block ends the document', () => {
+    const tpl = '{{!style: keep-block}}\nA\nB\nC\n{{!style: /keep-block}}'
+    const { styleHints } = rs(tpl)
+    expect(styleHints).toEqual({ 0: ['keep-with-next'], 1: ['keep-with-next'] })
+  })
+
+  it('a single-paragraph block adds no keep-with-next (nothing to orphan)', () => {
+    const tpl = '{{!style: keep-block}}\nONLY\n{{!style: /keep-block}}\nafter'
+    expect(rs(tpl).styleHints).toEqual({})
+  })
+
+  it('glues across blank lines and frees the last line (Додатки → signature shape)', () => {
+    const tpl = '{{!style: keep-block}}\nDodatky:\n- one\n\n- two\nSIG\n{{!style: /keep-block}}'
+    const { text, styleHints } = rs(tpl)
+    expect(text).toBe('Dodatky:\n- one\n\n- two\nSIG\n')
+    // header, item, blank, item all glued; SIG (block last) stays free.
+    expect(styleHints).toEqual({
+      0: ['keep-with-next'], 1: ['keep-with-next'], 2: ['keep-with-next'], 3: ['keep-with-next'],
+    })
+    expect(styleHints[4]).toBeUndefined() // SIG paragraph
+  })
+
+  it('merges with per-paragraph styles instead of overwriting them', () => {
+    const tpl = '{{!style: keep-block}}\n{{!style: center bold}}\nHEAD\nbody\nSIG\n{{!style: /keep-block}}'
+    const { styleHints } = rs(tpl)
+    expect(styleHints[0]).toEqual(['center', 'bold', 'keep-with-next'])
+    expect(styleHints[1]).toEqual(['keep-with-next'])
+    expect(styleHints[2]).toBeUndefined() // SIG
+  })
+
+  it('ignores an unbalanced /keep-block (defensive)', () => {
+    expect(rs('A\n{{!style: /keep-block}}\nB').styleHints).toEqual({})
+  })
+
+  it('ignores an unclosed keep-block (fail-safe: never glues runaway ranges)', () => {
+    expect(rs('{{!style: keep-block}}\nA\nB').styleHints).toEqual({})
+  })
+
+  it('downstream never sees keep-block — only keep-with-next leaks out', () => {
+    const tpl = '{{!style: keep-block}}\nA\nB\n{{!style: /keep-block}}'
+    const allStyles = Object.values(rs(tpl).styleHints).flat()
+    expect(allStyles).not.toContain('keep-block')
+    expect(allStyles).not.toContain('/keep-block')
+    expect(allStyles.every((s) => s === 'keep-with-next')).toBe(true)
+  })
+})
+
+// ─── Live-template guard: the closing block must not orphan its signature ─────
+// Renders the real divorce/alimony templates and asserts "Додатки:" is glued
+// forward while the "«___» … (підпис)" line stays free. If anyone drops the
+// keep-block markers, this goes red before a signature can drift to a lone page.
+
+describe('keep-block live-template guard (Додатки → signature)', () => {
+  for (const svc of ['divorce', 'alimony']) {
+    it(`${svc}: appendix block is glued and the signature is not`, () => {
+      const tpl = readFileSync(resolve(__dirname, `../services/${svc}.document.txt`), 'utf8')
+      const { text, styleHints } = rs(tpl, { has_children: true, answers: { has_children: true } })
+      const lines = text.split('\n')
+      const dodatkyIdx = lines.findIndex((l) => l.startsWith('Додатки'))
+      const sigIdx = lines.findIndex((l) => l.includes('(підпис)'))
+      expect(dodatkyIdx).toBeGreaterThan(-1)
+      expect(sigIdx).toBeGreaterThan(dodatkyIdx)
+      // every paragraph from Додатки up to (excluding) the signature is glued
+      for (let p = dodatkyIdx; p < sigIdx; p++) {
+        expect(styleHints[p], `para ${p} ${JSON.stringify(lines[p])} must keep-with-next`)
+          .toContain('keep-with-next')
+      }
+      // the signature itself is the block's last line → must stay free
+      expect(styleHints[sigIdx]?.includes('keep-with-next')).toBeFalsy()
+    })
+  }
+})

@@ -225,7 +225,7 @@
 {{#if answers.has_children and children_dispute != 'separate' and alimony_claim}}7{{else if answers.has_children and children_dispute != 'separate' or alimony_claim}}6{{else}}5{{/if}}. Визначити графік участі у вихованні та спілкуванні з дитиною того з батьків, хто проживає окремо, відповідно до ст.157 Сімейного кодексу України: {{ensurePeriod visitation_schedule_text}}
 
 {{/if}}
-{{!style: keep-with-next}}
+{{!style: keep-block}}
 Додатки:
 {{#if court_fee_exempt == 'yes'}}
 - копія посвідчення про право на звільнення від судового збору — 2 примірники;
@@ -239,6 +239,6 @@
 {{/if}}
 - 1 екземпляр позовної заяви з копіями доданих документів для відповідача по справі.
 
-{{!style: keep-together}}
 
 «___» _______ 20__ року                                              (підпис)    {{plaintiff_name}}
+{{!style: /keep-block}}

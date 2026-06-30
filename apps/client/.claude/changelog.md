@@ -10,6 +10,19 @@
 
 ---
 
+### 2026-07-01 (session 58) — keep-block: page-integrity directive + orphaned-signature fix (фундамент document-builder)
+**Status:** branch `feat/keep-block-page-integrity` · код+тести, ще НЕ задеплоєно (Supabase upload + n8n deploy чекають інфру) · n8n+scripts **1114 ✅** (+10 keep-block) · parity divorce 269 / alimony 117 зелені
+**Why:** Перший крок до «білдера документа» (як юрист керує тим, які частини тримати разом / з нової сторінки). Фундамент = детермінований примітив `keep-block` + усунення живого дефекту: блок «Додатки→підпис» міг розірватись, бо `keep-together` стояв на **порожньому абзаці** перед підписом (verified: styleHints para 70 = `""`), а не клеїв блок. Це той самий «осиротевший блок підпису» з research §3. На цьому примітиві стоять усі верхні рівні (семантичні ролі #51, page-aware preview).
+**What:**
+- **`render-document.js` — нова DSL-директива `keep-block`** (парний range-макрос): `{{!style: keep-block}}` … `{{!style: /keep-block}}`. `renderDocumentWithStyles` десугарить діапазон у **ланцюг `keep-with-next`** на всіх абзацах блоку, **окрім останнього** (інакше клей затягнув би наступний абзац у блок). Downstream-адаптери (`apply-typography` сьогодні, HTML/DOCX завтра) бачать лише `keep-with-next` → **жоден рендерер міняти не треба**.
+  - styleHints тепер **мерджить** стилі на абзац (`addStyle`, дедуп) замість overwrite → виправляє латентний баг (два `{{!style:}}` на один абзац раніше затирали один одного). Fail-safe: незакритий `keep-block` / зайвий `/keep-block` ігноруються (ніколи не клеїть «втеклий» діапазон).
+- **`divorce.document.txt` + `alimony.document.txt`** — блок «Додатки:»→підпис обгорнуто `keep-block`; прибрано мертвий `keep-together` з порожнього абзацу. **Текст байт-у-байт незмінний** (маркери — standalone, 0 output → parity зелений, legacy-білдери НЕ чіпались). Verified рендером: keep-with-next тепер на Додатки+пунктах+порожніх рядках (63-70), підпис (71) вільний.
+- **`form-submit.json`** — Build Document нода ре-синкнута (`sync-build-document-node.mjs`, 78938→80641) — рушій з `keep-block` тепер у живому workflow-JSON (52 ноди збережено).
+- **Тести (+10):** `render-document.test.js` — unit на макрос (glue-all-but-last, single-para no-op, blanks, merge зі стилями, fail-safe на незбалансованих, «downstream ніколи не бачить keep-block») + **live-template guard** (рендерить реальні divorce/alimony, чек: Додатки склеєні, підпис вільний → червоніє, якщо хтось прибере маркери).
+**Files:** `n8n/templates/render-document.js`, `n8n/templates/services/divorce.document.txt`, `n8n/templates/services/alimony.document.txt`, `n8n/workflows/current/form-submit.json`, `n8n/templates/__tests__/render-document.test.js`.
+**Tests:** n8n+scripts **1114 ✅** (parity 269/117 зелені — текст незмінний).
+**🔴 Залишок (live deploy, потребує інфри):** (1) `upload-document-template.mjs divorce && … alimony` → Supabase; (2) `deploy-workflow.mjs form-submit` → live n8n; (3) webhook-smoke + інспекція Google Doc (keepWithNext реально проставлений на блоці). Далі по roadmap: семантичні ролі (#51) → page-aware HTML preview.
+
 ### 2026-06-30 (session 57) — #83 MERGE feat/preview-module → main + повний e2e UX-verify live
 **Status:** main `032981e` (merge `--no-ff`, Closes #83) запушено · гілка видалена · дрейф усунено (`sync-preview-module-form-submit.mjs --check` = `✓ in sync`) · n8n+scripts 1104 ✅ · UI 284 ✅ · tsc clean
 **Why:** Завершити preview-module: змержити гілку в main, щоб усунути main↔live дрейф `form-submit.json` (deploy з main відкотив би live), і верифікувати наскрізний монетизаційний UX наживо на піднятому n8n.

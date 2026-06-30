@@ -10,6 +10,20 @@
 
 ---
 
+### 2026-06-30 (session 55) — #83 preview-module G4: інтервʼю-локдаун рішень (spec-only, перед кодингом)
+**Status:** branch `feat/preview-module` · spec/docs-only · Refs #83
+**Why:** Перед стартом G4 (preview-pay workflow) — `/interview` (medium) зафіксував відкриті A3/A4/A5 + edge-кейси, щоб свіжий чат кодив без здогадок. Виплив GDPR-нюанс (бот-доставка) і другопорядковий наслідок PDF+DOCX (перевідкриває G1/G3).
+**What (рішення):**
+- **A4/GDPR (інваріант 7):** документ у Telegram-чат **за замовчуванням НЕ йде** (Telegram Cloud = GDPR-ризик); основний канал = signed URL у TWA; бот-доставка PDF — лише за явною opt-in згодою юзера (param default off).
+- **A3:** signed URL TTL = **24 год**, ре-мінт дозволено поки case живий.
+- **A5/формат:** цієї сесії **лише PDF**; DOCX-через-URL відкладено окремою групою (IMPROVEMENTS #99) — перевідкриває bucket-MIME (029) + DOCX-export у form-submit (зняті session 54).
+- **Edge не-готового case:** preview-pay відмовляє (4xx) і **ніколи не флінає `paid` без готового документа**; TWA — доброзичливе «технічні труднощі, спробуйте пізніше».
+- **Verify-рівень:** повний цикл (guard-тести + live deploy `--create` + webhook-smoke); потрібні Docker n8n + ngrok.
+- **Анти-abuse:** окремий rate-limit на preview-pay не потрібен (initData HMAC + upstream form-submit limit).
+**Files:** `specs/features/preview-module/requirements.md` (інваріант 7 + §5 resolved), `specs/features/preview-module/plan.md` (G4 locked-блок), `docs/architecture/IMPROVEMENTS.md` (#97 failure-UX, #98 failure-stats/evals, #99 DOCX-група).
+**Tests:** spec/docs-only — код не зачеплено.
+**Наступне:** свіжий чат (`/clear`) → імплементувати G4 за оновленою спекою.
+
 ### 2026-06-30 (session 54) — #83 preview-module G1 + G3-core: міграція + form-submit реструктуризація (ЖИВЕ)
 **Status:** branch `feat/preview-module` · G1 міграція 029 ЗАСТОСОВАНА · G3-core ЗАДЕПЛОЄНО в form-submit + smoke зелений · Refs #83
 **Why:** G1 — поля/Storage під превʼю-потік; G3-core — витяг у ранній webhook-відповіді + повний PDF у приватний bucket замість бот-доставки до оплати. Рішення (session 54): `cases` лишається service-role-only, статус+витяг їдуть синхронною відповіддю (БЕЗ клієнтського RLS/polling — `cases` тримає шифровані PII, у TWA немає Supabase Auth/auth.uid()).

@@ -45,14 +45,29 @@
 - Деплой: `deploy-workflow.mjs form-submit` + backup (як завжди).
 
 ### G4 — НОВИЙ workflow `preview-pay`
+
+> **Locked на інтервʼю session 55** (medium-depth). Рішення A1-A5 + edge — у `requirements.md §5`.
+> Скоуп цієї сесії: **лише PDF**, бот-доставка default-OFF (GDPR), повний цикл до live-smoke.
+
 - `n8n/workflows/current/preview-pay.json` (генерувати/деплоїти патерном `deploy-workflow.mjs`,
   `--create` для першого POST, потім id у `deploy-workflow.mjs` target-мапу як law-change-digest).
 - Ноди: Webhook → **Verify initData** (реюз HMAC-логіки #56 з form-submit) → Get Case (Supabase) →
-  **Assert owner** (telegram_id == case.telegram_id) + assert `status ∈ {preview_ready, paid}` →
+  **Assert owner** (telegram_id == case.telegram_id) → **Assert ready**: `status ∈ {preview_ready, paid}`
+  І `doc_storage_path` НЕ null; інакше **відмова 4xx + `{error}`** (НЕ флінати `paid`!) →
   **Set Paid** (UPDATE `paid=true, paid_at, status='paid'`) → **Mint Signed URL** (Storage
-  `createSignedUrl`, service-role, TTL=A3) → (опц. A4) **Send Document** у бот → Respond `{signed_url, expires_at}`.
+  `createSignedUrl` на `cases/{id}.pdf`, service-role, **TTL=24год**) → **(опц.) Send PDF у бот —
+  ТІЛЬКИ якщо request-параметр згоди `true`** (default off, GDPR) → Respond `{signed_url, expires_at}`.
 - Self-contained: 0 n8n-credentials, секрети через Global Config-expression (як form-submit/digest).
-- Ідемпотентність: повторний виклик на `paid` case → re-mint URL, не подвійний платіж.
+  Bot token (для опц. доставки) = `Global Config.TELEGRAM_BOT_TOKEN`.
+- **Ідемпотентність:** повторний виклик на `paid` case → re-mint URL (status вже `paid` проходить assert),
+  не подвійний флип/платіж.
+- **Анти-abuse:** окремого rate-limit на preview-pay НЕ додаємо — initData HMAC + upstream form-submit
+  rate-limit обмежують потік до оплати.
+- **Verify (повний цикл, як form-submit):** guard-тести (sync/secrets/connections/assert-not-ready/
+  idempotent-remint/bot-default-off) + deploy `--create` у живий n8n + **реальний webhook-smoke**:
+  (1) pay на `preview_ready` → `paid=true` + валідний signed URL, що качає PDF; (2) повторний pay →
+  re-mint без 2-го флипу; (3) pay на `generating`/без doc → 4xx, `paid` лишається false.
+  ⚠️ Потрібні підняті Docker n8n + ngrok.
 
 ### G5 — TWA (React)
 - Після сабміту: НЕ закривати; перейти у стан `generating`. Зберегти `case_id` з webhook-відповіді.

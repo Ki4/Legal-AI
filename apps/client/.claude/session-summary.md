@@ -16,6 +16,18 @@
 **не отримує документ** (бот-доставку знято). Фаза витрини, трафік контролює Сергій. Rollback form-submit:
 редеплой `.backups/form-submit.live-2026-06-29T23-56-37*.json`.
 
+**🔒 G4 РІШЕННЯ ЗАФІКСОВАНІ (інтервʼю session 55) — кодити без здогадок:**
+- **A4/GDPR (інваріант 7):** документ у Telegram-чат **за замовч. НЕ йде** (Telegram Cloud=GDPR-ризик);
+  основний канал = signed URL у TWA; бот-доставка PDF = лише opt-in за згодою юзера (param default off).
+- **A3 TTL = 24год**, ре-мінт дозволено поки case живий. **A5 = лише PDF** цю ітерацію (DOCX-через-URL →
+  окрема група IMPROVEMENTS #99: перевідкриває bucket-MIME 029 + DOCX-export form-submit).
+- **Edge не-готового case:** preview-pay відмовляє 4xx, **НІКОЛИ не флінає `paid` без готового документа**;
+  TWA — доброзичливе «технічні труднощі, спробуйте пізніше» (не сирий 500). Ідемпотентність: pay на `paid`
+  → re-mint без 2-го флипу. Окремий rate-limit на preview-pay НЕ треба (initData+upstream limit).
+- **Verify-рівень:** повний цикл (guard-тести + deploy `--create` + webhook-smoke). Потрібні Docker n8n+ngrok.
+- Деталі — `specs/features/preview-module/` (requirements §5 + plan G4 = locked). Беклог-наслідки: #97
+  (failure-UX retry+email), #98 (failure stats+evals), #99 (DOCX-група).
+
 **📦 Теплі факти для G4 (preview-pay) — щоб стартувати зі свіжого вікна:**
 - **Схема `cases`** (міграція 029 жива): owner = **`user_id`** (НЕ profile_id); `status` — **free-text**
   (БЕЗ CHECK, legacy='submitted'); lifecycle `generating→preview_ready→paid→delivered|failed`; нові поля
@@ -53,12 +65,10 @@
 active), live smoke зелений (exec 169 divorce-без-аліментів=відсутній, 170 divorce+аліменти=payout,
 171 alimony=payout). Sign-off формулювання Олею — пост-фактум 1 липня (фаза витрини).
 
-**🔴 Наступна задача (нова сесія — вибір Сергія):** кандидати —
-(1) **Превью-модуль TWA** (Сергіїв фокус): превью→оплата(заглушка)→документ, стр.1+блюр+watermark,
-доставка через Supabase signed URL. Стартувати через `/interview` під РЕАЛЬНИЙ стек.
-(2) **Розчистка застарілих issues** (#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 — беклог-пачка 2026-06-07,
-+ #5 lawyers-запис 🔴).
-(3) Демо субагентів/git-worktree (паттерн B) — Сергій хоче навчитись.
+**🔴 Наступна задача (СВІЖИЙ чат):** **імплементувати G4 preview-pay** — рішення зафіксовані інтервʼю
+session 55 (блок «🔒 G4 РІШЕННЯ» вгорі). Підняти Docker n8n + ngrok перед стартом. Потім G5 (TWA-UI), G6.
+Інші кандидати (на потім): розчистка stale-issues (#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 + #5 🔴),
+демо git-worktree.
 
 **Гілки:** `main` чистий — divorce ст.175 ч.7 змержено+задеплоєно (`e708f83`, Closes #76).
 
@@ -75,6 +85,31 @@ active), live smoke зелений (exec 169 divorce-без-аліментів=�
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 55 (2026-06-30) — preview-module G4: інтервʼю-локдаун (spec-only, перед кодингом)
+
+### Головне — стан ЗАРАЗ
+- Гілка `feat/preview-module` (НЕ змержено). `/interview` (medium) перед G4 (preview-pay) — зафіксував
+  відкриті A3/A4/A5 + edge-кейси в Tier 2-спеку, щоб свіжий чат кодив без здогадок. **Код не чіпали** —
+  лише spec/docs. Наступне: `/clear` → імплементувати G4.
+
+### Рішення (locked) — деталі в блоці «🔒 G4 РІШЕННЯ» вгорі + `specs/features/preview-module/`
+- **GDPR:** бот-доставка default-OFF (Telegram Cloud=ризик), основний канал signed URL; бот = opt-in згода.
+- **TTL 24год** (ре-мінт ок) · **лише PDF** цю ітерацію (DOCX → окрема група #99) · edge не-готового case =
+  4xx без флипу `paid` · повний verify-цикл (deploy+smoke) · окремий rate-limit не треба.
+- **Виплило (важливе):** PDF+DOCX другопорядково перевідкривав G1(bucket MIME)+G3(DOCX-export зняті s54) →
+  тому PDF-now, DOCX-later. GDPR-нюанс бот-доставки (звірено з DECISIONS).
+
+### Files (spec/docs-only)
+- `specs/features/preview-module/requirements.md` (інваріант 7 GDPR + §5 A3/A4/A5 resolved + edge + abuse).
+- `specs/features/preview-module/plan.md` (G4 locked-блок: ноди, assert-ready, TTL, consent, verify).
+- `docs/architecture/IMPROVEMENTS.md` (#97 failure-UX, #98 failure-stats/evals, #99 DOCX-група).
+- `changelog.md` (session 55 запис).
+
+### 🔴 Наступний крок (СВІЖИЙ чат)
+- **Імплементувати G4 preview-pay** за locked-спекою. Перед стартом підняти **Docker n8n + ngrok**.
+  Контракт + теплі факти — блоки «🔒 G4 РІШЕННЯ» + «📦 Теплі факти» вгорі. Модель: Opus.
 
 ---
 ## 🆕 Session 54 (2026-06-30) — preview-module G1+G2+G3-core ЖИВІ (issue #83, гілка не змержена)

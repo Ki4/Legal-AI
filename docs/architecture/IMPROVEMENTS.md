@@ -107,6 +107,7 @@
 | **#94** | [🟢 Гігієна пам'яті: стиснути session-summary/changelog + GOTCHAS.md](#94--гігієна-памяті-стиснути-session-summarychangelog--завести-gotchasmd) |
 | **#95** | [🟢 Правила контексту/субагентів у CLAUDE.md](#95--правила-контекстусубагентів-у-claudemd-interview-не-знаю-субагент-позиційна-увага) |
 | **#96** | [🟡 Аудит MCP-серверів (вартість контексту)](#96--аудит-mcp-серверів-вартість-контексту-вимкнути-невикористовувані) |
+| **#100** | [🟠 Groq deprecation: `llama-3.3-70b-versatile` → міграція (decommission 2026-08-16)](#100--groq-deprecation-llama-33-70b-versatile--міграція-decommission-2026-08-16) |
 
 > **✅ ID-колізії розведено (session 14):** другі входження перенумеровано — «RLS policies» → **#44**, «Skill для changelog» → **#45**. Перші входження #12 («Admin Dashboard») і #20 («Service Builder процес») лишились без змін.
 > **#1** відсутній історично (нумерація почалась з #2) — лишаємо як є; нові записи беруть наступний вільний номер.
@@ -1488,5 +1489,32 @@ Groq API key зберігається як n8n credential `Groq HTTP Auth` (то
 - **Скоуп групи:** (1) послабити MIME-обмеження приватного bucket у міграції (зараз `application/pdf`-only,
   029); (2) повернути `Export DOCX` + upload DOCX (`cases/{id}.docx`) у form-submit (зняті session 54);
   (3) другий signed URL у preview-pay. Шов лишається чистим — контракт «paid → mint URL(s)» не змінюється.
+
+### 100. 🟠 Groq deprecation: `llama-3.3-70b-versatile` → міграція (decommission 2026-08-16)
+
+> **⏰ Нагадування (Groq email, 2026-06-30).** Groq оголосив **deprecation** моделі `Llama 3.3 70B Versatile`
+> (сьогодні) з повним **decommission 16.08.2026**. Після цієї дати запити до моделі більше не
+> обслуговуватимуться. Стосується free / developer-tier — **це наш кейс**. Рекомендована заміна від Groq:
+> **GPT OSS 120B** (`openai/gpt-oss-120b`) або **Qwen3 32B** (`qwen/qwen3-32b`) — звірити актуальні id на
+> console.groq.com/docs/models перед переключенням.
+
+**Де зараз використовується `llama-3.3-70b-versatile` (станом на 2026-06-30):**
+- `n8n/workflows/current/main-bot.json:312` — нода `Groq Chat Model` (`lmChatGroq`), модель **захардкоджена**
+  (не через Global Config — окрема ручна зміна).
+- `n8n/workflows/current/form-submit.json:23` — Global Config `GROQ_MODEL` (+ `GROQ_MODEL_FALLBACK:
+  'llama-3.1-8b-instant'` — теж перевірити статус, може бути в списку deprecated).
+- `n8n/workflows/current/form-submit.json:693,877` — хардкод-fallback `|| 'llama-3.3-70b-versatile'` у
+  `prepareReasoning()` / `prepareL4b()` JS.
+- `n8n/workflows/current/law-change-digest.json:53,165` — Global Config `GROQ_MODEL` + хардкод-fallback.
+
+**Що зробити (дедлайн — до серпня 2026):**
+1. Обрати заміну і прогнати **#93 evals** (declension + reasoning якість) на новій моделі **перед** переключенням.
+2. Оновити `GROQ_MODEL` у Global Config обох workflow (`form-submit`, `law-change-digest`) — 1 рядок кожен (#71).
+3. Оновити/прибрати хардкод-fallback'и (`form-submit:693,877`, `law-change-digest:165`) + `main-bot:312`
+   (`lmChatGroq` — окрема ручна правка ноди, не через Global Config).
+4. Перевірити статус fallback-моделі `llama-3.1-8b-instant` у списку Groq — можливо теж потребує заміни.
+
+**Звʼязок:** #71 (model-agnostic — саме той ризик «провайдер може зникнути», що тут матеріалізувався),
+#28 (Model Debt), #93 (evals перед зміною моделі). Пріоритет 🟠 — є **тверда дата-дедлайн**.
 
 ---

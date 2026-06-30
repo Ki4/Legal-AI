@@ -27,6 +27,7 @@ const TARGETS = {
   'form-submit': { id: 'D2ab06X3pVUWk1py', file: 'n8n/workflows/current/form-submit.json' },
   'main-bot': { id: 'Ns5VXWiG8Myg3O6S', file: 'n8n/workflows/current/main-bot.json' },
   'law-change-digest': { id: 'qTOIqllA4CQvBJs5', file: 'n8n/workflows/current/law-change-digest.json' },
+  'preview-pay': { id: 'snm45SKeVo5X2AqU', file: 'n8n/workflows/current/preview-pay.json' },
 };
 const TARGET = process.argv.find((a) => TARGETS[a]) || 'form-submit';
 const WORKFLOW_ID = TARGETS[TARGET].id;

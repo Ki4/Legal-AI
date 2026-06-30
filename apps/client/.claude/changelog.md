@@ -10,6 +10,20 @@
 
 ---
 
+### 2026-06-30 (session 56) — #83 preview-module G5: TWA превʼю→оплата UI (PreviewPage)
+**Status:** branch `feat/preview-module` · React/TWA · tsc clean · UI 284 ✅ (+10) · commit `9f05807` · Refs #83
+**Why:** Замкнути наскрізний потік превʼю-модуля на фронті — після сабміту юзер бачить вітрину якості (A4-витяг) і проходить «Сплатити»→«Отримати документ», а не зависає на «Формую…». Витяг уже приходить у ранній webhook-відповіді form-submit (G3), preview-pay (G4) живий → лишалась UI.
+**What:**
+- **`apps/client/src/lib/previewPay.ts` (new)** — pure-хелпери: `derivePreviewPayUrl` (form-submit→preview-pay, спільна n8n-база; явний override `VITE_N8N_PREVIEW_PAY_URL`) + `classifyPayResponse` (paid|not_ready|error) + `requestPreviewPay`. **10 unit-тестів.**
+- **`apps/client/src/components/PreviewPage.tsx` (new)** — A4-стилізована «сторінка документа» (serif, justify) з нижнім blur-градієнтом + водяним знаком **ЗРАЗОК** (рів = ВІДСУТНІСТЬ суті #86, не watermark). State-machine: preview → «Сплатити» → paying (авто-ретрай preview-pay на `not_ready` поки доганяє async-хвіст PDF, стеля ~60с) → paid → «Отримати документ» (відкриває 24-год signed URL) / error (дружній ретрай). Тема Legal Light + framer-motion + haptics.
+- **`apps/client/src/App.tsx`** — ловить `case_id`+`preview_excerpt` з відповіді → рендерить PreviewPage замість SuccessScreen (fallback на SuccessScreen при таймауті/старому деплої); closing-confirmation / back-button / draft-clear трактують превʼю як приземлений сабміт.
+- **`.env.example`** — документує опційний `VITE_N8N_PREVIEW_PAY_URL`.
+- **Архітектура:** БЕЗ клієнтського Supabase-polling (`cases` = service-role-only) — витяг їде у відповіді, а preview-pay сам сигналить готовність (`not_ready` 4xx). Узгоджено з рішенням session 54. Розрулено протиріччя plan.md G5 (де було «polling») на користь фактичного бекенду.
+**Files:** `apps/client/src/lib/previewPay.ts` (new), `apps/client/src/lib/__tests__/previewPay.test.ts` (new), `apps/client/src/components/PreviewPage.tsx` (new), `apps/client/src/App.tsx`, `apps/client/.env.example`.
+**Tests:** previewPay **10 ✅** · UI suite **284 ✅** (+10) · tsc clean · 0 нових lint-помилок (2 наявні — у незміненому config-effect).
+**Verify (visual):** відрендерив сторінку в dev-білді з реальним витягом (тимч. `?pp=1`, прибрано) — A4-документ + ЗРАЗОК + fade + CTA «Сплатити» рендеряться коректно у мобільному 420px-layout.
+**Залишок #83:** бот-UX (бот завис на «Формую…» — узгодити повідомлення з новим потоком), G6 (докі: DECISIONS вже є, лишилось roadmap-тік + IMPROVEMENTS #77 Gotenberg-нотатка), G3b (rate-limit). Опційний live-тест Сергієм у реальному Telegram.
+
 ### 2026-06-30 (session 56) — #83 preview-module G4: preview-pay workflow ЖИВИЙ + верифікований
 **Status:** branch `feat/preview-module` · workflow CREATED+active (`snm45SKeVo5X2AqU`, 15 нод) · 12/12 live-smoke зелений · commit `2d4ef0b` · Refs #83
 **Why:** Завершити монетизаційний шов превʼю-модуля — новий ізольований n8n workflow `preview-pay`, що після превʼю приймає «оплату» (заглушка, сервер-верифікований флип), мінтить signed URL до приватного PDF. Рішення locked на інтервʼю session 55 (A3 TTL 24год, A4 GDPR opt-in, edge=4xx-без-флипу, ідемпотентність).

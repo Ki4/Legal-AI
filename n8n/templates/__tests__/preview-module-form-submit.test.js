@@ -48,10 +48,12 @@ describe('preview-module form-submit (G3 core)', () => {
     expect(body).toContain('status')
   })
 
-  it('persists preview_excerpt + status on the case; inserts as generating', () => {
+  it('persists preview_excerpt on the case; inserts as generating', () => {
     const upd = node('Update Case Abstention').parameters.fieldsUi.fieldValues.map((f) => f.fieldId)
     expect(upd).toContain('preview_excerpt')
-    expect(upd).toContain('status')
+    // status is owned by Insert Case + Set Preview Ready only — writing it here
+    // would clobber 'preview_ready' (n8n depth-first sibling runs last).
+    expect(upd).not.toContain('status')
     const ins = node('Insert Case').parameters.fieldsUi.fieldValues.find((f) => f.fieldId === 'status')
     expect(ins.fieldValue).toBe('generating')
   })

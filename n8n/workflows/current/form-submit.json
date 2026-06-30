@@ -948,10 +948,6 @@
             {
               "fieldId": "preview_excerpt",
               "fieldValue": "={{ $json._preview_excerpt }}"
-            },
-            {
-              "fieldId": "status",
-              "fieldValue": "generating"
             }
           ]
         }

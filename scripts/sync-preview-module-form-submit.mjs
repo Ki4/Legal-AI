@@ -94,17 +94,24 @@ wf.connections['Derive Excerpt'] = {
   ]],
 };
 
-// ── p1.2 — Update Case Abstention: also persist preview_excerpt + status ───────
+// ── p1.2 — Update Case Abstention: also persist preview_excerpt ────────────────
+// IMPORTANT: do NOT write `status` here. n8n runs depth-first, so the Notify-User
+// branch (… → Set Preview Ready, which flips status→'preview_ready') completes
+// BEFORE this sibling node runs — writing status='generating' here would clobber
+// 'preview_ready' back. Status is owned solely by Insert Case ('generating') and
+// Set Preview Ready ('preview_ready'); this node only adds the excerpt.
 (function patchUpdateCase() {
   const node = getNode('Update Case Abstention');
   const fv = node.parameters.fieldsUi.fieldValues;
-  const ensure = (fieldId, fieldValue) => {
-    const existing = fv.find((f) => f.fieldId === fieldId);
-    if (!existing) { fv.push({ fieldId, fieldValue }); changed++; console.log(`✓ Update Case Abstention +${fieldId}`); }
-    else if (existing.fieldValue !== fieldValue) { existing.fieldValue = fieldValue; changed++; console.log(`✓ Update Case Abstention ~${fieldId}`); }
-  };
-  ensure('preview_excerpt', '={{ $json._preview_excerpt }}');
-  ensure('status', 'generating');
+  // Drop any previously-synced status field (the clobber bug).
+  const before = fv.length;
+  node.parameters.fieldsUi.fieldValues = fv.filter((f) => f.fieldId !== 'status');
+  if (node.parameters.fieldsUi.fieldValues.length !== before) { changed++; console.log('✓ Update Case Abstention -status (avoid clobber)'); }
+  const fv2 = node.parameters.fieldsUi.fieldValues;
+  if (!fv2.find((f) => f.fieldId === 'preview_excerpt')) {
+    fv2.push({ fieldId: 'preview_excerpt', fieldValue: '={{ $json._preview_excerpt }}' });
+    changed++; console.log('✓ Update Case Abstention +preview_excerpt');
+  }
 })();
 
 // ── p1.3 — Respond OK returns case_id + status + preview_excerpt ───────────────

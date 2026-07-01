@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-01 (session 60, wrap) — Service Builder / Service Console — бачення зафіксовано
+**Status:** гілка `feat/document-layout-preview` · docs-only
+**Why:** Сергій сформулював бачення: єдина «консоль послуг» (які послуги / з чого / як виглядає документ / увімк-вимк) → у майбутньому Service Builder (юрист сам додає послугу) + підключення RAG/GraphRAG + переконатись через інтерфейс, що все коректно. Зафіксувати перед демо-прогоном наступної сесії.
+**What:**
+- **`docs/strategy/service-builder-vision.md` (new)** — бачення напрямку: §1 чому реально (послуга=дані, рушій service-agnostic), §2 таблиця «що вже живе» (звірено в коді: DashboardPage/ServiceAnatomy/DocumentPreview/lifecycle = ✅ ~80%), §3 preflight-панель довіри (збірка наявних детермінованих перевірок), §4 як лягають RAG/GraphRAG (capability-toggle + власна verification-вкладка), §5 пошарова траєкторія (#101→#51→#10→#18/#20), §6 обмеження (AI не детермінований 100% → evals #93 + human sign-off), §7 наступний крок (демо + /interview → спека).
+- `specs/roadmap.md` — лінк на бачення в «Архівних ідеях» (Service Builder).
+- session-summary — наступна сесія: (A) демо-прогін консолі послуг + /interview, (B) редизайн #84.
+**Files:** `docs/strategy/service-builder-vision.md` (new), `specs/roadmap.md`, `apps/client/.claude/{session-summary,changelog}.md`.
+**Tests:** docs-only.
+
 ### 2026-07-01 (session 60, wrap) — permission-fix (Edit/Write glob) + secrets-task підпункт
 **Status:** гілка `feat/document-layout-preview` · ops/docs · Refs #24
 **Why:** (1) Claude Code щоразу питав дозвіл на Edit/Write session-summary/changelog попри allowlist — точні відносні шляхи не матчились з абсолютним Windows-шляхом. (2) Знайдено плейнтекст-секрети в Claude Code global config → занотовано в наявну VPS-таску.

@@ -109,4 +109,5 @@
 - Neo4j замість Supabase для графу (якщо law_relations > 1000 і JOIN-запити гальмують)
 - MCP сервер для zakon.rada.gov.ua (актуальні тексти законів у контексті агента)
 - Service Builder: юрист сам додає послугу через Google Docs шаблон без розробника
+  → **бачення напрямку** (консоль послуг → білдер → RAG/GraphRAG + preflight-довіра): `docs/strategy/service-builder-vision.md` (session 60)
 - Мобільний застосунок поза Telegram

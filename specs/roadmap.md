@@ -83,6 +83,7 @@
 - [ ] CopilotKit Controlled UI: DocumentResultCard після генерації
 - [ ] **Гарний вивід документа (PDF/DOCX + лімітований предперегляд)** 🟡 — експорт PDF/DOCX і відправка файлом у бот; *лімітований предперегляд* (перша сторінка / watermark як вітрина якості перед збереженням); **цілісність ключових блоків** — шапка / «ПРОШУ» / дата+підпис / додатки на одній сторінці, без розриву (keep-together). Деталі: IMPROVEMENTS #77 (+ #50 типографіка) + research `docs/research/document-typography-and-toolchain.md` (рішення 2026-06-25: рендерер `docx`+Gotenberg, NBSP-пасс, один-источник→багато-рендерерів, ДСТУ=тригер міграції; журнал `docs/architecture/document-generation-design-notes.md` Q1–Q6)
   - [x] **Превʼю-модуль (монетизація: превʼю→оплата→signed URL) — issue #83, гілка `feat/preview-module` (session 54-56)** 🟢 — лімітований предперегляд як HTML-витяг (рів = відсутність суті #86) + A4-вітрина (blur+watermark) у TWA + оплата-заглушка (preview-pay workflow) + приватний Storage + signed URL (TTL 24год) + opt-in бот-доставка (GDPR). G1-G6 + rate-limit (G3b) **live + верифіковано**. Залишок #77: keep-together типографіка + image-превʼю через Gotenberg (при міграції рендеру).
+  - [x] **Розкладка документа: read-only page-aware прев'ю в адмінці — issue #84 (session 60)** 🟢 — модель authoring (реєстр 8 канонічних блоків + 2 зв'язки цілісності `тримати-разом`/`з-нової-сторінки` як код-SSoT) + детермінований рушій пагінації (симуляція A4, honorить engine keep-with-next) + `<DocumentLayoutPreview>`+`<LayoutGuide>` у вкладці «Розкладка» service-mirror. **Read-only** (без редагування — Olga ще не редагує #51); fidelity advisory (caveat «наближено»). Наступні кроки: точний PDF-preview (#100, при Gotenberg), інтерактивне редагування (#101, після #51). Спека `specs/features/document-layout-preview/` (Tier 2).
 
 ### 3.3 Skill автоматизації
 - [ ] Claude Code skill для автооновлення changelog 🟡
@@ -108,4 +109,5 @@
 - Neo4j замість Supabase для графу (якщо law_relations > 1000 і JOIN-запити гальмують)
 - MCP сервер для zakon.rada.gov.ua (актуальні тексти законів у контексті агента)
 - Service Builder: юрист сам додає послугу через Google Docs шаблон без розробника
+  → **бачення напрямку** (консоль послуг → білдер → RAG/GraphRAG + preflight-довіра): `docs/strategy/service-builder-vision.md` (session 60)
 - Мобільний застосунок поза Telegram

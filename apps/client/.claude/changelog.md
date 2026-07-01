@@ -32,6 +32,52 @@
 **Files:** `docs/design/admin-ux-brief.md`, `docs/assets/admin-ux/*.png` (8).
 **Tests:** docs-only.
 
+### 2026-07-01 (session 60, wrap) — Service Builder / Service Console — бачення зафіксовано
+**Status:** гілка `feat/document-layout-preview` · docs-only
+**Why:** Сергій сформулював бачення: єдина «консоль послуг» (які послуги / з чого / як виглядає документ / увімк-вимк) → у майбутньому Service Builder (юрист сам додає послугу) + підключення RAG/GraphRAG + переконатись через інтерфейс, що все коректно. Зафіксувати перед демо-прогоном наступної сесії.
+**What:**
+- **`docs/strategy/service-builder-vision.md` (new)** — бачення напрямку: §1 чому реально (послуга=дані, рушій service-agnostic), §2 таблиця «що вже живе» (звірено в коді: DashboardPage/ServiceAnatomy/DocumentPreview/lifecycle = ✅ ~80%), §3 preflight-панель довіри (збірка наявних детермінованих перевірок), §4 як лягають RAG/GraphRAG (capability-toggle + власна verification-вкладка), §5 пошарова траєкторія (#101→#51→#10→#18/#20), §6 обмеження (AI не детермінований 100% → evals #93 + human sign-off), §7 наступний крок (демо + /interview → спека).
+- `specs/roadmap.md` — лінк на бачення в «Архівних ідеях» (Service Builder).
+- session-summary — наступна сесія: (A) демо-прогін консолі послуг + /interview, (B) редизайн #84.
+**Files:** `docs/strategy/service-builder-vision.md` (new), `specs/roadmap.md`, `apps/client/.claude/{session-summary,changelog}.md`.
+**Tests:** docs-only.
+
+### 2026-07-01 (session 60, wrap) — permission-fix (Edit/Write glob) + secrets-task підпункт
+**Status:** гілка `feat/document-layout-preview` · ops/docs · Refs #24
+**Why:** (1) Claude Code щоразу питав дозвіл на Edit/Write session-summary/changelog попри allowlist — точні відносні шляхи не матчились з абсолютним Windows-шляхом. (2) Знайдено плейнтекст-секрети в Claude Code global config → занотовано в наявну VPS-таску.
+**What:**
+- **`.claude/settings.json`** — `fewer-permission-prompts`: +`mcp__playwright__browser_resize` (read-only); Edit/Write session-файлів — точні шляхи → **glob** `Edit/Write(apps/client/.claude/**)` + абсолютний варіант (Windows path-match фікс). Решта read-команд або auto-allowed самим CC, або вже в allowlist, або arbitrary-exec/мутації (не додаємо).
+- **`docs/architecture/IMPROVEMENTS.md` #13а (issue #24)** — підпункт «secrets-hygiene при VPS/розділенні prod↔develop»: у CC global config (`~/.claude/settings.json`) плейнтекст Supabase management token `sbp_…` + n8n JWT → ротувати + винести в env + prod/dev різні токени. Коментар на #24.
+**Files:** `.claude/settings.json`, `docs/architecture/IMPROVEMENTS.md`.
+**Tests:** н/д (ops/docs; settings.json JSON-валідний).
+
+### 2026-07-01 (session 60) — #84 document-layout-preview G1→G5: read-only page-aware прев'ю розкладки в адмінці
+**Status:** branch `feat/document-layout-preview` · 5 комітів (`2af0743` G1 · `7207d38` G2 · `f4496ee` G3 · `0fab06c` G4 · `7cfb4fa` G5) · Refs #84 · **НЕ змержено** · UI suite **331 ✅** (+47) · tsc clean · lint clean · admin build OK
+**Why:** Наступний шар поверх примітиву `keep-block` (session 58): юрист **бачить**, як документ лягає по сторінках A4 і що тримається разом (щоб підпис не осиротів). Не редактор (Olga ще не редагує #51) — read-only модель+візуалізація, на якій згодом стане редактор. Tier 2, будували знизу вгору (чиста логіка+тести → UI), рушій пагінації тестований першим.
+**What (G1–G5):**
+- **G1 `blockRegistry.ts` (SSoT, +14 тестів)** — 8 канонічних блоків (ст.175 ЦПК) + 2 зв'язки (`тримати-разом`→`keep-block`, `з-нової-сторінки`→`page-break-before`) як дані `{id,label,primitives,help_text,color,parent?}`. ОДИН реєстр кормить прев'ю+гайд+майбутній редактор. `relationOf(styleKeywords)` (рендерні styleHints→relation, precedence page-break). 0 «мертвих» атрибутів; sub-блоки допускаються, v1 не шипить.
+- **G2 `detectBlocks.ts` (+18 тестів)** — детерміноване розпізнавання 8 блоків по якорях (заголовки/«ПРОШУ»/«Додатки:»/перша цитата — реюз `preview-excerpt.js`) + keep-with-next-діапазони; contiguous покриття; **fail-closed**→`unknown`, ніколи не падає. Тести рендерять РЕАЛЬНІ divorce/alimony (engine через node-require, не vite-alias): appendices+signature=один keep-together-юніт; title/ПРОШУ-заголовки glued; narrative-блоки вільні.
+- **G3 `paginate.ts` (+9 тестів, мок-висоти)** — детермінований рушій: honorить engine keep-with-next (юніт не розривається — переносить цілим) + page-break-before + overflow[] (блок вищий за сторінку → чесний розрив). Висоти інжектовані (чистий/тестований). Blocks = labeling-overlay, пагінація honorить примітив рушія (інваріант 5, анти-дрейф).
+- **G4 `DocumentLayoutPreview.tsx` + `LayoutGuide.tsx` (+6 RTL-тестів)** — рендер реального документа (doc-engine+sampleAnswers) у симуляцію A4: вимірювання висот через stable callback-ref (без setState-in-effect), paginate, межі сторінок, підсвічування блоків кольором+зв'язком, overflow-попередження, **caveat «наближено»** (інваріант 4). LayoutGuide = collapsible-легенда з реєстру (default згорнуто). `renderLayout()` додано в `documentPreview.ts` (віддає text+styleHints з того ж SSoT-рушія).
+- **G5** — вкладка «Розкладка» у `ServiceAnatomy` (service-mirror) → `<DocumentLayoutPreview>`. Докі: DECISIONS (детермінований рушій прев'ю поверх styleHints; реєстр блоки+зв'язки; advisory fidelity; універсальність — лише detectBlocks прив'язаний до сімейства «позов»), IMPROVEMENTS #100 (точний PDF-preview via Gotenberg) + #101 (інтерактивне редагування, після #51) + бекфіл #97-99 index, roadmap v3.2.
+- **Інфра:** додано dev-only RTL (`@testing-library/react` + `jsdom`) — перший компонент-тест у проєкті, scoped per-file (`// @vitest-environment jsdom`), щоб node-тести лишили свій env. Engine мокнуто в RTL (нема `@doc-engine` під vitest); реальну per-service структуру покриває G2.
+**Files:** `apps/client/src/admin/lib/{blockRegistry,detectBlocks,paginate,documentPreview}.ts` + `__tests__/{blockRegistry,detectBlocks,paginate}.test.ts`, `apps/client/src/admin/components/{DocumentLayoutPreview,LayoutGuide}.tsx` + `__tests__/DocumentLayoutPreview.test.tsx`, `apps/client/src/admin/components/ServiceAnatomy.tsx`, `docs/architecture/{DECISIONS,IMPROVEMENTS}.md`, `specs/roadmap.md`, `apps/client/package.json`+lock.
+**Tests:** blockRegistry 14 · detectBlocks 18 · paginate 9 · DocumentLayoutPreview 6 (RTL) · **UI suite 331 ✅** (+47) · tsc clean · lint clean · admin build OK.
+**Read-only/адитивність:** нуль змін у live-потоці form-submit / БД / workflow. Rollback = не мержити гілку.
+**🔴 Наступне:** ручний візуальний verify (адмінка → послуга → «Розкладка», перевірити A4-межі + Додатки↔підпис не розриваються + легенда + caveat) → merge `feat/document-layout-preview → main`. Далі беклог: #100 точний PDF-preview (при Gotenberg), #101 інтерактивне редагування (після #51).
+
+### 2026-07-01 (session 59) — гігієна гілок (видалено 18 змержених) + узгодження фокусу #84
+**Status:** ops-задача (git-гігієна), код НЕ зачеплено · main чистий
+**Why:** Розчистити борд гілок перед стартом нового шару (#84). Гігієна-перевірка: видаляти лише перевірено-змержені (коміти живуть у main → нуль втрат).
+**What:**
+- Видалено **18 гілок**: 10 локальних (усі `git branch --merged main`) через `-d` + 8 remote (усі `git branch -r --merged origin/main`) через `git push origin --delete` + `git remote prune`.
+- Remote: chore/ci-test-gate, claude/{funny-gates,inspiring-gauss,wizardly-dirac}, docs/{divorce-with-children-spec,session-32-wrapup,session-47-wrap}, fix/rada-403-user-agent.
+- **`docs/admin-ux-design-brief` СВІДОМО лишена** (локальна, не змержена): унікальний design-brief адмінки (`docs/design/admin-ux-brief.md` 173 рядки + 8 PNG), нема на remote. Повний merge притягнув би стухлі правки session-summary/changelog (вет. з ~22.06) → забирати лише doc-артефакти, коли дійдуть руки.
+- Стан: локально `main` + `docs/admin-ux-design-brief`; remote `origin/main`.
+**Files:** немає змін у репо (git-операції) + `apps/client/.claude/{session-summary,changelog}.md`.
+**Tests:** н/д (ops).
+**🔴 Наступне:** старт **issue #84** (document-layout-preview, Tier 2) з G1 (реєстр блоків). Модель: Opus.
+
 ### 2026-07-01 (session 59 cont.) — корективи плану послуг за верифікованим попитом 1–4 (roadmap v1.2)
 **Status:** гілка `claude/service-plan-corrections` → **ЗМЕРЖЕНО В MAIN** · docs-only · 3-й deep-research прогін (20/22 підтверджено; синтез-агент повернув стаб → факти відновлено з верифікованих claim-ів)
 **Why:** Сергій попросив скоригувати план послуг під фільтр «склад. 1–4 ∩ попит ∩ поза держдемпінгом», але на перевірених цифрах, не припущеннях. Медичний спрос у чернетці був asserted, не verified.

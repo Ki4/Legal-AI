@@ -8,22 +8,19 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
-**🟢 ФІЧА preview-module (issue #83) — ЗАВЕРШЕНА, ЗМЕРЖЕНА В MAIN, ВЕРИФІКОВАНА E2E. issue #83 ЗАКРИТО.**
-Merge `feat/preview-module → main` зроблено (session 57, `032981e` `--no-ff`); гілка видалена; **дрейф form-submit
-усунено** (`sync-preview-module-form-submit.mjs --check` = `✓ in sync`, committed==live). Наскрізний
-монетизаційний потік працює end-to-end: TWA форма → **витяг превʼю в ранній webhook-відповіді** →
-PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pay** флипає paid + мінтить signed URL (24год) →
-«Отримати документ» / opt-in бот-доставка PDF. Зроблено й верифіковано наживо (sessions 54-57):
-- **G1** міграція 029 (поля cases + приватний bucket + rate-limit індекс) · **G2** екстрактор витягу ·
-  **G3-core** form-submit реструктуризація (витяг у відповіді + Storage upload) · **G4** preview-pay workflow
-  (n8n id **`snm45SKeVo5X2AqU`**, 16 нод, active, 12/12 smoke) · **G5** TWA PreviewPage + opt-in toggle + GDPR-тултип ·
-  **G3b** per-profile rate-limit (20/24год, 429) · **G6** докі (DECISIONS+IMPROVEMENTS+roadmap).
-- Інваріанти live: paid НІКОЛИ не флипається без готового документа (4xx); ідемпотентний re-mint (paid_at не
-  перезаписується); бот-доставка opt-in (default OFF, GDPR); дружнє імʼя файлу «Позовна заява.pdf» (бінарний
-  multipart, бо Telegram ігнорує Content-Disposition по URL).
+**🟢 ДОШКА ЧИСТА (session 61) — #84 змержено, беклог-issues розчищено, admin-brief заархівовано.**
+- **#84 document-layout-preview ЗМЕРЖЕНО в main** (merge-коміт `97e3231`, гілку `feat/document-layout-preview`
+  видалено, issue #84 закрито). Read-only page-aware прев'ю розкладки → вкладка «Розкладка» service-mirror.
+  UI **331 ✅** на main, tsc/lint clean. Presentation-only редизайн вигляду — окрема гілка за потреби (#100/#101 беклог).
+- **Issue-board гігієна:** закрито **10 bulk-імпортованих беклог-issues** (усі ідеї → `IMPROVEMENTS #N`, reopenable;
+  #5 signup-bug — obsolete під solo-архітектуру). Рішення в `DECISIONS.md` («Issue-board = лише активна робота»).
+  **Відкрито лише #24** (n8n secrets у Variables — НЕ пріоритет за рішенням Сергія).
+- **admin-ux design-brief ЗААРХІВОВАНО** в main (шапка ⚠️ SUPERSEDED — редизайн, що brief пропонував, main уже
+  реалізував: світла тема default/Lucide/токени/`admin/ui`-кіт). Обидві docs-гілки видалено.
+- **Стан репо:** лише `main`, робоче дерево чисте, `origin/main == local`. Solo-закриваних хвостів не лишилось.
 
-**✅ MERGE ЗРОБЛЕНО (session 57)** — main `b1888ec`, дрейф form-submit усунено (committed==live). Landmine знято.
-Наступний фокус — на вибір Сергія (див. нижче).
+**Preview-module (#83) — по-старому live в проді** (деталі — «Що live» нижче + «Теплі факти»); наскрізний
+монетизаційний потік TWA→витяг→PreviewPage→оплата(заглушка)→signed URL працює end-to-end (sessions 54-57).
 
 **📦 Теплі факти (виправлено) — для роботи з preview-flow:**
 - **🪤 ВИПРАВЛЕНО факт:** `cases.user_id` = **profile UUID** (НЕ telegram id!). Telegram id → profile через
@@ -70,7 +67,9 @@ Read-only page-aware прев'ю розкладки в адмінці (вкла�
 admin build OK. Верифіковано наживо (Playwright-скріншоти: 5 сторінок, Додатки+підпис їдуть разом = keep-together
 працює; легенда з 8 блоків + 2 зв'язки). Скріншоти на Робочому столі (`layout-preview-pages.png` / `-legend.png`).
 
-**🔴 Наступна сесія (план, узгоджено session 60) — 2 напрями:**
+**🔴 ЗАВТРА (session 62, узгоджено session 61) — ДЕМО-ПРОГІН «Консоль послуг» + визначити, що покращити/зробити:**
+Головне завтра: Claude піднімає адмінку, проводить Сергія наживо по наявному → разом визначаємо перший шар
+покращень (цілісний UX / редактор розкладки #101 / редизайн вигляду) → `/interview` → Tier-2 спека.
 - **(A) ДЕМО-ПРОГІН «Консоль послуг»** (пріоритет Сергія): Claude піднімає адмінку (`npm run dev:admin` + браузер)
   і проводить Сергія по наявному, що вже реалізує його бачення: `DashboardPage` (каталог послуг + тумблер статусу
   active/needs_review/disabled) → `ServiceViewPage` вкладки (Документ / **Розкладка** #84 / Анатомія / Граф / Форма) →
@@ -98,6 +97,34 @@ wording «спір… відсутній» → «не є предметом ць
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 61 (2026-07-02) — гігієна дошки + merge #84 + архів admin-brief (закриття хвостів)
+
+### Головне — стан ЗАРАЗ
+- **Дошка чиста** (деталі — блок «📌 Стан зараз» вгорі). Закрито мелкі хвости solo: #84 змержено, 10 беклог-issues
+  розчищено, design-brief заархівовано. Відкрито лише **#24** (secrets — не пріоритет). Робоче дерево чисте.
+
+### Що зроблено
+1. **admin-ux design-brief → архів у main.** Гілка `docs/admin-ux-design-brief` відстала від main на багато сесій
+   (повний merge відкотив би роботу) → забрано лише унікальні артефакти (brief + 8 скрінів «до»). Перевірка
+   актуальності: brief пропонував редизайн, який main **уже реалізував** (світла тема/Lucide/токени/`admin/ui`) →
+   додано шапку **⚠️ SUPERSEDED**, збережено як design-history. Обидві гілки видалено. (merge `c976b4f`)
+2. **Гігієна issue-дошки.** Закрито **10 bulk-імпортованих (2026-06-07) беклог-issues** (анти-паттерн CLAUDE.md
+   «IMPROVEMENTS ≠ GitHub Issues») з коментарем-посиланням на `IMPROVEMENTS #N`: #10/#13/#15/#16/#21/#26/#19/#20 →
+   backlog; **#22 портфоліо** → особиста задача Сергія (в репо помилково); **#5 signup-bug** → obsolete (`lawyers`
+   не використовується в коді, revenue-share ≠ solo-модель). Рішення в **DECISIONS.md**. **#24 не чіпали.**
+3. **Merge #84 document-layout-preview → main** (merge `97e3231`, гілку видалено, issue #84 закрито). Верифіковано
+   перед і після merge: UI **331 ✅**. 3 docs-конфлікти (changelog/session-summary/DECISIONS) розв'язано, порядок
+   записей виправлено, устарілий блок «Гілка про запас» прибрано.
+
+### 🪤 Уроки
+- **«Перевір актуальність перед пушем стухлого доку»** спрацював: brief виглядав «готовим», але main його вже обігнав
+  → не пушити наосліп, а звірити з кодом і позначити SUPERSEDED. (claim ≠ fact)
+- **Merge старої гілки в main = docs-конфлікти session-файлів** — розв'язувати скриптом (порядок записей), не наосліп «theirs».
+
+### 🔴 Наступний крок
+- **ЗАВТРА (session 62): демо-прогін «Консоль послуг» + визначити покращення** → `/interview` → Tier-2 спека. Деталі — «📌 Стан зараз».
 
 ---
 ## 🆕 Session 60 (2026-07-01) — #84 document-layout-preview G1→G5 (фіча ЗАВЕРШЕНА на гілці, НЕ змержено)

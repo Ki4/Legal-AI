@@ -49,10 +49,25 @@ PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pa
   Per-profile rate-limit 20/24год. Склонення ПІБ = Groq + stem-guard. #67/#76 live.
 - **Агент «що змінилось» (law-change-impact)** — живий end-to-end (n8n `qTOIqllA4CQvBJs5`). issue #73 закрито.
 
-**🔴 Наступна сесія (вибір Сергія):** (1) **реальний платіж замість заглушки** (шов чистий: замінити флип
-preview-pay на Telegram Payments) — найлогічніше продовження; (2) розчистка stale-issues
-(#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 + #5 🔴); (3) демо git-worktree (паттерн B, memory
-`feedback_subagents_parallel_workflow`); (4) keep-together типографіка / image-превʼю (#77). Беклог: #97/#98/#99.
+**🟢 ФІЧА #84 document-layout-preview — G1→G5 ЗАВЕРШЕНО (session 60), гілка `feat/document-layout-preview`, НЕ змержено.**
+Read-only page-aware прев'ю розкладки в адмінці (вкладка «Розкладка» service-mirror). 5 груп: G1 реєстр
+блоків+зв'язків (SSoT `blockRegistry.ts`) · G2 `detectBlocks.ts` (детерм. якорі, fail-closed) · G3 `paginate.ts`
+(рушій пагінації, honorить engine keep-with-next) · G4 `DocumentLayoutPreview.tsx`+`LayoutGuide.tsx` (A4-симуляція,
+підсвічування, overflow-warn, caveat «наближено») · G5 вмонтування + докі. UI **331 ✅** (+47), tsc/lint clean,
+admin build OK. Верифіковано наживо (Playwright-скріншоти: 5 сторінок, Додатки+підпис їдуть разом = keep-together
+працює; легенда з 8 блоків + 2 зв'язки). Скріншоти на Робочому столі (`layout-preview-pages.png` / `-legend.png`).
+
+**🔴 Наступна сесія (план, узгоджено session 60):** **РЕДИЗАЙН дизайну** фічі #84 (Сергій: «переробити дизайн»).
+Почати з **`/interview` skill** — витягнути, ЩО саме не влаштовує у поточному вигляді (пробіли/масштаб A4? кольори
+блоків? компактність легенди? side-by-side сторінки замість вертикалі? типографіка?) і як має виглядати «добре» —
+ПЕРЕД тим як чіпати компонент. Артефакти для рефа: скріншоти на Робочому столі + `DocumentLayoutPreview.tsx` (G4).
+Компонент ізольований, змінюємо лише presentation-шар (логіка G1-G3 не чіпається). Потім — merge гілки в main.
+Беклог на потім: реальний платіж · stale-issues (#26/#24/#22/#21/#20/#19/#16/#15/#13/#10 + #5 🔴) · git-worktree демо ·
+#100 точний PDF-preview (Gotenberg) · #101 інтерактивне редагування розкладки (після #51).
+
+**📦 Гілка про запас:** `docs/admin-ux-design-brief` (локальна, НЕ змержена, навмисно) — готовий design-brief
+косметики адмінки (світла тема/Lucide/типошкала) + 8 скрінів. Притягне стухлі правки session-файлів при
+повному merge → забирати лише `docs/design/admin-ux-brief.md` + `docs/assets/admin-ux/*` коли дійдуть руки.
 
 **📋 Список Олі (sign-off):** (1) формулювання превʼю-витягу (точка обрізки) + блоку ст.175 ч.7; (2) #67 divorce
 wording «спір… відсутній» → «не є предметом цього позову». **✅ #33/#76 закрито.**
@@ -66,6 +81,59 @@ wording «спір… відсутній» → «не є предметом ць
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 60 (2026-07-01) — #84 document-layout-preview G1→G5 (фіча ЗАВЕРШЕНА на гілці, НЕ змержено)
+
+### Головне — стан ЗАРАЗ
+- **Уся фіча #84 жива на гілці `feat/document-layout-preview`** (5 комітів G1→G5, НЕ змержено). Read-only
+  page-aware прев'ю розкладки → вкладка «Розкладка» у service-mirror. Деталі + наступний крок (РЕДИЗАЙН через
+  `/interview`) — блок «📌 Стан зараз» вгорі. UI **331 ✅** (+47), tsc/lint clean, admin build OK.
+- **Верифіковано наживо** (тимч. демо-сторінка + Playwright headless): 5 A4-сторінок, блок «Додатки→підпис»
+  їде **разом** (keep-together працює — підпис не осиротів), легенда з 8 блоків + 2 зв'язки, caveat «наближено».
+  2 скріншоти на Робочому столі (`layout-preview-pages.png`, `layout-preview-legend.png`). Демо-файли прибрано.
+
+### Що зроблено (знизу вгору, тести першими)
+- **G1** `blockRegistry.ts` (SSoT: 8 блоків + 2 зв'язки `{id,label,primitives,help_text,color,parent?}`,
+  `relationOf`) +14 тестів. **G2** `detectBlocks.ts` (детерм. якорі — заголовки/ПРОШУ/Додатки/перша цитата,
+  реюз `preview-excerpt`; fail-closed→`unknown`; тести рендерять РЕАЛЬНІ divorce/alimony через node-require) +18.
+  **G3** `paginate.ts` (рушій: honorить engine keep-with-next, page-break, overflow[]; висоти інжектовані) +9.
+  **G4** `DocumentLayoutPreview.tsx`+`LayoutGuide.tsx` (A4-симуляція, вимір висот через callback-ref, підсвічування
+  блок+зв'язок, overflow-warn, caveat) +6 RTL. **G5** вкладка в `ServiceAnatomy` + докі (DECISIONS/IMPROVEMENTS
+  #100/#101/roadmap).
+- **Інфра:** додано dev-only RTL (`@testing-library/react`+`jsdom`) — перший компонент-тест у проєкті, per-file
+  `// @vitest-environment jsdom`; engine мокнуто в RTL (нема `@doc-engine` під vitest), реальну структуру покриває G2.
+
+### 🪤 Уроки
+- **#97/#98/#99 існували як тіла, але не в індексі IMPROVEMENTS** (claim≠fact) → бекфілив індекс + додав #100/#101.
+- **`@doc-engine` alias лише в `vite.config.admin.ts`, НЕ під `vitest run`** → тести, що потребують рушій, вантажать
+  його через node `createRequire` (G2), а компонент-тести мокають `documentPreview` (G4).
+- **Робочий стіл = `C:\Users\serge\OneDrive\Рабочий стол`** (OneDrive-редирект, не `~/Desktop`).
+
+### 🔴 Наступний крок
+- **РЕДИЗАЙН #84 через `/interview`** (див. «Стан зараз» вгорі) → потім merge гілки в main. Presentation-only.
+
+---
+## 🆕 Session 59 (2026-07-01) — гігієна гілок + узгодження наступного фокусу (#84)
+
+### Головне — стан ЗАРАЗ
+- **Розчистка гілок** (ручна гігієна борда): видалено **18 змержених** гілок (10 локальних + 8 remote) — усі
+  перевірені `--merged main`/`--merged origin/main`, коміти збережені. Лишились: локально `main` +
+  `docs/admin-ux-design-brief`, remote `origin/main`.
+- **`docs/admin-ux-design-brief` СВІДОМО лишена локально** (НЕ змержена, НЕ видалена) — унікальний design-brief
+  адмінки + 8 скрінів; повний merge притягнув би стухлі правки session-файлів (вет. з ~22.06). Деталі — блок
+  «📦 Гілка про запас» вгорі.
+- **Наступний фокус узгоджено: issue #84** (document-layout-preview, Tier 2), старт з G1. НЕ кодили цю сесію.
+
+### Що зроблено
+- `git branch -d ×10` (всі merged) + `git push origin --delete ×8` (всі merged у origin/main) + `git remote prune`.
+- Видалені remote: chore/ci-test-gate, claude/funny-gates, claude/inspiring-gauss, claude/wizardly-dirac,
+  docs/divorce-with-children-spec, docs/session-32-wrapup, docs/session-47-wrap, fix/rada-403-user-agent.
+- Прочитано вміст brief'а (`git show`) — рішення Сергія: лишити локально, нічого не мержити.
+
+### 🔴 Наступний крок
+- **#84 G1** (реєстр блоків, код-SSoT) — свіжий чат. ТЗ: `specs/features/document-layout-preview/`. Модель: Opus
+  (Tier 2). Перед UI-групами (G4) можливо знадобиться brief адмінки (гілка про запас).
 
 ---
 ## 🆕 Session 57 (2026-06-30) — MERGE preview-module → main + повний e2e UX-verify + чистка

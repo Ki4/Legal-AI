@@ -10,6 +10,33 @@
 
 ---
 
+### 2026-07-01 (session 60) — #84 document-layout-preview G1→G5: read-only page-aware прев'ю розкладки в адмінці
+**Status:** branch `feat/document-layout-preview` · 5 комітів (`2af0743` G1 · `7207d38` G2 · `f4496ee` G3 · `0fab06c` G4 · `7cfb4fa` G5) · Refs #84 · **НЕ змержено** · UI suite **331 ✅** (+47) · tsc clean · lint clean · admin build OK
+**Why:** Наступний шар поверх примітиву `keep-block` (session 58): юрист **бачить**, як документ лягає по сторінках A4 і що тримається разом (щоб підпис не осиротів). Не редактор (Olga ще не редагує #51) — read-only модель+візуалізація, на якій згодом стане редактор. Tier 2, будували знизу вгору (чиста логіка+тести → UI), рушій пагінації тестований першим.
+**What (G1–G5):**
+- **G1 `blockRegistry.ts` (SSoT, +14 тестів)** — 8 канонічних блоків (ст.175 ЦПК) + 2 зв'язки (`тримати-разом`→`keep-block`, `з-нової-сторінки`→`page-break-before`) як дані `{id,label,primitives,help_text,color,parent?}`. ОДИН реєстр кормить прев'ю+гайд+майбутній редактор. `relationOf(styleKeywords)` (рендерні styleHints→relation, precedence page-break). 0 «мертвих» атрибутів; sub-блоки допускаються, v1 не шипить.
+- **G2 `detectBlocks.ts` (+18 тестів)** — детерміноване розпізнавання 8 блоків по якорях (заголовки/«ПРОШУ»/«Додатки:»/перша цитата — реюз `preview-excerpt.js`) + keep-with-next-діапазони; contiguous покриття; **fail-closed**→`unknown`, ніколи не падає. Тести рендерять РЕАЛЬНІ divorce/alimony (engine через node-require, не vite-alias): appendices+signature=один keep-together-юніт; title/ПРОШУ-заголовки glued; narrative-блоки вільні.
+- **G3 `paginate.ts` (+9 тестів, мок-висоти)** — детермінований рушій: honorить engine keep-with-next (юніт не розривається — переносить цілим) + page-break-before + overflow[] (блок вищий за сторінку → чесний розрив). Висоти інжектовані (чистий/тестований). Blocks = labeling-overlay, пагінація honorить примітив рушія (інваріант 5, анти-дрейф).
+- **G4 `DocumentLayoutPreview.tsx` + `LayoutGuide.tsx` (+6 RTL-тестів)** — рендер реального документа (doc-engine+sampleAnswers) у симуляцію A4: вимірювання висот через stable callback-ref (без setState-in-effect), paginate, межі сторінок, підсвічування блоків кольором+зв'язком, overflow-попередження, **caveat «наближено»** (інваріант 4). LayoutGuide = collapsible-легенда з реєстру (default згорнуто). `renderLayout()` додано в `documentPreview.ts` (віддає text+styleHints з того ж SSoT-рушія).
+- **G5** — вкладка «Розкладка» у `ServiceAnatomy` (service-mirror) → `<DocumentLayoutPreview>`. Докі: DECISIONS (детермінований рушій прев'ю поверх styleHints; реєстр блоки+зв'язки; advisory fidelity; універсальність — лише detectBlocks прив'язаний до сімейства «позов»), IMPROVEMENTS #100 (точний PDF-preview via Gotenberg) + #101 (інтерактивне редагування, після #51) + бекфіл #97-99 index, roadmap v3.2.
+- **Інфра:** додано dev-only RTL (`@testing-library/react` + `jsdom`) — перший компонент-тест у проєкті, scoped per-file (`// @vitest-environment jsdom`), щоб node-тести лишили свій env. Engine мокнуто в RTL (нема `@doc-engine` під vitest); реальну per-service структуру покриває G2.
+**Files:** `apps/client/src/admin/lib/{blockRegistry,detectBlocks,paginate,documentPreview}.ts` + `__tests__/{blockRegistry,detectBlocks,paginate}.test.ts`, `apps/client/src/admin/components/{DocumentLayoutPreview,LayoutGuide}.tsx` + `__tests__/DocumentLayoutPreview.test.tsx`, `apps/client/src/admin/components/ServiceAnatomy.tsx`, `docs/architecture/{DECISIONS,IMPROVEMENTS}.md`, `specs/roadmap.md`, `apps/client/package.json`+lock.
+**Tests:** blockRegistry 14 · detectBlocks 18 · paginate 9 · DocumentLayoutPreview 6 (RTL) · **UI suite 331 ✅** (+47) · tsc clean · lint clean · admin build OK.
+**Read-only/адитивність:** нуль змін у live-потоці form-submit / БД / workflow. Rollback = не мержити гілку.
+**🔴 Наступне:** ручний візуальний verify (адмінка → послуга → «Розкладка», перевірити A4-межі + Додатки↔підпис не розриваються + легенда + caveat) → merge `feat/document-layout-preview → main`. Далі беклог: #100 точний PDF-preview (при Gotenberg), #101 інтерактивне редагування (після #51).
+
+### 2026-07-01 (session 59) — гігієна гілок (видалено 18 змержених) + узгодження фокусу #84
+**Status:** ops-задача (git-гігієна), код НЕ зачеплено · main чистий
+**Why:** Розчистити борд гілок перед стартом нового шару (#84). Гігієна-перевірка: видаляти лише перевірено-змержені (коміти живуть у main → нуль втрат).
+**What:**
+- Видалено **18 гілок**: 10 локальних (усі `git branch --merged main`) через `-d` + 8 remote (усі `git branch -r --merged origin/main`) через `git push origin --delete` + `git remote prune`.
+- Remote: chore/ci-test-gate, claude/{funny-gates,inspiring-gauss,wizardly-dirac}, docs/{divorce-with-children-spec,session-32-wrapup,session-47-wrap}, fix/rada-403-user-agent.
+- **`docs/admin-ux-design-brief` СВІДОМО лишена** (локальна, не змержена): унікальний design-brief адмінки (`docs/design/admin-ux-brief.md` 173 рядки + 8 PNG), нема на remote. Повний merge притягнув би стухлі правки session-summary/changelog (вет. з ~22.06) → забирати лише doc-артефакти, коли дійдуть руки.
+- Стан: локально `main` + `docs/admin-ux-design-brief`; remote `origin/main`.
+**Files:** немає змін у репо (git-операції) + `apps/client/.claude/{session-summary,changelog}.md`.
+**Tests:** н/д (ops).
+**🔴 Наступне:** старт **issue #84** (document-layout-preview, Tier 2) з G1 (реєстр блоків). Модель: Opus.
+
 ### 2026-07-01 (session 58) — keep-block: page-integrity directive + orphaned-signature fix (фундамент document-builder)
 **Status:** branch `feat/keep-block-page-integrity` · **ЗАДЕПЛОЄНО + ВЕРИФІКОВАНО LIVE** (Supabase templates DB===file, form-submit 52 ноди active) · n8n+scripts **1114 ✅** (+10 keep-block) · parity divorce 269 / alimony 117 зелені
 **Live verify:** exec 210 `success` — живий рушій видав keep-with-next на блоці Додатки (абзаци 76-83 у сценарії діти+аліменти) + старі title/ПРОШУ (19,62); Build Typography Request = 12 batchUpdate, **10 з keepWithNext**; підпис (84) вільний. 🪤 Індекси рантайм-обчислені (76-83 тут vs 63-70 у короткому сценарії) → доводить цінність range-макроса над фіксованими номерами рядків.

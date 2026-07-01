@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-07-02 (session 61, wrap) — merge #84 document-layout-preview → main + чистка session-файлів
+**Status:** merge-коміт `97e3231` (`--no-ff`, Closes #84) · гілку `feat/document-layout-preview` видалено · UI **331 ✅** на main
+**Why:** Закриття хвоста session 60 — фіча #84 була готова+верифікована на гілці, але не змержена. Сергій: «закрити мелкі хвости». Merge приносить усю роботу session 60 (#84 G1-G5 + vision-doc + permission-fix) на main.
+**What:**
+- Прогнано UI-тести на гілці (**331 ✅**) → merge у main → **issue #84 закрито**.
+- 3 docs-конфлікти (обидві сторони правили верх файлів): `changelog.md` / `session-summary.md` / `DECISIONS.md` — розв'язано скриптом, порядок записей виправлено (session 61 → 60 → 59), маркери 0.
+- Прогнано UI-тести на main після merge (**331 ✅**) → push.
+- **session-summary** оновлено (session-end): лид «Стан зараз» → дошка чиста; лог session 61; план ЗАВТРА = демо-прогін «Консоль послуг» + визначити покращення; прибрано устарілий блок «Гілка про запас».
+**Files:** merge (код #84 з session 60) + `apps/client/.claude/{session-summary,changelog}.md`.
+**Tests:** UI **331 ✅** (до і після merge), tsc/lint clean.
+
 ### 2026-07-02 (session 61) — гігієна issue-дошки: закрито 10 bulk-імпортованих беклог-issues
 **Status:** гілка `chore/issue-board-cleanup` · docs-only (issue-операції через gh) · рішення в DECISIONS.md
 **Why:** 2026-06-07 ~10 issues було заведено прямо з пунктів IMPROVEMENTS (reranker/GraphRAG/voice/MCP/quality_score/security-plugin/portfolio) — саме анти-паттерн, який пізніше заборонив CLAUDE.md («IMPROVEMENTS ≠ GitHub Issues»). Висіли місяць без руху, засмічували сигнал «що в роботі». Рішення Сергія: закрити, ідеї зберегти (усі вже в IMPROVEMENTS).

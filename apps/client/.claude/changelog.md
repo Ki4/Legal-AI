@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-02 (session 61) — admin-ux design-brief: архівовано на main як design-history (SUPERSEDED)
+**Status:** гілка `docs/admin-ux-brief-archive` · docs-only · закриває «гілку про запас» `docs/admin-ux-design-brief`
+**Why:** Гілка `docs/admin-ux-design-brief` (session 59, свідомо лишена локально) відстала від main на багато сесій — повний merge відкотив би роботу. Забрано лише унікальні doc-артефакти. Перевірка актуальності показала: brief (створ. 2026-06-22) описував редизайн, який main **уже виконав** (світла тема default, Lucide, токени, `admin/ui/`-кіт, `DesignKitPage`) → brief застарів як «поточний стан», але цінний як знімок «до».
+**What:**
+- **`docs/design/admin-ux-brief.md` (new)** + шапка **⚠️ SUPERSEDED**: пояснює, що §1–§3 більше не відповідають коду, а §4–§6 реалізовані; зберігається як design-history.
+- **`docs/assets/admin-ux/admin-01..08.png` (new, 8 скринів «до»)** — темна slate-адмінка, документують трансформацію.
+- Стара гілка `docs/admin-ux-design-brief` видалена (артефакти врятовано, решта diff = стухла).
+**Files:** `docs/design/admin-ux-brief.md`, `docs/assets/admin-ux/*.png` (8).
+**Tests:** docs-only.
+
 ### 2026-07-01 (session 59 cont.) — корективи плану послуг за верифікованим попитом 1–4 (roadmap v1.2)
 **Status:** гілка `claude/service-plan-corrections` → **ЗМЕРЖЕНО В MAIN** · docs-only · 3-й deep-research прогін (20/22 підтверджено; синтез-агент повернув стаб → факти відновлено з верифікованих claim-ів)
 **Why:** Сергій попросив скоригувати план послуг під фільтр «склад. 1–4 ∩ попит ∩ поза держдемпінгом», але на перевірених цифрах, не припущеннях. Медичний спрос у чернетці був asserted, не verified.

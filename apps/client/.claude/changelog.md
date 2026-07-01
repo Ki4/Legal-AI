@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-01 (session 59) — ринкове дослідження legal-doc automation + стратегічний синтез (5 інсайтів) + roadmap
+**Status:** гілка `claude/legal-doc-automation-market-1rdjz7` → **ЗМЕРЖЕНО В MAIN** (`80ef7df` `--no-ff`) · docs-only (деплой не зачеплено) · факти перевірені змагально (2 deep-research прогони, 3-голосна верифікація)
+**Why:** Сергій попросив розібрати ринок автоматизації юрдокументів (хто досяг успіху, скільки вклали, де брешуть, що «закривається стабільно») + новий кут — юрист хоче в медицину, робити документи пачками. Треба факти під рішення «куди лізти», не здогади.
+**What:**
+- **2 deep-research звіти** (fan-out веб-пошук + adversarial verify): глобальний ринок (3 сегменти; LegalZoom FY2024 $681.9M/+3%/маржа 4%; DoNotPay штраф FTC $193K; галюцинації 17–33% Stanford) + Україна/EU (монополія адвокатури **вузька** — лише представництво в суді; e-Розлучення в Дії займає простий розвід, але лишає нам аліменти/дітей/спірне; batch+медицина валідовані — Gavel/Relativity, EvenUp $2B, Wisedocs).
+- **Стратегічний синтез — 5 інсайтів** (3 визначальні): №1 гратися «де починається суд»; №2 вирішує шаблонність (1–4 автомат, 5–10 hand-off), медицина = вертикаль шаблонних позицій у тому ж рушії; №4 human-review зашита в дизайн, «AI-юрист» заборонено.
+- **Roadmap v1.1** — інсайти в Decision Log (4 записи) + proposed issues **#NEXT-4** (медвертикаль крізь шкалу шаблонності), **#BLOCKER-5** (ресёрч мед-даних ДО коду медицини — special-category), **#LATER-6** (приватні UA/CEE конкуренти).
+**Files:** `docs/research/global-legal-doc-automation-market-2026.md` (new), `docs/research/ukraine-eu-regulatory-and-competitors-2026.md` (new), `docs/strategy/market-strategy-synthesis-2026.md` (new), `docs/research/action-roadmap-2026.md` (v1.1).
+**Залишок:** 🔴 Наступна сесія (окремий контекст) = **#NEXT-4**: прогнати медико-юр. позиції крізь шкалу 1–10 у `market-research-legal-services-2026.md` → список 1–4 = кандидати. Мед-код блокується #BLOCKER-5.
+
 ### 2026-07-01 (session 58) — keep-block: page-integrity directive + orphaned-signature fix (фундамент document-builder)
 **Status:** branch `feat/keep-block-page-integrity` · **ЗАДЕПЛОЄНО + ВЕРИФІКОВАНО LIVE** (Supabase templates DB===file, form-submit 52 ноди active) · n8n+scripts **1114 ✅** (+10 keep-block) · parity divorce 269 / alimony 117 зелені
 **Live verify:** exec 210 `success` — живий рушій видав keep-with-next на блоці Додатки (абзаци 76-83 у сценарії діти+аліменти) + старі title/ПРОШУ (19,62); Build Typography Request = 12 batchUpdate, **10 з keepWithNext**; підпис (84) вільний. 🪤 Індекси рантайм-обчислені (76-83 тут vs 63-70 у короткому сценарії) → доводить цінність range-макроса над фіксованими номерами рядків.

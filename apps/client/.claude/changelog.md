@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-07-02 (session 61) — гігієна issue-дошки: закрито 10 bulk-імпортованих беклог-issues
+**Status:** гілка `chore/issue-board-cleanup` · docs-only (issue-операції через gh) · рішення в DECISIONS.md
+**Why:** 2026-06-07 ~10 issues було заведено прямо з пунктів IMPROVEMENTS (reranker/GraphRAG/voice/MCP/quality_score/security-plugin/portfolio) — саме анти-паттерн, який пізніше заборонив CLAUDE.md («IMPROVEMENTS ≠ GitHub Issues»). Висіли місяць без руху, засмічували сигнал «що в роботі». Рішення Сергія: закрити, ідеї зберегти (усі вже в IMPROVEMENTS).
+**What:**
+- Закрито 10 issues з коментарем-посиланням на `IMPROVEMENTS #N` (жодна ідея не втрачена, reopenable): #10→#30, #13→#37, #15→#25, #16→#26, #21→#40, #26→#31, #19→#23, #20→#24.
+- **#22 портфоліо** (#32-34) — закрито як особисту задачу Сергія (не робота репо, заведено помилково).
+- **#5 signup-bug** (#7) — закрито як застаріле: таблиця `lawyers` не використовується в коді, revenue-share ≠ поточна модель (solo, ролі відкладені). Verify: `git grep "lawyers"` в client = 0 use.
+- **DECISIONS.md** — нова секція «Issue-board = лише активна робота; беклог-ідеї живуть в IMPROVEMENTS» + рядок у Зміст.
+- #24 (n8n секрети) — НЕ чіпали за рішенням Сергія. Стратегічні напрями (GraphRAG) лишаються на roadmap.
+**Files:** `docs/architecture/DECISIONS.md`, `apps/client/.claude/changelog.md`.
+**Tests:** н/д (docs + issue-ops).
+
 ### 2026-07-02 (session 61) — admin-ux design-brief: архівовано на main як design-history (SUPERSEDED)
 **Status:** гілка `docs/admin-ux-brief-archive` · docs-only · закриває «гілку про запас» `docs/admin-ux-design-brief`
 **Why:** Гілка `docs/admin-ux-design-brief` (session 59, свідомо лишена локально) відстала від main на багато сесій — повний merge відкотив би роботу. Забрано лише унікальні doc-артефакти. Перевірка актуальності показала: brief (створ. 2026-06-22) описував редизайн, який main **уже виконав** (світла тема default, Lucide, токени, `admin/ui/`-кіт, `DesignKitPage`) → brief застарів як «поточний стан», але цінний як знімок «до».

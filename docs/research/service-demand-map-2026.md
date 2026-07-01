@@ -6,6 +6,10 @@
 > **Верифікація:** усі цифри **search-verified** (URL існує + цифра у видачі), **не page-fetched**
 > (`WebFetch` заблоковано egress-політикою, 403 на всі хости — перевірено двічі 24.06.2026).
 > Рівні: 🟢 висока / 🟡 середня / 🔴 низька. Критик-callouts по блоках.
+> **🔄 Оновлення 2026-07-01:** попит для кандидатів 1–4 переверіфіковано (Opendatabot/НСЗУ/Мінцифра) →
+> `service-demand-validation-1-4-2026.md` + скориговані пріоритети `action-roadmap-2026.md` §3.6.
+> Ключове: аліменти+судовий розвід = валідоване ядро; M5 (НСЗУ) понижено (держава допомагає оформити);
+> інвалідність (ЕКОПФО) → hand-off; Дія.AI поки вузький (~3 функції).
 > **Фундамент (не дублюємо):** `ukrainian-audience-market-research-2026.md` (сегменти,
 > демографія, TAM/SAM/SOM), `service-demand/00-ukraine.md`, `service-demand/01-candidate-military-disputes.md`,
 > `research-how-ukrainians-find-lawyers.md`, `marketing-poc-jtbd-strategy.md`.

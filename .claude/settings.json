@@ -3,6 +3,7 @@
     "allow": [
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_resize",
       "mcp__Claude_Preview__preview_screenshot",
       "mcp__Claude_in_Chrome__tabs_context_mcp",
       "mcp__context7__resolve-library-id",
@@ -28,7 +29,11 @@
       "Edit(apps/client/.claude/session-summary.md)",
       "Edit(apps/client/.claude/changelog.md)",
       "Write(apps/client/.claude/session-summary.md)",
-      "Write(apps/client/.claude/changelog.md)"
+      "Write(apps/client/.claude/changelog.md)",
+      "Edit(apps/client/.claude/**)",
+      "Write(apps/client/.claude/**)",
+      "Edit(//c/Users/serge/Legal-AI/apps/client/.claude/**)",
+      "Write(//c/Users/serge/Legal-AI/apps/client/.claude/**)"
     ]
   }
 }

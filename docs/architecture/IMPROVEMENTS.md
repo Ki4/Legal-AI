@@ -604,6 +604,12 @@ CREATE TABLE invites (
   1. n8n Settings → Variables → додати `SUPABASE_SERVICE_KEY`, `ENCRYPTION_KEY`
   2. В Global Config ноді: `$vars.SUPABASE_SERVICE_KEY` замість хардкоду
   3. Секрети більше не в коді — безпечніше, легше ротувати
+- **Підпункт (secrets-hygiene при VPS/розділенні prod↔develop):** у **Claude Code global config**
+  `C:\Users\serge\.claude\settings.json` лежать плейнтекст-секрети в `mcpServers` — **Supabase management
+  token** `sbp_…` (потужний: доступ до проєктів/БД) + **n8n cloud JWT** `Bearer eyJ…`. При налаштуванні
+  VPS/оточень: (1) **ротувати обидва** (Supabase dashboard → new token; n8n → regenerate); (2) винести з
+  інлайн-значень у **env-змінні** (`${SUPABASE_ACCESS_TOKEN}` / `${N8N_MCP_TOKEN}`); (3) prod і develop —
+  **різні токени/проєкти** (dev не повинен мати креди prod). Знайдено session 60 (2026-07-01).
 - **Пріоритет:** 🟡 важливо (безпека)
 - **Актуальність:** Зробити при переносі на VPS — тоді налаштовуємо Variables один раз
 

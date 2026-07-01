@@ -10,6 +10,15 @@
 
 ---
 
+### 2026-07-01 (session 60, wrap) — permission-fix (Edit/Write glob) + secrets-task підпункт
+**Status:** гілка `feat/document-layout-preview` · ops/docs · Refs #24
+**Why:** (1) Claude Code щоразу питав дозвіл на Edit/Write session-summary/changelog попри allowlist — точні відносні шляхи не матчились з абсолютним Windows-шляхом. (2) Знайдено плейнтекст-секрети в Claude Code global config → занотовано в наявну VPS-таску.
+**What:**
+- **`.claude/settings.json`** — `fewer-permission-prompts`: +`mcp__playwright__browser_resize` (read-only); Edit/Write session-файлів — точні шляхи → **glob** `Edit/Write(apps/client/.claude/**)` + абсолютний варіант (Windows path-match фікс). Решта read-команд або auto-allowed самим CC, або вже в allowlist, або arbitrary-exec/мутації (не додаємо).
+- **`docs/architecture/IMPROVEMENTS.md` #13а (issue #24)** — підпункт «secrets-hygiene при VPS/розділенні prod↔develop»: у CC global config (`~/.claude/settings.json`) плейнтекст Supabase management token `sbp_…` + n8n JWT → ротувати + винести в env + prod/dev різні токени. Коментар на #24.
+**Files:** `.claude/settings.json`, `docs/architecture/IMPROVEMENTS.md`.
+**Tests:** н/д (ops/docs; settings.json JSON-валідний).
+
 ### 2026-07-01 (session 60) — #84 document-layout-preview G1→G5: read-only page-aware прев'ю розкладки в адмінці
 **Status:** branch `feat/document-layout-preview` · 5 комітів (`2af0743` G1 · `7207d38` G2 · `f4496ee` G3 · `0fab06c` G4 · `7cfb4fa` G5) · Refs #84 · **НЕ змержено** · UI suite **331 ✅** (+47) · tsc clean · lint clean · admin build OK
 **Why:** Наступний шар поверх примітиву `keep-block` (session 58): юрист **бачить**, як документ лягає по сторінках A4 і що тримається разом (щоб підпис не осиротів). Не редактор (Olga ще не редагує #51) — read-only модель+візуалізація, на якій згодом стане редактор. Tier 2, будували знизу вгору (чиста логіка+тести → UI), рушій пагінації тестований першим.

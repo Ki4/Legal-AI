@@ -49,13 +49,18 @@ PreviewPage (A4 + blur + ЗРАЗОК) → «Сплатити» → **preview-pa
   Per-profile rate-limit 20/24год. Склонення ПІБ = Groq + stem-guard. #67/#76 live.
 - **Агент «що змінилось» (law-change-impact)** — живий end-to-end (n8n `qTOIqllA4CQvBJs5`). issue #73 закрито.
 
-**🟢 SESSION 59 (2026-07-01) — ринкове дослідження + стратегія (docs-only, ЗМЕРЖЕНО в main `80ef7df`):**
-2 deep-research звіти (глобальний ринок + Україна/EU) + синтез 5 інсайтів → roadmap v1.1. Ключове:
+**🟢 SESSION 59 (2026-07-01) — ринкове дослідження + стратегія + корективи плану (docs-only, ЗМЕРЖЕНО в main):**
+3 deep-research прогони + синтез 5 інсайтів → roadmap **v1.2**. Ключове:
 монополія адвокатури **вузька** (продукт легальний by design, червона лінія = представництво в суді);
 держава (Дія e-Розлучення) забирає простий розвід → наша ніша = **«де починається суд»** (аліменти/діти/спірне);
-медицина = вертикаль **шаблонних** позицій (1–4) у тому ж рушії, не окремий продукт; human-review зашита в дизайн.
-Доки: `docs/research/global-legal-doc-automation-market-2026.md`, `.../ukraine-eu-regulatory-and-competitors-2026.md`,
-`docs/strategy/market-strategy-synthesis-2026.md`, roadmap v1.1.
+медицина = вертикаль **шаблонних** позицій (1–4), не окремий продукт; human-review зашита в дизайн.
+**Верифікований попит 1–4:** аліменти (33k справ/208k боргів) + судовий розвід (≈75% усіх) = валідоване ядро;
+M1 (медкартка) = 1-й медкандидат; **M5 (НСЗУ) понижено** (держава допомагає оформити); інвалідність (ЕКОПФО) → hand-off;
+Дія.AI поки вузький (~3 функції). Доки: `global-legal-doc-automation-market-2026.md`,
+`ukraine-eu-regulatory-and-competitors-2026.md`, `service-demand-validation-1-4-2026.md`,
+`strategy/market-strategy-synthesis-2026.md`, roadmap v1.2.
+**⚠️ Поза main (потрібен Olga sign-off + #BLOCKER-5):** гілка `claude/medical-vertical-complexity-scoring`
+(скоринг 18 медпозицій M1–M18).
 
 **🔴 Наступна сесія (вибір Сергія):** (0) **#NEXT-4 медвертикаль крізь шкалу шаблонності** (запущено в окремому
 контексті session 59) → список позицій 1–4 = кандидати; мед-код блокує **#BLOCKER-5** (ресёрч мед-даних);

@@ -14,10 +14,12 @@ import { describeShowIf, fieldTypeLabel, type FieldDiff } from '../../lib/servic
 import type { FormConfig } from '../../types/form'
 import { Card, SectionLabel } from '../ui'
 import { DocumentPreview } from './DocumentPreview'
+import { DocumentLayoutPreview } from './DocumentLayoutPreview'
 
-type Tab = 'document' | 'anatomy' | 'graph' | 'form'
+type Tab = 'document' | 'layout' | 'anatomy' | 'graph' | 'form'
 const TABS: { id: Tab; label: string }[] = [
   { id: 'document', label: 'Документ' },
+  { id: 'layout', label: 'Розкладка' },
   { id: 'anatomy', label: 'Анатомія' },
   { id: 'graph', label: 'Граф звʼязків' },
   { id: 'form', label: 'Алгоритм форми' },
@@ -49,6 +51,7 @@ export function ServiceAnatomy({ viz, form, diff, documentTemplate, slug }: { vi
       </div>
 
       {tab === 'document' && <DocumentPreview template={documentTemplate ?? null} slug={slug ?? null} />}
+      {tab === 'layout' && <DocumentLayoutPreview template={documentTemplate ?? null} slug={slug ?? null} />}
       {tab === 'anatomy' && <ServiceDetail service={viz} />}
       {tab === 'graph' && (
         <CatalogGraph nodes={graph.nodes} edges={graph.edges} changes={[]} services={[viz]} onOpenService={() => {}} hideChanges />

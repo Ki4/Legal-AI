@@ -10,6 +10,19 @@
 
 ---
 
+### 2026-07-02 (web-сесія, паралельно s62-64) — template-editor Сесія 1: ядро редактора шаблона в адмінці (Tier 2, гілка `claude/document-constructor-styling-a3zkky`)
+**Status:** гілка `claude/document-constructor-styling-a3zkky` (rebased на main після s64) · UI **345 ✅** (+14) · tsc/lint clean (7 lint-помилок — pre-existing) · build:admin OK · міграцію застосовано Сергієм: draft-колонка ✅, `service_revisions` спершу впала (**services.id = INTEGER, не UUID**) → виправлений SQL передано в чат; файл перейменовано `030→031_template_editor.sql` (колізія номера з `030_service_categories.sql` сесії 63)
+**Why:** Дослідження digitalved.ru (2 workflow-прогони: ринок конструкторів 19 агентів + блочна модель 4 агенти) показало: рушій уже вміє всю стилізацію, єдина прогалина — `document_template` редагується лише через SQL. Interview (hard, 12 питань) зафіксував рішення: чернетка+публікація з парс-гейтом (безпека проду), снапшот-архів `service_revisions` (Q8: «бекапи, щоб не наламали дров»), side-by-side редактор+живе прев'ю (ринок: жоден WYSIWYG не виражає умовну логіку — round-trip відхилено).
+**What:**
+- Спека-триплет `specs/features/template-editor/` (requirements/plan/validation) — конвеєр 3 сесій.
+- Міграція `031_template_editor.sql` (спершу 030, перейменовано): `services.document_template_draft` + append-only `service_revisions` з `service_id INTEGER` (RLS authenticated-only).
+- `templateGate.ts` (engine-free парс-гейт, рендер інжектиться) + `validateDraft` у `documentPreview.ts` (реальний `@doc-engine`).
+- `serviceTemplate.ts` `publishTemplate`: гейт → снапшот → публікація; `generation_mode='template'` на першій публікації mode-less послуги.
+- Вкладка «📄 Шаблон документа» у `ServiceEditPage` + `TemplateEditorPanel` (textarea, статуси, попередження про невідомі змінні через реюз `serviceAnatomy.diffFormVsTemplate`) + `TemplateDraftPreview` (таби Документ/Розкладка по чернетці). Мобільний — read-only + підказка.
+**Files:** `specs/features/template-editor/{requirements,plan,validation}.md` · `supabase/migrations/031_template_editor.sql` · `src/admin/lib/{templateGate,serviceTemplate}.ts` · `src/admin/lib/documentPreview.ts` (+validateDraft) · `src/admin/components/{TemplateEditorPanel,TemplateDraftPreview}.tsx` · `src/admin/pages/ServiceEditPage.tsx` · тести `__tests__/{templateGate,serviceTemplate}.test.ts`, `TemplateEditorPanel.test.tsx`.
+**Tests:** 345 ✅ (гейт на реальному рушії: unclosed if/each, unknown helper, stray /if; publish-порядок snapshot→update на моку; panel-smoke: publish disabled при помилці, draft-save завжди активний).
+**Next:** Сергій: прогнати виправлений SQL для `service_revisions` (INTEGER) + демо. Сесія 2: тулбар+палітра+чипи (2 паралельні агенти).
+
 ### 2026-07-02 (session 64) — issue #86: «хибна тривога» health виявилась РЕАЛЬНИМ прод-багом; дата-фікс live
 **Status:** **ЗМЕРЖЕНО в main** (merge `b2b5a7d`, feature `2c4bcd4`, Closes #86; гілку видалено) · код + **live-дані** · UI **357 ✅** (+10) · root **1114 ✅** · tsc clean
 **Why:** Знахідка демо s62 «health хибно тривожить на робочих послугах» при розслідуванні **тричі перевернулась**: (1) аналізатор НЕ наївний — він коректно моделює computed-шар; (2) гіпотеза Explore-агента «generation_mode='js', шаблон спить» спростована живою БД — обидві послуги в `'template'`, движок РЕНДЕРИТЬ саме цей шаблон; (3) фінальний доказ (реальний рушій + живий шаблон + ключі живої форми): **alimony у проді збирав документ з 16 дірами «________»** (без відповідача, без адреси, «Стягнути з ________») — жива 24-полева форма старої конвенції (`respondent_*`) не покривала новоконвенційний шаблон. Усі зелені smoke ішли `test-webhook.mjs` з ключами `defendant_*` — **повз живу форму**. У divorce бракувало 4 полів #87 (ЦПК ст.175 ч.7 реквізити) → `________` у блоці реквізитів. Health увесь час казав правду.

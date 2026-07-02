@@ -4,6 +4,10 @@ import { AdminLayout } from '../components/AdminLayout'
 import { FormBuilder } from '../components/FormBuilder'
 import { Toast } from '../components/Toast'
 import { DynamicLegalFormBuilder } from '../../components/DynamicLegalFormBuilder'
+import { TemplateEditorPanel } from '../components/TemplateEditorPanel'
+import { TemplateDraftPreview } from '../components/TemplateDraftPreview'
+import { validateDraft } from '../lib/documentPreview'
+import { publishTemplate } from '../lib/serviceTemplate'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FormConfig } from '../../types/form'
@@ -16,7 +20,7 @@ import {
 } from '../../lib/serviceStatus'
 import { SERVICE_CATEGORIES, UNCATEGORISED_LABEL } from '../../lib/serviceCategories'
 
-type Tab = 'form' | 'ai' | 'settings'
+type Tab = 'form' | 'template' | 'ai' | 'settings'
 
 const DEFAULT_CONFIG: FormConfig = {
   service_id: '',
@@ -56,6 +60,12 @@ export function ServiceEditPage() {
   const [category, setCategory]   = useState<string | null>(null)
   // New services start disabled — lawyer activates after review (DB default too).
   const [status, setStatus]       = useState<ServiceStatus>('disabled')
+  // Template editor (specs/features/template-editor): draft is edited here; the
+  // bot generates ONLY from the published document_template until «Опублікувати».
+  const [docPublished, setDocPublished] = useState<string | null>(null)
+  const [docDraft, setDocDraft]         = useState('')
+  const [savingDraft, setSavingDraft]   = useState(false)
+  const [publishing, setPublishing]     = useState(false)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [isDirty, setIsDirty]       = useState(false)
@@ -95,6 +105,8 @@ export function ServiceEditPage() {
         if (!data) return
         setConfig((data.form_config as FormConfig) ?? DEFAULT_CONFIG)
         setAiPrompt(data.ai_prompt ?? DEFAULT_PROMPT)
+        setDocPublished(data.document_template ?? null)
+        setDocDraft(data.document_template_draft ?? data.document_template ?? '')
         setIcon(data.icon ?? '⚖️')
         setDesc(data.description ?? '')
         setPrice(data.price ?? 0)
@@ -151,8 +163,41 @@ export function ServiceEditPage() {
     markDirty()
   }
 
+  // «Зберегти чернетку» — always allowed, even with a parse error (never lose
+  // the lawyer's work). Production generation is untouched by design.
+  async function handleSaveDraft() {
+    if (!supabase || !id) return
+    setSavingDraft(true)
+    const { error } = await supabase
+      .from('services')
+      .update({ document_template_draft: docDraft })
+      .eq('id', id)
+    setSavingDraft(false)
+    if (error) showToast('error', `Не вдалося зберегти чернетку: ${error.message}`)
+    else showToast('success', 'Чернетку збережено ✓')
+  }
+
+  // «Опублікувати» — parse gate → snapshot to service_revisions → copy draft
+  // into document_template (serviceTemplate.publishTemplate).
+  async function handlePublish() {
+    if (!supabase || !id) return
+    setPublishing(true)
+    const result = await publishTemplate(
+      { supabase, validate: validateDraft },
+      { serviceId: id, draft: docDraft, userId: user?.id ?? null },
+    )
+    setPublishing(false)
+    if (result.ok) {
+      setDocPublished(docDraft)
+      showToast('success', 'Опубліковано ✓ Клієнти отримують нову версію документа')
+    } else {
+      showToast('error', result.error)
+    }
+  }
+
   const TABS: { id: Tab; icon: string; label: string; short: string }[] = [
     { id: 'form',     icon: '📋', label: 'Конструктор форми', short: 'Форма' },
+    { id: 'template', icon: '📄', label: 'Шаблон документа',  short: 'Шаблон' },
     { id: 'ai',       icon: '🤖', label: 'AI-промпт',         short: 'AI' },
     { id: 'settings', icon: '⚙️', label: 'Налаштування',      short: 'Опції' },
   ]
@@ -240,6 +285,38 @@ export function ServiceEditPage() {
             {/* ── FORM BUILDER ── */}
             {tab === 'form' && (
               <FormBuilder config={config} onChange={handleConfigChange} />
+            )}
+
+            {/* ── TEMPLATE EDITOR ── */}
+            {tab === 'template' && (
+              <>
+                {/* Desktop: full editor. Draft state lives here so the right
+                    preview panel re-renders on every keystroke. */}
+                <div className="hidden xl:block h-full">
+                  <TemplateEditorPanel
+                    draft={docDraft}
+                    published={docPublished}
+                    isNew={isNew}
+                    formConfig={config}
+                    validate={validateDraft}
+                    onDraftChange={(v) => { setDocDraft(v); markDirty() }}
+                    onSaveDraft={handleSaveDraft}
+                    onPublish={handlePublish}
+                    savingDraft={savingDraft}
+                    publishing={publishing}
+                  />
+                </div>
+                {/* Mobile/tablet: read-only (interview Q10 — desktop-first). */}
+                <div className="xl:hidden">
+                  <p className="text-sm text-inkSoft bg-paperAlt border border-line rounded-xl px-3 py-2.5 mb-4">
+                    Редагування шаблона доступне з компʼютера. Нижче — перегляд чинної чернетки.
+                  </p>
+                  <TemplateDraftPreview
+                    template={docDraft || docPublished}
+                    slug={config.service_id || null}
+                  />
+                </div>
+              </>
             )}
 
             {/* ── AI PROMPT ── */}
@@ -380,34 +457,44 @@ export function ServiceEditPage() {
             )}
           </div>
 
-          {/* Right panel — live preview (desktop only) */}
+          {/* Right panel — live preview (desktop only). Form preview normally;
+              the document-draft preview when the template tab is active. */}
           <div className="hidden xl:flex w-96 flex-shrink-0 border-l border-line flex-col">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-line">
-              <span className="text-xs font-semibold text-inkSoft uppercase tracking-wide">Превью форми</span>
-              <button
-                onClick={() => setPreviewAnswerKey((k) => k + 1)}
-                className="text-xs text-inkMute hover:text-ink transition-colors"
-                title="Скинути відповіді"
-              >
-                🔄 Скинути
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden bg-white">
-              {config.steps.length > 0 ? (
-                <div className="h-full overflow-y-auto" key={previewAnswerKey}>
-                  <DynamicLegalFormBuilder
-                    config={config}
-                    serviceSlug="preview"
-                    onSubmit={async () => { alert('Preview — submit відключено') }}
-                  />
+            {tab === 'template' ? (
+              <TemplateDraftPreview
+                template={docDraft || docPublished}
+                slug={config.service_id || null}
+              />
+            ) : (
+              <>
+                <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+                  <span className="text-xs font-semibold text-inkSoft uppercase tracking-wide">Превью форми</span>
+                  <button
+                    onClick={() => setPreviewAnswerKey((k) => k + 1)}
+                    className="text-xs text-inkMute hover:text-ink transition-colors"
+                    title="Скинути відповіді"
+                  >
+                    🔄 Скинути
+                  </button>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                  <span className="text-4xl mb-3">📋</span>
-                  <p className="text-inkSoft text-sm">Додайте поля у конструкторі щоб побачити превью</p>
+                <div className="flex-1 overflow-hidden bg-white">
+                  {config.steps.length > 0 ? (
+                    <div className="h-full overflow-y-auto" key={previewAnswerKey}>
+                      <DynamicLegalFormBuilder
+                        config={config}
+                        serviceSlug="preview"
+                        onSubmit={async () => { alert('Preview — submit відключено') }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center px-6">
+                      <span className="text-4xl mb-3">📋</span>
+                      <p className="text-inkSoft text-sm">Додайте поля у конструкторі щоб побачити превью</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>

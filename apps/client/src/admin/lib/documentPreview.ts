@@ -1,5 +1,6 @@
 import docEngine from '@doc-engine'
 import { toParagraphs, type PreviewParagraph } from './documentStyles'
+import { runParseGate, type GateResult } from './templateGate'
 
 // CJS module exposes only a default export under rollup — destructure at the boundary.
 const { buildContext, renderDocumentWithStyles } = docEngine
@@ -24,6 +25,15 @@ export function renderPreview(template: string, answers: Record<string, unknown>
   } catch (e) {
     return { ok: false, paragraphs: [], error: e instanceof Error ? e.message : String(e) }
   }
+}
+
+/**
+ * Parse gate for the template editor (specs/features/template-editor §2.2):
+ * renders the draft against empty answers with the REAL engine. Publication is
+ * blocked while this fails; saving the draft itself is always allowed.
+ */
+export function validateDraft(template: string): GateResult {
+  return runParseGate((tpl) => renderDocumentWithStyles(tpl, buildContext({}, {})), template)
 }
 
 export interface LayoutRenderResult {

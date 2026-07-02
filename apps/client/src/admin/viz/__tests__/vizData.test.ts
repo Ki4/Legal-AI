@@ -169,4 +169,28 @@ describe('liveServiceToViz — defensive defaults', () => {
     // js mode has no template but is not red for it; the amber legacy note → warn.
     expect(viz.health).toBe('warn')
   })
+
+  // issue #86: a js-mode service whose DB row holds a drifted DRAFT template must not viz-scream.
+  it('js mode + drifted dormant template → warn health, no "__missing" group, flagged non-authoritative', () => {
+    const form: FormConfig = {
+      service_id: 's', title: 'S', tabs: [{ id: 'p', label: 'P' }],
+      steps: [{ id: 'respondent_last_name', tab: 'p', type: 'text', label: 'Прізвище' }],
+    }
+    const viz = liveServiceToViz({ slug: 'x', title: 'X', generation_mode: 'js', document_template: '{{defendant_employer}} {{plaintiff_phone}}', form_config: form })
+    expect(viz.templateAuthoritative).toBe(false)
+    expect(viz.health).toBe('warn')                                   // not 'problem'
+    expect(viz.tabs.some((t) => t.id === '__missing')).toBe(false)    // no alarm group
+    expect(viz.counts.missing).toBe(2)                                // …but the count stays informational
+  })
+
+  it('template mode keeps the "__missing" group and problem health for the same drift', () => {
+    const form: FormConfig = {
+      service_id: 's', title: 'S', tabs: [{ id: 'p', label: 'P' }],
+      steps: [{ id: 'respondent_last_name', tab: 'p', type: 'text', label: 'Прізвище' }],
+    }
+    const viz = liveServiceToViz({ slug: 'x', title: 'X', generation_mode: 'template', document_template: '{{defendant_employer}} {{plaintiff_phone}}', form_config: form })
+    expect(viz.templateAuthoritative).toBe(true)
+    expect(viz.health).toBe('problem')
+    expect(viz.tabs.some((t) => t.id === '__missing')).toBe(true)
+  })
 })

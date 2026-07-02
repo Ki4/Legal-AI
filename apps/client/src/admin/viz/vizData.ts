@@ -15,6 +15,7 @@ import {
   collectBrokenShowIf,
   collectEmptyLabelFields,
   serviceHealth,
+  isTemplateAuthoritative,
 } from '../../lib/serviceAnatomy'
 import type { Health } from './theme'
 import type { VizNode, FieldMapping } from './demoData'
@@ -38,6 +39,9 @@ export interface VizService {
   doc: VizNode | null           // kind 'doc'
   counts: { used: number; extra: number; missing: number; total: number }
   requestsPerMonth: number | null // null = no analytics source (kept out of structural views)
+  /** false = generation_mode='js': the template is a dormant draft, its diff is not an alarm
+   *  (issue #86). Optional — undefined (demo data, older callers) means authoritative. */
+  templateAuthoritative?: boolean
 }
 
 const HEALTH_FROM_LEVEL: Record<'green' | 'amber' | 'red', Health> = { green: 'ok', amber: 'warn', red: 'problem' }
@@ -75,9 +79,12 @@ export function liveServiceToViz(row: ServiceRowLike): VizService {
   const fields: VizFieldChip[] = form.steps.map((f) => ({
     id: f.id, label: f.label || f.id, tab: f.tab, map: used.has(f.id) ? 'used' : 'extra',
   }))
+  const templateAuthoritative = isTemplateAuthoritative(row.generation_mode ?? null)
+
   const tabs: FormTab[] = [...form.tabs]
-  // Template placeholders the form never asks → a dedicated "missing" group.
-  if (diff.unmatchedPlaceholders.length) {
+  // Template placeholders the form never asks → a dedicated "missing" group. Only when the
+  // template actually generates the document — a js-mode draft's gaps are not "missing" (issue #86).
+  if (diff.unmatchedPlaceholders.length && templateAuthoritative) {
     tabs.push({ id: '__missing', label: 'Бракує у формі' })
     for (const p of diff.unmatchedPlaceholders) fields.push({ id: p, label: p, tab: '__missing', map: 'missing' })
   }
@@ -121,6 +128,7 @@ export function liveServiceToViz(row: ServiceRowLike): VizService {
       total: form.steps.length,
     },
     requestsPerMonth: null,
+    templateAuthoritative,
   }
 }
 

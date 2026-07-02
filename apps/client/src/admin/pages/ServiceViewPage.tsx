@@ -18,6 +18,7 @@ import {
   collectBrokenShowIf,
   collectEmptyLabelFields,
   serviceHealth,
+  isTemplateAuthoritative,
   lawCodeFromUrl,
   type FieldDiff,
   type ServiceHealth,
@@ -160,16 +161,23 @@ export function ServiceViewBody({
   const hi = HEALTH_UI[health.level]
   const counts = { used: diff.usedFields.length, extra: diff.unusedFields.length, missing: diff.unmatchedPlaceholders.length }
   const needsTemplate = svc.generation_mode === null || svc.generation_mode === 'template' || svc.generation_mode === 'hybrid'
+  // js-mode: the template column is a dormant draft (legacy builder generates) — its diff
+  // must not read as "the service is broken" (issue #86).
+  const templateAuthoritative = isTemplateAuthoritative(svc.generation_mode ?? null)
 
   // Plain-language one-liner instead of a per-field bullet wall (the field detail lives in the chips below).
   const summary = useMemo(() => {
     if (health.level === 'green') return 'Форма, шаблон і цитати узгоджені — послуга готова збирати документ.'
     const parts: string[] = []
     if (needsTemplate && !analysis.hasTemplate) parts.push('документ ще не має шаблону')
-    if (counts.missing) parts.push(`шаблон очікує ${counts.missing} ${plural(counts.missing, 'поле', 'поля', 'полів')}, яких форма не питає`)
-    if (counts.extra) parts.push(`${counts.extra} ${plural(counts.extra, 'поле', 'поля', 'полів')} форма питає, але документ не друкує`)
+    if (templateAuthoritative) {
+      if (counts.missing) parts.push(`шаблон очікує ${counts.missing} ${plural(counts.missing, 'поле', 'поля', 'полів')}, яких форма не питає`)
+      if (counts.extra) parts.push(`${counts.extra} ${plural(counts.extra, 'поле', 'поля', 'полів')} форма питає, але документ не друкує`)
+    } else if (analysis.hasTemplate && (counts.missing || counts.extra)) {
+      parts.push('чернетка шаблону розходиться з формою — на генерацію не впливає (документ збирає legacy-білдер)')
+    }
     return parts.length ? capitalize(parts.join('; ')) + '.' : 'Є структурні зауваження — дивіться нижче.'
-  }, [health.level, needsTemplate, analysis.hasTemplate, counts.missing, counts.extra])
+  }, [health.level, needsTemplate, templateAuthoritative, analysis.hasTemplate, counts.missing, counts.extra])
 
   // Only categorical issues (no per-field enumeration — that became the colored chips).
   const issues: { tone: 'danger' | 'warn'; text: string }[] = []
@@ -248,7 +256,8 @@ export function ServiceViewBody({
         </Card>
 
         {/* Per-service visual lenses: anatomy (pipeline/radial/blueprint) · graph · form algorithm */}
-        <ServiceAnatomy viz={viz} form={form} diff={diff} documentTemplate={svc.document_template} slug={svc.slug} />
+        <ServiceAnatomy viz={viz} form={form} diff={diff} documentTemplate={svc.document_template} slug={svc.slug}
+                        templateAuthoritative={templateAuthoritative} />
 
         {/* Citations */}
         {analysis.citations.length > 0 && (

@@ -25,7 +25,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'form', label: 'Алгоритм форми' },
 ]
 
-export function ServiceAnatomy({ viz, form, diff, documentTemplate, slug }: { viz: VizService; form: FormConfig; diff: FieldDiff; documentTemplate?: string | null; slug?: string | null }) {
+export function ServiceAnatomy({ viz, form, diff, documentTemplate, slug, templateAuthoritative = true }: { viz: VizService; form: FormConfig; diff: FieldDiff; documentTemplate?: string | null; slug?: string | null; templateAuthoritative?: boolean }) {
   const [tab, setTab] = useState<Tab>('document')
   const [formView, setFormView] = useState<'tree' | 'list'>('tree')
   const graph = useMemo(() => buildCatalogGraph([viz]), [viz])
@@ -43,12 +43,18 @@ export function ServiceAnatomy({ viz, form, diff, documentTemplate, slug }: { vi
         ))}
       </div>
 
-      {/* at-a-glance: how form fields map to the document */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <StatCard n={diff.usedFields.length} label="використано" tone="ok" />
-        <StatCard n={diff.unusedFields.length} label="не в шаблоні" tone="warn" />
-        <StatCard n={diff.unmatchedPlaceholders.length} label="бракує" tone="danger" />
+      {/* at-a-glance: how form fields map to the document. For js-mode services the
+          template is a dormant draft — mute the alarm tones and say so (issue #86). */}
+      <div className={`grid grid-cols-3 gap-3 ${templateAuthoritative ? 'mb-5' : 'mb-2'}`}>
+        <StatCard n={diff.usedFields.length} label="використано" tone={templateAuthoritative ? 'ok' : 'muted'} />
+        <StatCard n={diff.unusedFields.length} label={templateAuthoritative ? 'не в шаблоні' : 'не в чернетці'} tone={templateAuthoritative ? 'warn' : 'muted'} />
+        <StatCard n={diff.unmatchedPlaceholders.length} label={templateAuthoritative ? 'бракує' : 'бракує в чернетці'} tone={templateAuthoritative ? 'danger' : 'muted'} />
       </div>
+      {!templateAuthoritative && (
+        <p className="mb-5 text-[11.5px] text-inkMute leading-relaxed">
+          Порівняння з чернеткою шаблону — документ збирає legacy-білдер, тож розбіжності на генерацію не впливають.
+        </p>
+      )}
 
       {tab === 'document' && <DocumentPreview template={documentTemplate ?? null} slug={slug ?? null} />}
       {tab === 'layout' && <DocumentLayoutPreview template={documentTemplate ?? null} slug={slug ?? null} />}
@@ -147,11 +153,13 @@ function FormRow({ step, depth, form, open, toggle }: {
 }
 
 // ── Stat card — big tinted number (used / extra / missing) ─────────────────────────────────
-function StatCard({ n, label, tone }: { n: number; label: string; tone: 'ok' | 'warn' | 'danger' }) {
+// `muted` = informational (diff vs a dormant draft template — not an alarm).
+function StatCard({ n, label, tone }: { n: number; label: string; tone: 'ok' | 'warn' | 'danger' | 'muted' }) {
   const cls = {
     ok: 'bg-ok/10 border-ok/20 text-ok',
     warn: 'bg-warn/10 border-warn/20 text-warn',
     danger: 'bg-danger/10 border-danger/20 text-danger',
+    muted: 'bg-paperAlt border-line text-inkMute',
   }[tone]
   return (
     <div className={`border rounded-xl px-3 py-3 ${cls}`}>

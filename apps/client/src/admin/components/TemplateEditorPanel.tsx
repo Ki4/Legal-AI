@@ -1,7 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import { analyzeTemplate, diffFormVsTemplate } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import type { GateResult } from '../lib/templateGate'
+import { TemplateToolbar } from './TemplateToolbar'
+import { VariablePalette } from './VariablePalette'
+import { insertSnippet, insertLineBefore, wrapSelection } from '../lib/insertAtCursor'
+import type { EditResult } from '../lib/insertAtCursor'
 
 /**
  * Left panel of the «Шаблон документа» tab (specs/features/template-editor §2.1):
@@ -33,6 +37,21 @@ export function TemplateEditorPanel({
   savingDraft: boolean
   publishing: boolean
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Toolbar/palette edits: apply a pure edit at the current selection, push the
+  // new text up, then restore focus + caret after React re-renders the value.
+  const applyEdit = (edit: (text: string, selStart: number, selEnd: number) => EditResult) => {
+    const el = textareaRef.current
+    if (!el) return
+    const { text, caret } = edit(draft, el.selectionStart, el.selectionEnd)
+    onDraftChange(text)
+    requestAnimationFrame(() => {
+      el.focus()
+      el.setSelectionRange(caret, caret)
+    })
+  }
+
   const gate = useMemo<GateResult>(
     () => (draft.trim() ? validate(draft) : { ok: true }),
     [draft, validate],
@@ -111,7 +130,15 @@ export function TemplateEditorPanel({
         </div>
       )}
 
+      <TemplateToolbar
+        disabled={isNew}
+        onStyle={(directive) => applyEdit((t, s) => insertLineBefore(t, s, directive))}
+        onWrap={(open, close) => applyEdit((t, s, e) => wrapSelection(t, s, e, open, close))}
+        onInsert={(snippet) => applyEdit((t, s, e) => insertSnippet(t, s, e, snippet))}
+      />
+
       <textarea
+        ref={textareaRef}
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
         spellCheck={false}
@@ -119,6 +146,19 @@ export function TemplateEditorPanel({
                    text-ink text-[13px] font-mono leading-relaxed focus:outline-none focus:border-brand resize-none"
         placeholder={'До ________ районного суду…\n{{!style: right}}\nПозивач: {{plaintiff_name}}'}
       />
+
+      <details open>
+        <summary className="text-sm font-semibold text-ink cursor-pointer select-none">
+          Змінні форми
+        </summary>
+        <div className="mt-2">
+          <VariablePalette
+            formConfig={formConfig}
+            template={draft}
+            onInsert={(token) => applyEdit((t, s, e) => insertSnippet(t, s, e, token))}
+          />
+        </div>
+      </details>
     </div>
   )
 }

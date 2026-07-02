@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { TemplateEditorPanel } from '../TemplateEditorPanel'
 import type { FormConfig } from '../../../types/form'
 import type { GateResult } from '../../lib/templateGate'
@@ -72,5 +72,14 @@ describe('TemplateEditorPanel', () => {
     renderPanel({ isNew: true })
     expect(screen.getByText(/Спочатку збережіть нову послугу/)).toBeTruthy()
     expect(screen.queryByRole('textbox')).toBeNull()
+  })
+
+  it('toolbar style button inserts the directive into the draft via onDraftChange', () => {
+    const onDraftChange = vi.fn()
+    renderPanel({ draft: 'Позивач: {{last_name}}', onDraftChange })
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
+    textarea.setSelectionRange(3, 3) // caret inside the only paragraph
+    fireEvent.click(screen.getByRole('button', { name: 'Праворуч' }))
+    expect(onDraftChange).toHaveBeenCalledWith('{{!style: right}}\nПозивач: {{last_name}}')
   })
 })

@@ -11,12 +11,14 @@ import {
   collectEmptyLabelFields,
   describeShowIf,
   serviceHealth,
+  isTemplateAuthoritative,
   fieldTypeLabel,
   lawCodeFromUrl,
   analyzeService,
 } from '../serviceAnatomy'
 import { divorceFormConfig } from '../../data/divorceFormConfig'
 import { alimonyChangeFormConfig } from '../../data/alimonyChangeFormConfig'
+import { alimonyConfig } from '../../data/alimonyConfig'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..')
 const tpl = (slug: string) => readFileSync(resolve(REPO, `n8n/templates/services/${slug}.document.txt`), 'utf8')
@@ -106,6 +108,15 @@ const COMPUTED_KEYS = ['plaintiff_name', 'defendant_name', 'children', 'has_chil
 describe('diffFormVsTemplate — real templates', () => {
   it('alimony-change: zero unmatched (fully aligned)', () => {
     const diff = diffFormVsTemplate(alimonyChangeFormConfig, analyzeTemplate(tpl('alimony-change')))
+    expect(diff.unmatchedPlaceholders).toEqual([])
+  })
+
+  // The missing invariant that let issue #86 ship: the live alimony row rendered the
+  // new-convention template while its form_config was still the legacy 24-field version
+  // (respondent_* vs defendant_*) → real submissions produced documents with 16 «________»
+  // holes. alimonyConfig is now the aligned SSoT; this pins form↔template alignment.
+  it('alimony: zero unmatched (form SSoT aligned with the doc-engine template, #86)', () => {
+    const diff = diffFormVsTemplate(alimonyConfig, analyzeTemplate(tpl('alimony')))
     expect(diff.unmatchedPlaceholders).toEqual([])
   })
 
@@ -210,6 +221,34 @@ describe('serviceHealth', () => {
   it('legacy js mode is not red for missing template, but amber', () => {
     expect(serviceHealth({ generationMode: 'js', hasTemplate: false, diff: clean, brokenShowIf: [], emptyLabelFields: [], staleCitations: [] }).level).toBe('amber')
   })
+
+  // ── issue #86: js-mode diff vs the dormant draft template is NOT an alarm ──
+  it('js mode: drifted dormant template → amber with ONE draft note, not per-field red/amber', () => {
+    const drifted = { usedFields: ['a'], unusedFields: ['x', 'y'], unmatchedPlaceholders: ['ghost1', 'ghost2'] }
+    const h = serviceHealth({ generationMode: 'js', hasTemplate: true, diff: drifted, brokenShowIf: [], emptyLabelFields: [], staleCitations: [] })
+    expect(h.level).toBe('amber')
+    const joined = h.reasons.join(' ')
+    expect(joined).toContain('Чернетка шаблону розходиться з формою (бракує 2, не використано 2)')
+    expect(joined).not.toContain('ghost1')                       // no per-placeholder red
+    expect(joined).not.toContain('Поле «x»')                     // no per-field unused amber
+  })
+
+  it('js mode: form-side problems still red (broken show_if is real regardless of mode)', () => {
+    const h = serviceHealth({ generationMode: 'js', hasTemplate: true, diff: clean, brokenShowIf: ['bad'], emptyLabelFields: [], staleCitations: [] })
+    expect(h.level).toBe('red')
+  })
+
+  it('js mode without a template → no draft-drift note (nothing to compare)', () => {
+    const h = serviceHealth({ generationMode: 'js', hasTemplate: false, diff: clean, brokenShowIf: [], emptyLabelFields: [], staleCitations: [] })
+    expect(h.reasons.join(' ')).not.toContain('Чернетка')
+  })
+
+  it('isTemplateAuthoritative: only js is non-authoritative', () => {
+    expect(isTemplateAuthoritative('js')).toBe(false)
+    expect(isTemplateAuthoritative('template')).toBe(true)
+    expect(isTemplateAuthoritative('hybrid')).toBe(true)
+    expect(isTemplateAuthoritative(null)).toBe(true)
+  })
 })
 
 describe('analyzeService — one-shot bundler', () => {
@@ -217,6 +256,34 @@ describe('analyzeService — one-shot bundler', () => {
     const r = analyzeService(alimonyChangeFormConfig, tpl('alimony-change'), 'hybrid')
     expect(r.diff.unmatchedPlaceholders).toEqual([])
     expect(r.health.level).not.toBe('red') // amber: AI-fed fields aren't in the template
+  })
+
+  // issue #86: for a js-mode service the stored template is a dormant draft — its drift
+  // must NOT paint the service red (the legacy builder generates), one amber note instead.
+  // Synthetic drifted pair (old-convention form × new-convention template).
+  const driftedForm: FormConfig = {
+    service_id: 'x', title: 'X', tabs: [{ id: 'p', label: 'P' }],
+    steps: [{ id: 'respondent_last_name', tab: 'p', type: 'text', label: 'Прізвище' }],
+  }
+  const driftedTpl = '{{defendant_employer}} {{plaintiff_payout_method}}'
+
+  it('js mode + drifted dormant template → amber with a draft note, not red', () => {
+    const r = analyzeService(driftedForm, driftedTpl, 'js')
+    expect(r.diff.unmatchedPlaceholders.length).toBeGreaterThan(0) // the drift is real…
+    expect(r.health.level).toBe('amber')                            // …but not an alarm
+    expect(r.health.reasons.join(' ')).toContain('на генерацію не впливає')
+  })
+
+  it('the SAME drift in template mode stays red (authoritative template must alarm)', () => {
+    const r = analyzeService(driftedForm, driftedTpl, 'template')
+    expect(r.health.level).toBe('red')
+  })
+
+  // issue #86 end-state on REAL live data: aligned form + template in template mode → green.
+  it('alimony real form × real template (template mode) → green', () => {
+    const r = analyzeService(alimonyConfig, tpl('alimony'), 'template')
+    expect(r.diff.unmatchedPlaceholders).toEqual([])
+    expect(r.health.level).toBe('green')
   })
 
   it('a form field whose id collides with a computed key counts as used', () => {

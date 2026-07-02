@@ -84,7 +84,8 @@ function Pipeline({ svc }: { svc: VizService }) {
       <Band title="Документ" sub={svc.doc ? svc.doc.sub : 'готується'}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, justifyContent: 'center' }}>
           {svc.doc && <NodePill node={svc.doc} />}
-          {svc.counts.missing > 0 && (
+          {/* js-mode drafts don't "wait for fields" — the legacy builder generates (issue #86) */}
+          {svc.counts.missing > 0 && svc.templateAuthoritative !== false && (
             <span style={{ fontSize: 12.5, color: C.dangerInk, background: C.dangerTint, border: `1px solid ${C.dangerBorder}`, borderRadius: 8, padding: '6px 11px' }}>
               ⚠ шаблон чекає {svc.counts.missing} {svc.counts.missing === 1 ? 'поле' : 'поля'}, яких форма не питає
             </span>

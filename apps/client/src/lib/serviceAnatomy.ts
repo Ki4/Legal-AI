@@ -370,6 +370,16 @@ export type HealthLevel = 'green' | 'amber' | 'red'
 export interface ServiceHealth { level: HealthLevel; reasons: string[] }
 
 const TEMPLATE_MODES = new Set(['template', 'hybrid'])
+
+/**
+ * Is the stored `document_template` what actually generates the document?
+ * `generation_mode='js'` services render via the legacy JS builder — their template
+ * column is a dormant draft, so a form↔template diff is informational only and must
+ * not raise health alarms (the alimony 37/18 false-red, issue #86).
+ */
+export function isTemplateAuthoritative(generationMode: string | null): boolean {
+  return generationMode !== 'js'
+}
 const TYPE_LABEL: Record<FormField['type'], string> = {
   text: 'Текст', textarea: 'Великий текст', date: 'Дата', boolean: 'Так / Ні',
   choice: 'Вибір (один)', multicheck: 'Вибір (кілька)', number: 'Число', phone: 'Телефон',
@@ -395,20 +405,30 @@ export interface HealthInput {
  *   🔴 — can't generate correctly (no template / broken placeholder / broken show_if)
  *   🟡 — works but worth attention (unused field / stale citation / empty label)
  *   🟢 — otherwise
- * legacy `generation_mode='js'` is exempt from the "needs a template" red.
+ * legacy `generation_mode='js'` is exempt from the "needs a template" red, and its
+ * dormant template's form↔template diff folds into ONE amber note instead of
+ * per-field red/amber (the diff describes a draft, not the live generation).
  */
 export function serviceHealth(i: HealthInput): ServiceHealth {
   const red: string[] = []
   const amber: string[] = []
   const needsTemplate = i.generationMode === null || TEMPLATE_MODES.has(i.generationMode)
+  const authoritative = isTemplateAuthoritative(i.generationMode)
 
   if (needsTemplate && !i.hasTemplate) red.push('Документ не має шаблону — послуга не згенерує документ')
   if (i.generationMode === 'js') amber.push('Генерація через legacy-білдер (не шаблон)')
 
-  for (const p of i.diff.unmatchedPlaceholders) red.push(`Шаблон очікує дані «${p}», яких форма не питає`)
+  if (authoritative) {
+    for (const p of i.diff.unmatchedPlaceholders) red.push(`Шаблон очікує дані «${p}», яких форма не питає`)
+  } else if (i.hasTemplate && (i.diff.unmatchedPlaceholders.length || i.diff.unusedFields.length)) {
+    amber.push(
+      `Чернетка шаблону розходиться з формою (бракує ${i.diff.unmatchedPlaceholders.length}, ` +
+      `не використано ${i.diff.unusedFields.length}) — на генерацію не впливає`,
+    )
+  }
   for (const id of i.brokenShowIf) red.push(`Поле «${id}»: умова показу посилається на неіснуюче поле`)
 
-  for (const id of i.diff.unusedFields) amber.push(`Поле «${id}» не використовується в документі`)
+  if (authoritative) for (const id of i.diff.unusedFields) amber.push(`Поле «${id}» не використовується в документі`)
   for (const c of i.staleCitations) amber.push(`Стаття ${c} позначена як змінена/застаріла`)
   for (const id of i.emptyLabelFields) amber.push(`Поле «${id}» без підпису`)
 

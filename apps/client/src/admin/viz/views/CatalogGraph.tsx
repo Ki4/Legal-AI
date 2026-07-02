@@ -172,9 +172,16 @@ export function CatalogGraph({ nodes, edges, changes, services, onOpenService, h
 
               {svc && (
                 <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-                  <Stat n={svc.counts.used} label="використано" tone="ok" />
-                  <Stat n={svc.counts.extra} label="не в шаблоні" tone="warn" />
-                  <Stat n={svc.counts.missing} label="бракує" tone="danger" />
+                  {/* js-mode: diff vs a dormant draft — informational, not an alarm (issue #86) */}
+                  {svc.templateAuthoritative !== false ? (<>
+                    <Stat n={svc.counts.used} label="використано" tone="ok" />
+                    <Stat n={svc.counts.extra} label="не в шаблоні" tone="warn" />
+                    <Stat n={svc.counts.missing} label="бракує" tone="danger" />
+                  </>) : (<>
+                    <Stat n={svc.counts.used} label="використано" tone="muted" />
+                    <Stat n={svc.counts.extra} label="не в чернетці" tone="muted" />
+                    <Stat n={svc.counts.missing} label="бракує в чернетці" tone="muted" />
+                  </>)}
                 </div>
               )}
 
@@ -235,11 +242,13 @@ export function CatalogGraph({ nodes, edges, changes, services, onOpenService, h
 }
 
 // ── small building blocks ────────────────────────────────────────────────────
-function Stat({ n, label, tone }: { n: number; label: string; tone: 'ok' | 'warn' | 'danger' }) {
+// `muted` = informational (diff vs a dormant js-mode draft template — not an alarm, issue #86).
+function Stat({ n, label, tone }: { n: number; label: string; tone: 'ok' | 'warn' | 'danger' | 'muted' }) {
   const m = {
     ok: { fg: C.okInk, bg: '#F1F8F3', bd: C.okBorder },
     warn: { fg: C.warnInk, bg: '#FCF6E8', bd: C.warnBorder },
     danger: { fg: C.dangerInk, bg: '#FBEFEC', bd: C.dangerBorder },
+    muted: { fg: C.inkSecondary, bg: C.surfaceAlt, bd: C.border },
   }[tone]
   return (
     <div style={{ flex: 1, border: `1px solid ${m.bd}`, background: m.bg, borderRadius: 10, padding: '11px 12px' }}>

@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-07-02 (session 62) — демо-прогін «Консоль послуг» + беклог #102/#103 + issue #85 + verify коментів
+**Status:** гілки `docs/admin-improvements-backlog` + `docs/session-62-wrap` · docs-only (код не зачеплено) · комміти `5cc4b51`/`afc6790` + merge `f085fd2`
+**Why:** Сергій попросив спершу **зрозуміти що є** (демо-прогін адмінки наживо) → виписати що покращити → зафіксувати дані для наступної сесії. Не презентація одразу, а інвентар + беклог.
+**What:**
+- **Обхід усіх екранів адмінки наживо** (DOM-екстракція, бо Chrome-розширення не скриншотить localhost + Explore-субагент — інвентар з коду). Тріаж Сергія: граф/анатомія/шапка/зміни-законів/заявки/коментарі = ок; розкладка (#100/#101) + редактор-форми (#51) = переробка пізніше.
+- **IMPROVEMENTS.md +#102** (ConfirmModal єдиний дизайн замість `window.confirm` у `DashboardPage:107`/`FormBuilder:396` + підтвердження на Вимкнути/Пауза/Видалити) **+#103** (категорії послуг + фільтр — міграція `030 +category`, групування на Dashboard, вибір у `⚙️ Налаштування`; передумова медвертикалі). Пометка до #101 (виз сира + редагування не зв'язане — підтверджено демо).
+- **GitHub issue #85** — зведений handoff #103+#102 (G1-G4, що вже є для переюзу, опора на frontend-design skill; старт `/interview`).
+- **Verify коментів наживо** — `service_notes` REST round-trip з authed-сесії: INSERT 201→SELECT→UPDATE ✅; DELETE заблокований RLS (by design). 🪤 лишив тест-рядок `id=1` (RLS не дає видалити клієнтом) → SQL-чистка в session-summary.
+- **Знахідки (в issue не заводили — обговорити):** 🔴 health хибно тривожить на робочих послугах (analyzer не розуміє derived-поля движка); 🔴 «застаріло» не знімається після ревʼю законів; 🟡 колізія слів «Потребує уваги/ревʼю».
+**Files:** `docs/architecture/IMPROVEMENTS.md`, `apps/client/.claude/{session-summary,changelog}.md`.
+**Tests:** н/д (docs + live DB verify + issue-ops).
+
 ### 2026-07-02 (session 61, wrap) — merge #84 document-layout-preview → main + чистка session-файлів
 **Status:** merge-коміт `97e3231` (`--no-ff`, Closes #84) · гілку `feat/document-layout-preview` видалено · UI **331 ✅** на main
 **Why:** Закриття хвоста session 60 — фіча #84 була готова+верифікована на гілці, але не змержена. Сергій: «закрити мелкі хвости». Merge приносить усю роботу session 60 (#84 G1-G5 + vision-doc + permission-fix) на main.

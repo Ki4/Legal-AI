@@ -1,4 +1,5 @@
 import docEngine from '@doc-engine'
+import { makeAnnotatedContext } from './annotatedContext'
 import { toParagraphs, type PreviewParagraph } from './documentStyles'
 import { runParseGate, type GateResult } from './templateGate'
 
@@ -20,6 +21,23 @@ export interface PreviewResult {
 export function renderPreview(template: string, answers: Record<string, unknown> = {}): PreviewResult {
   try {
     const ctx = buildContext(answers, {})
+    const { text, styleHints } = renderDocumentWithStyles(template, ctx)
+    return { ok: true, paragraphs: toParagraphs(text, styleHints) }
+  } catch (e) {
+    return { ok: false, paragraphs: [], error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+/**
+ * «Показати змінні» mode (template-editor §4c): render with EMPTY answers but
+ * mark unfilled top-level form fields as ⦃field_id⦄ sentinels — the component
+ * turns them into labeled chips via splitAnnotated. Caveat (documented in the
+ * UI copy): computed engine values (plaintiff_name, суми, …) are not form
+ * fields, so they still render '________' in this mode.
+ */
+export function renderAnnotatedPreview(template: string, fieldIds: string[]): PreviewResult {
+  try {
+    const ctx = makeAnnotatedContext(buildContext({}, {}), new Set(fieldIds))
     const { text, styleHints } = renderDocumentWithStyles(template, ctx)
     return { ok: true, paragraphs: toParagraphs(text, styleHints) }
   } catch (e) {

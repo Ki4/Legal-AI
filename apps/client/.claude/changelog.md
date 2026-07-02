@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-02 (web-сесія, Агент B) — template-editor Сесія 2: режим прев'ю «Показати змінні» (§4c, interview Q7)
+**Status:** worktree-гілка на базі `claude/document-constructor-styling-a3zkky` · UI **383 ✅** (+12) · tsc clean
+**Why:** digitalved-parity (interview Q7): юристу в прев'ю чернетки треба бачити, ДЕ саме в документі стоять поля форми, а не безликі «________». Рушій незмінний (SSoT): замість правок движка — Proxy-контекст, який підсовує unfilled top-level полям вартовий маркер `⦃field_id⦄` (символи, що не зустрічаються в юр. текстах), а компонент ріже рядок на текст/чипи. Обчислювані значення (ПІБ разом, суми) лишаються «________» — озвучено в UI-копії; `{{#if поле}}` у цьому режимі йде по truthy-гілці (вартовий — непорожній рядок), задокументовано і прийнято.
+**What:**
+- `annotatedContext.ts` (engine-free): `makeAnnotatedContext` (Proxy: `has` покриває корені полів для `segs[0] in item` у resolvePath, `get` віддає вартового при undefined/null/'') + `splitAnnotated` (рядок → text/chip частини) + константи вартових.
+- `documentPreview.ts`: `renderAnnotatedPreview(template, fieldIds)` — той самий рушій, контекст-обгортка, той самий catch-контракт.
+- `DocumentPreview.tsx`: третій режим «Показати змінні» (тоглер тепер будується динамічно: sample?/empty/vars?), сірі inline-чипи з українським label поля (fallback — id), пояснювальна копія режиму; новий проп `formConfig`.
+- `TemplateDraftPreview.tsx` → прокидає `formConfig`; `ServiceEditPage.tsx` — `formConfig={config}` в обох місцях виклику (правий панель + мобільний блок).
+**Files:** `src/admin/lib/annotatedContext.ts` (new) · `src/admin/lib/documentPreview.ts` · `src/admin/components/{DocumentPreview,TemplateDraftPreview}.tsx` · `src/admin/pages/ServiceEditPage.tsx` · тести `lib/__tests__/annotatedContext.test.ts` (реальний рушій через createRequire: sentinel, unknown-var ________, filled-value, #if-truthy, computed ________; splitAnnotated) + `components/__tests__/DocumentPreview.vars.test.tsx` (jsdom: чип «Прізвище», fallback до id, режим прихований без formConfig).
+
 ### 2026-07-02 (web-сесія, паралельно s62-64) — template-editor Сесія 1: ядро редактора шаблона в адмінці (Tier 2, гілка `claude/document-constructor-styling-a3zkky`)
 **Status:** гілка `claude/document-constructor-styling-a3zkky` (rebased на main після s64) · UI **345 ✅** (+14) · tsc/lint clean (7 lint-помилок — pre-existing) · build:admin OK · міграцію застосовано Сергієм: draft-колонка ✅, `service_revisions` спершу впала (**services.id = INTEGER, не UUID**) → виправлений SQL передано в чат; файл перейменовано `030→031_template_editor.sql` (колізія номера з `030_service_categories.sql` сесії 63)
 **Why:** Дослідження digitalved.ru (2 workflow-прогони: ринок конструкторів 19 агентів + блочна модель 4 агенти) показало: рушій уже вміє всю стилізацію, єдина прогалина — `document_template` редагується лише через SQL. Interview (hard, 12 питань) зафіксував рішення: чернетка+публікація з парс-гейтом (безпека проду), снапшот-архів `service_revisions` (Q8: «бекапи, щоб не наламали дров»), side-by-side редактор+живе прев'ю (ринок: жоден WYSIWYG не виражає умовну логіку — round-trip відхилено).

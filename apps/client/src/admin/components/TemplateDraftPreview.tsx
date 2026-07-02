@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { FormConfig } from '../../types/form'
 import { DocumentPreview } from './DocumentPreview'
 import { DocumentLayoutPreview } from './DocumentLayoutPreview'
 
@@ -8,7 +9,15 @@ import { DocumentLayoutPreview } from './DocumentLayoutPreview'
  * page-break-before / keep-together). Both reuse the existing preview components,
  * so what the lawyer sees is exactly what publishing will produce.
  */
-export function TemplateDraftPreview({ template, slug }: { template: string | null; slug?: string | null }) {
+export function TemplateDraftPreview({
+  template,
+  slug,
+  formConfig,
+}: {
+  template: string | null
+  slug?: string | null
+  formConfig?: FormConfig | null
+}) {
   const [view, setView] = useState<'document' | 'layout'>('document')
 
   return (
@@ -29,7 +38,7 @@ export function TemplateDraftPreview({ template, slug }: { template: string | nu
       </div>
       <div className="flex-1 overflow-y-auto p-4">
         {view === 'document'
-          ? <DocumentPreview template={template} slug={slug} />
+          ? <DocumentPreview template={template} slug={slug} formConfig={formConfig} />
           : <DocumentLayoutPreview template={template} slug={slug} />}
       </div>
     </div>

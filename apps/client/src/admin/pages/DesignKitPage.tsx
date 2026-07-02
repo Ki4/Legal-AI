@@ -1,8 +1,9 @@
 // In-app design-system gallery (Claude Design canvas) — browse every component in one place,
 // in light/dark. Route /design, no auth. Pages compose from src/admin/ui; add here when a new
 // component lands. Mirrors the «Бібліотека» section of the .dc.html canvas.
+import { useState } from 'react'
 import { Plus, Trash2, Eye, Pencil, Search } from 'lucide-react'
-import { Button, IconButton, Badge, Chip, Label, Input, Textarea, Card, SectionLabel, ReviewItem } from '../ui'
+import { Button, IconButton, Badge, Chip, Label, Input, Textarea, Card, SectionLabel, ReviewItem, useConfirm } from '../ui'
 import { ServiceCard } from '../components/ServiceCard'
 import { ThemeToggle } from '../theme/ThemeToggle'
 
@@ -143,7 +144,46 @@ export function DesignKitPage() {
             />
           </div>
         </div>
+
+        {/* Confirm dialog — imperative useConfirm() */}
+        <div className="mt-6">
+          <SectionLabel className="mb-4">Модалка підтвердження</SectionLabel>
+          <Card className="p-6">
+            <p className="text-[12.5px] text-inkMute mb-4">
+              Єдина заміна нативного <code className="text-brand">window.confirm</code>. Виклик через хук{' '}
+              <code className="text-brand">await confirm({'{'} title, variant {'}'})</code> → повертає true/false.
+            </p>
+            <ConfirmModalDemo />
+          </Card>
+        </div>
       </div>
+    </div>
+  )
+}
+
+function ConfirmModalDemo() {
+  const confirm = useConfirm()
+  const [result, setResult] = useState<string>('')
+
+  async function ask(variant: 'danger' | 'warn' | 'info', title: string, body: string) {
+    const ok = await confirm({ title, body, variant, confirmLabel: 'Підтвердити' })
+    setResult(`${title} → ${ok ? 'підтверджено' : 'скасовано'}`)
+  }
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button variant="danger" onClick={() => ask('danger', 'Видалити послугу?', 'Дію не можна скасувати.')}>
+          <Trash2 size={15} strokeWidth={1.8} /> Danger
+        </Button>
+        <Button variant="secondary" onClick={() => ask('warn', 'Вимкнути послугу?', 'Клієнти більше не побачать її.')}>
+          Warn
+        </Button>
+        <Button variant="ghost" onClick={() => ask('info', 'Продовжити?', 'Інформаційне підтвердження дії.')}>
+          Info
+        </Button>
+      </div>
+      {result && <p className="text-[12.5px] text-inkSoft mt-4">Останній результат: {result}</p>}
     </div>
   )
 }

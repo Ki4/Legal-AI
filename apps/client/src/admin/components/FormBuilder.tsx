@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useConfirm } from '../ui'
 import type { FormConfig, FormField, FormTab, FieldType, SingleCondition } from '../../types/form'
 
 const FIELD_TYPES: { value: FieldType; label: string; icon: string }[] = [
@@ -364,6 +365,7 @@ export function FormBuilder({ config, onChange }: Props) {
   const [newTabLabel, setNewTabLabel]   = useState('')
   const [addingTab, setAddingTab]       = useState(false)
   const [slugManual, setSlugManual]     = useState(false)
+  const confirm = useConfirm()
 
   const tabFields = config.steps.filter((s) => s.tab === activeTab)
 
@@ -391,9 +393,15 @@ export function FormBuilder({ config, onChange }: Props) {
     setAddingTab(false)
   }
 
-  function deleteTab(tabId: string) {
+  async function deleteTab(tabId: string) {
     if (config.tabs.length <= 1) return
-    if (!confirm('Видалити таб разом з усіма полями?')) return
+    const ok = await confirm({
+      title: 'Видалити таб?',
+      body: 'Таб буде видалено разом з усіма полями всередині нього. Дію не можна скасувати.',
+      confirmLabel: 'Видалити',
+      variant: 'danger',
+    })
+    if (!ok) return
     update({
       tabs:  config.tabs.filter((t) => t.id !== tabId),
       steps: config.steps.filter((s) => s.tab !== tabId),

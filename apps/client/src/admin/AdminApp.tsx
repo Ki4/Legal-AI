@@ -12,6 +12,7 @@ import { NotesInboxPage }     from './pages/NotesInboxPage'
 import { ServiceRequestsPage } from './pages/ServiceRequestsPage'
 import { LawChangeLogPage }   from './pages/LawChangeLogPage'
 import { DesignKitPage }      from './pages/DesignKitPage'
+import { ConfirmProvider }    from './ui'
 
 function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -38,6 +39,7 @@ export function AdminApp() {
   }, [navigate])
 
   return (
+    <ConfirmProvider>
     <Routes>
       <Route path="login"          element={<LoginPage />} />
       <Route path="forgot-password" element={<ForgotPasswordPage />} />
@@ -52,5 +54,6 @@ export function AdminApp() {
       <Route path="design" element={<DesignKitPage />} />
       <Route path="*" element={<Navigate to="/services" replace />} />
     </Routes>
+    </ConfirmProvider>
   )
 }

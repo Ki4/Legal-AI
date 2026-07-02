@@ -12,6 +12,8 @@ import {
 } from '../../lib/serviceStatus'
 import { analyzeService } from '../../lib/serviceAnatomy'
 import { clientFormUrl } from '../../lib/clientApp'
+import { groupByCategory } from '../../lib/serviceCategories'
+import { useConfirm } from '../ui'
 import type { FormConfig } from '../../types/form'
 
 interface Service {
@@ -22,6 +24,7 @@ interface Service {
   icon: string
   price: number
   status: ServiceStatus
+  category: string | null
   generation_mode: string | null
   document_template: string | null
   form_config: FormConfig | null
@@ -46,17 +49,19 @@ interface ChecklistStats {
 export function DashboardPage() {
   const [services, setServices]          = useState<Service[]>([])
   const [loading, setLoading]            = useState(true)
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)  // null = усі категорії
   const [abstentionStats, setAbstention] = useState<AbstentionStats | null>(null)
   const [checklistStats, setChecklist]   = useState<ChecklistStats | null>(null)
   const { user } = useAuth()
   const navigate = useNavigate()
+  const confirm = useConfirm()
 
   useEffect(() => {
     if (!supabase || !user) return
 
     supabase
       .from('services')
-      .select('id, slug, title, description, icon, price, status, generation_mode, document_template, form_config')
+      .select('id, slug, title, description, icon, price, status, category, generation_mode, document_template, form_config')
       .eq('lawyer_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -95,6 +100,16 @@ export function DashboardPage() {
 
   async function changeStatus(svc: Service, next: ServiceStatus) {
     if (!supabase) return
+    // Disabling pulls the service from clients — confirm it. Activating is affirmative, no prompt.
+    if (next === 'disabled') {
+      const ok = await confirm({
+        title: `Вимкнути «${svc.title || 'послугу'}»?`,
+        body: 'Послуга стане недоступною клієнтам, доки ви не активуєте її знову.',
+        confirmLabel: 'Вимкнути',
+        variant: 'warn',
+      })
+      if (!ok) return
+    }
     // status is authoritative; keep deprecated is_published coherent (migration 012)
     await supabase
       .from('services')
@@ -103,11 +118,17 @@ export function DashboardPage() {
     setServices((prev) => prev.map((s) => s.id === svc.id ? { ...s, status: next } : s))
   }
 
-  async function deleteService(id: string) {
-    if (!confirm('Видалити послугу?')) return
+  async function deleteService(svc: Service) {
+    const ok = await confirm({
+      title: `Видалити «${svc.title || 'послугу'}»?`,
+      body: 'Дію не можна скасувати. Послуга та її налаштування будуть видалені назавжди.',
+      confirmLabel: 'Видалити',
+      variant: 'danger',
+    })
+    if (!ok) return
     if (!supabase) return
-    await supabase.from('services').delete().eq('id', id)
-    setServices((prev) => prev.filter((s) => s.id !== id))
+    await supabase.from('services').delete().eq('id', svc.id)
+    setServices((prev) => prev.filter((s) => s.id !== svc.id))
   }
 
   const abstentionRate = abstentionStats
@@ -121,6 +142,12 @@ export function DashboardPage() {
       ? Math.round(checklistStats.failed / checklistStats.total * 100)
       : 0
     : null
+
+  // Group cards by legal vertical; the filter narrows to one group (null = show all).
+  const groups = groupByCategory(services)
+  const visibleGroups = categoryFilter === null
+    ? groups
+    : groups.filter((g) => g.key === categoryFilter)
 
   return (
     <AdminLayout>
@@ -201,36 +228,83 @@ export function DashboardPage() {
           </div>
         )}
 
-        {/* Grid */}
-        {!loading && services.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {services.map((svc) => {
-              const fieldCount = svc.form_config?.steps?.length ?? 0
-              const tabCount   = svc.form_config?.tabs?.length  ?? 0
-              const health = analyzeService(svc.form_config, svc.document_template, svc.generation_mode).health
-              const hd = HEALTH_DOT[health.level]
-              return (
-                <ServiceCard
-                  key={svc.id}
-                  title={svc.title}
-                  description={svc.description}
-                  fields={fieldCount}
-                  tabs={tabCount}
-                  price={svc.price}
-                  healthDot={hd.dot}
-                  healthTitle={hd.title}
-                  status={svc.status}
-                  formHref={clientFormUrl(svc.slug)}
-                  onOpen={() => navigate(`/services/${svc.slug}`)}
-                  onEdit={() => navigate(`/services/${svc.id}/edit`)}
-                  onDelete={() => deleteService(svc.id)}
-                  onStatus={(to) => changeStatus(svc, to)}
-                />
-              )
-            })}
+        {/* Category filter — only when there is more than one group to switch between */}
+        {!loading && groups.length > 1 && (
+          <div className="flex flex-wrap items-center gap-2 mb-6">
+            <FilterPill active={categoryFilter === null} onClick={() => setCategoryFilter(null)}>
+              Усі <span className="opacity-60">{services.length}</span>
+            </FilterPill>
+            {groups.map((g) => (
+              <FilterPill
+                key={g.key || 'none'}
+                active={categoryFilter === g.key}
+                onClick={() => setCategoryFilter(g.key)}
+              >
+                {g.label} <span className="opacity-60">{g.items.length}</span>
+              </FilterPill>
+            ))}
           </div>
         )}
+
+        {/* Grouped grid */}
+        {!loading && services.length > 0 && visibleGroups.map((group) => (
+          <section key={group.key || 'none'} className="mb-8 last:mb-0">
+            <div className="flex items-center gap-2.5 mb-3">
+              <h2 className="text-[13px] font-semibold text-inkSoft uppercase tracking-wide">{group.label}</h2>
+              <span className="text-xs text-inkMute">{group.items.length}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {group.items.map((svc) => {
+                const fieldCount = svc.form_config?.steps?.length ?? 0
+                const tabCount   = svc.form_config?.tabs?.length  ?? 0
+                const health = analyzeService(svc.form_config, svc.document_template, svc.generation_mode).health
+                const hd = HEALTH_DOT[health.level]
+                return (
+                  <ServiceCard
+                    key={svc.id}
+                    title={svc.title}
+                    description={svc.description}
+                    fields={fieldCount}
+                    tabs={tabCount}
+                    price={svc.price}
+                    healthDot={hd.dot}
+                    healthTitle={hd.title}
+                    status={svc.status}
+                    formHref={clientFormUrl(svc.slug)}
+                    onOpen={() => navigate(`/services/${svc.slug}`)}
+                    onEdit={() => navigate(`/services/${svc.id}/edit`)}
+                    onDelete={() => deleteService(svc)}
+                    onStatus={(to) => changeStatus(svc, to)}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        ))}
       </div>
     </AdminLayout>
+  )
+}
+
+// Category filter pill — active shows the brand-tinted state used by the sidebar nav.
+function FilterPill({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-colors
+        ${active
+          ? 'bg-brand/10 text-brand'
+          : 'text-inkSoft hover:text-ink hover:bg-paperAlt border border-line'}`}
+    >
+      {children}
+    </button>
   )
 }

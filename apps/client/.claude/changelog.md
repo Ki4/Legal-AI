@@ -10,6 +10,22 @@
 
 ---
 
+### 2026-07-02 (session 63) — issue #85: ConfirmModal (#102) + категорії послуг (#103), G1-G4
+**Status:** гілка `feat/service-categories-confirm-modal` · код · UI **347 ✅** (+16) · tsc/lint clean · admin build OK · **НЕ змержено**
+**Why:** Підготувати «Консоль послуг» до масштабу (сімейне → медичне право): групування+фільтр каталогу за категорією. Прибрати нативні `confirm()` → єдина design-system модалка. Стартувало з `/interview` (Сергій відійшов → easy-постава, рішення прийняті як припущення на вето).
+**What:**
+- **G1 ConfirmModal (#102):** новий `admin/ui/ConfirmModal.tsx` (варіанти `danger|warn|info`, framer-motion, Esc/backdrop=cancel, focus на «Підтвердити`) + `ConfirmProvider`/`useConfirm()` (imperative, `await confirm({...})→bool`; context у `confirmContext.ts` — split заради react-refresh). Змонтовано в `AdminApp`. Замінено обидва `confirm()` (`DashboardPage` видалити послугу=danger, `FormBuilder` видалити таб=danger) + **додано підтвердження на «Вимкнути»** (warn). `Button` → `forwardRef` (для focus). Зразок у `/design` (3 варіанти).
+- **G2 категорії (#103):** міграція `030_service_categories.sql` (`services +category text` nullable, backfill наявних=`family`; enum-валідація в коді, НЕ CHECK). SSoT `lib/serviceCategories.ts` (`family`=Сімейне, `medical`=Медичне; `categoryLabel`/`isServiceCategory`/`groupByCategory`). `Service` type +`category`, `select(...)` +category.
+- **G3 Dashboard:** картки згруповані за категорією (заголовок+лічильник, «Без категорії» внизу) + фільтр-пігулки угорі (тільки коли груп >1).
+- **G4 редактор:** `<select>` категорії у вкладці ⚙️ Налаштування (`ServiceEditPage`) + збереження `category`. БЕЗ CRUD категорій (список у коді — рішення інтерв'ю).
+- **Тести:** ConfirmModal RTL **8** (рендер/confirm/cancel/Esc/focus + provider true/false) + serviceCategories unit **8** (label/guard/group order/fold/omit-empty).
+- **🅰️ Прийняті припущення на вето Сергія:** (1) фікс-enum у коді, не таблиця; (2) старт-категорії family+medical; (3) TWA читає category ПІЗНІШЕ (admin-only зараз); (4) послуга без категорії=nullable→група «Без категорії».
+- **🐛 БАГ ЗНАЙДЕНО+ПОЛАГОДЖЕНО наживо:** перша версія ConfirmModal через `AnimatePresence` НЕ демонтувала оверлей після закриття — `fixed inset-0 z-50` лишався в DOM з `opacity:0` але `pointer-events:auto`, **невидимо блокуючи ВСІ кліки на сторінці** (весь admin замерзав після першого підтвердження). Логіка (resolve promise) працювала, але exit-анімація не завершувала unmount (навіть з `key`). Фікс: `if(!open) return null` (без AnimatePresence, лише enter-анімація; миттєве закриття — норм для confirm). Верифіковано наживо: 3 варіанти × 3 шляхи (Esc/cancel/confirm) → `overlays:0`.
+- **🔴 ПЕРЕДУМОВА MERGE — застосовано:** міграцію 030 **Сергій застосував** (SQL Editor, «Success»); `DashboardPage.select` тягне `category` — без колонки каталог був би порожній. Тепер колонка є, backfill=family.
+**Files:** `admin/ui/{ConfirmModal.tsx,useConfirm.tsx,confirmContext.ts,Button.tsx,index.ts}`, `admin/AdminApp.tsx`, `admin/pages/{DashboardPage,ServiceEditPage,DesignKitPage}.tsx`, `admin/components/FormBuilder.tsx`, `lib/serviceCategories.ts`, `supabase/migrations/030_service_categories.sql` + 2 тест-файли.
+**Tests:** UI **347 ✅** (+16), tsc clean, змінені файли lint-clean (в репо є передіснуючі `react-hooks/set-state-in-effect` у нечіпаних файлах — не мої), `build:admin` OK.
+**Live verify (наживо, authed Chrome DOM):** G1 — /design 3 варіанти × Esc/cancel/confirm + реальний dashboard delete+«Вимкнути» (cancel-safe, оверлей демонтується); G2 — колонка+backfill, редактор вантажить family; G3 — 2 групи + фільтр-пігулки з лічильниками, клік звужує до 1 картки; G4 — save category→DB (toast «Збережено»). Тестовий round-trip alimony→medical→family **відкочено** (дошка = 1 група, як було).
+
 ### 2026-07-02 (session 62) — демо-прогін «Консоль послуг» + беклог #102/#103 + issue #85 + verify коментів
 **Status:** гілки `docs/admin-improvements-backlog` + `docs/session-62-wrap` · docs-only (код не зачеплено) · комміти `5cc4b51`/`afc6790` + merge `f085fd2`
 **Why:** Сергій попросив спершу **зрозуміти що є** (демо-прогін адмінки наживо) → виписати що покращити → зафіксувати дані для наступної сесії. Не презентація одразу, а інвентар + беклог.

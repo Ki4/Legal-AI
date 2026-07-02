@@ -14,6 +14,7 @@ import {
   isPublishedFor,
   STATUS_META,
 } from '../../lib/serviceStatus'
+import { SERVICE_CATEGORIES, UNCATEGORISED_LABEL } from '../../lib/serviceCategories'
 
 type Tab = 'form' | 'ai' | 'settings'
 
@@ -51,6 +52,8 @@ export function ServiceEditPage() {
   const [icon, setIcon]           = useState('⚖️')
   const [description, setDesc]    = useState('')
   const [price, setPrice]         = useState(0)
+  // Legal vertical for grouping in the catalog. null = «Без категорії». Fixed list in code.
+  const [category, setCategory]   = useState<string | null>(null)
   // New services start disabled — lawyer activates after review (DB default too).
   const [status, setStatus]       = useState<ServiceStatus>('disabled')
   const [saving, setSaving]         = useState(false)
@@ -95,6 +98,7 @@ export function ServiceEditPage() {
         setIcon(data.icon ?? '⚖️')
         setDesc(data.description ?? '')
         setPrice(data.price ?? 0)
+        setCategory(data.category ?? null)
         setStatus(toServiceStatus(data.status))
         setIsDirty(false)
       })
@@ -116,6 +120,7 @@ export function ServiceEditPage() {
       icon,
       description,
       price,
+      category,
       status,
       // deprecated mirror of status (migration 012) — kept coherent during deprecation
       is_published: isPublishedFor(status),
@@ -326,6 +331,21 @@ export function ServiceEditPage() {
                       className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-xl text-ink text-sm focus:outline-none focus:border-brand"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-inkSoft mb-1.5 uppercase tracking-wide">Категорія</label>
+                  <select
+                    value={category ?? ''}
+                    onChange={(e) => { setCategory(e.target.value || null); markDirty() }}
+                    className="w-full px-3 py-2 bg-paperAlt border border-lineStrong rounded-xl text-ink text-sm focus:outline-none focus:border-brand"
+                  >
+                    <option value="">— {UNCATEGORISED_LABEL} —</option>
+                    {SERVICE_CATEGORIES.map((c) => (
+                      <option key={c.key} value={c.key}>{c.label}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11.5px] text-inkMute mt-1.5">Групує послугу в каталозі за напрямом права.</p>
                 </div>
 
                 <div>

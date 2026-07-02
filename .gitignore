@@ -42,3 +42,6 @@ supabase/.temp/
 
 # Local scratch visualization (session 28) — never commit
 apps/client/.claude/harness-visual.md
+
+# Agent worktrees (transient working copies for parallel subagents)
+.claude/worktrees/

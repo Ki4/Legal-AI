@@ -314,6 +314,7 @@ export function ServiceEditPage() {
                   <TemplateDraftPreview
                     template={docDraft || docPublished}
                     slug={config.service_id || null}
+                    formConfig={config}
                   />
                 </div>
               </>
@@ -464,6 +465,7 @@ export function ServiceEditPage() {
               <TemplateDraftPreview
                 template={docDraft || docPublished}
                 slug={config.service_id || null}
+                formConfig={config}
               />
             ) : (
               <>

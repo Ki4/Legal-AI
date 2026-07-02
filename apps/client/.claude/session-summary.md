@@ -8,6 +8,13 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
+**🟢 SESSION 63 — issue #85 (категорії #103 + ConfirmModal #102) РЕАЛІЗОВАНО+ВЕРИФІКОВАНО наживо на гілці `feat/service-categories-confirm-modal` (коміт `362e6d0`, НЕ змержено). Наступний крок: merge → close #85.**
+- **G1-G4 готові:** ConfirmModal (danger/warn/info, `useConfirm()`) замінив нативні `confirm()` + гейт на «Вимкнути`; міграція `030 services.category` (backfill=family, **Сергій застосував**); групування+фільтр на Dashboard; `<select>` категорії в редакторі. SSoT `lib/serviceCategories.ts` (фікс-enum у коді).
+- **🐛 Баг знайдено+полагоджено наживо:** AnimatePresence-модалка лишала невидимий `fixed inset-0 z-50` оверлей (opacity:0/pointer-events:auto) → блокував ВСІ кліки. Фікс `if(!open) return null`. → GOTCHAS «React/UI».
+- **🅰️ 4 припущення на вето Сергія (в issue #85):** фікс-enum не таблиця (CRUD категорій НЕ робили); старт family+medical; TWA читає category пізніше (admin-only); без-категорії=nullable→група «Без категорії».
+- **Verify:** UI **347 ✅** (+16), tsc + змінені файли lint-clean, `build:admin` OK. **Live authed-DOM:** усі варіанти/шляхи модалки, реальний dashboard delete+«Вимкнути» (cancel-safe), category save→DB, групування+фільтр (round-trip alimony→medical→family **відкочено**, дошка=1 група). ⚠️ у репо є передіснуючі lint-помилки `react-hooks/set-state-in-effect` (App/DocumentPreview/ServiceNotes/ServiceRequests/DatePicker — НЕ мої).
+- **Dev-сервер `npm run dev:admin` (5174) лишено запущеним.**
+
 **🟢 SESSION 62 — демо-прогін адмінки зроблено; наступний фокус = issue #85 (категорії #103 + модалка #102). Дошка: відкриті #24 (secrets, не пріоритет) + #85 (готове до старту).**
 
 **🟢 ДОШКА ЧИСТА (session 61) — #84 змержено, беклог-issues розчищено, admin-brief заархівовано.**
@@ -113,6 +120,51 @@ wording «спір… відсутній» → «не є предметом ць
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 63 (2026-07-02) — issue #85: категорії послуг (#103) + ConfirmModal (#102), G1-G4
+
+### Головне — стан ЗАРАЗ
+- **Уся фіча #85 жива на гілці `feat/service-categories-confirm-modal`** (1 коміт `362e6d0`, НЕ змержено).
+  Верифіковано наживо end-to-end (authed Chrome DOM) проти реальної БД. Наступний крок — **merge → close #85**.
+
+### Що зроблено (з `/interview`, easy-постава — Сергій відійшов → рішення прийняті як припущення на вето)
+- **G1 ConfirmModal (#102):** `admin/ui/ConfirmModal.tsx` (варіанти danger/warn/info) + `ConfirmProvider`/
+  `useConfirm()` (imperative, `await confirm({...})→bool`; context у `confirmContext.ts` — split заради
+  react-refresh). Змонтовано в `AdminApp`. Замінено обидва `confirm()` (DashboardPage delete=danger,
+  FormBuilder delete-tab=danger) + **додано підтвердження на «Вимкнути»** (warn). `Button`→`forwardRef`
+  (focus на «Підтвердити»). Зразок 3 варіантів у `/design`.
+- **G2 категорії (#103):** міграція `030_service_categories.sql` (`services +category text` nullable,
+  backfill наявних=`family`; enum-валідація в коді, НЕ CHECK — застосована Сергієм). SSoT
+  `lib/serviceCategories.ts` (`family`/`medical`, `categoryLabel`/`isServiceCategory`/`groupByCategory`).
+  `Service` type +category, `select(...)` +category.
+- **G3 Dashboard:** картки згруповані за категорією (заголовок+лічильник, «Без категорії» внизу) +
+  фільтр-пігулки (`FilterPill`, показуються тільки коли груп >1).
+- **G4 редактор:** `<select>` категорії у вкладці ⚙️ Налаштування (`ServiceEditPage`) + save `category`.
+  БЕЗ CRUD категорій (список у коді — рішення інтерв'ю).
+
+### 🐛 Баг знайдено+полагоджено НАЖИВО (головний урок)
+- Перша версія ConfirmModal через `AnimatePresence` **не демонтувала оверлей** після закриття:
+  `fixed inset-0 z-50` лишався в DOM (`opacity:0`, але `pointer-events:auto`) → **невидимо блокував ВСІ
+  кліки**, весь admin замерзав після першого підтвердження. resolve-promise працював, але exit-анімація
+  не завершувала unmount (навіть з `key`). Фікс: `if(!open) return null`. → GOTCHAS «React/UI (admin)».
+
+### 🅰️ Прийняті припущення (на вето Сергія — в тілі issue #85)
+1. Категорії = **фікс-enum у коді**, не таблиця → CRUD категорій НЕ робили. 2. Старт: family+medical.
+3. TWA-каталог читає category **пізніше** (зараз admin-only). 4. Без категорії = nullable → «Без категорії».
+
+### Verify
+- UI **347 ✅** (+16: 8 ConfirmModal RTL + 8 serviceCategories), tsc clean, змінені файли lint-clean,
+  `build:admin` OK. ⚠️ у репо є **передіснуючі** lint-помилки `react-hooks/set-state-in-effect` (App.tsx/
+  DocumentPreview/ServiceNotes/ServiceRequestsPage/DatePickerField — НЕ мої, не блок).
+- **Live (authed DOM):** G1 /design 3 варіанти × Esc/cancel/confirm (`overlays:0`) + реальний dashboard
+  delete+«Вимкнути» (cancel → дані цілі, оверлей демонтується); G2 колонка+backfill, редактор вантажить
+  family; G3 2 групи + пігулки з лічильниками, клік звужує до 1 картки; G4 save category→DB (toast).
+  Тестовий round-trip alimony→medical→family **відкочено** — дошка = 1 група, як було.
+
+### 🔴 Наступний крок
+- **Merge `feat/service-categories-confirm-modal` → main + close #85** (ревʼю дифу зроблено Сергієм).
+  Далі беклог: медвертикаль (#NEXT-4, категорія medical вже готова) · реальний платіж · #100/#101 розкладка.
 
 ---
 ## 🆕 Session 62 (2026-07-02) — демо-прогін «Консоль послуг» + беклог #102/#103 + issue #85 + verify коментів

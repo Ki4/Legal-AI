@@ -1,5 +1,5 @@
 // Design-system button (Claude Design canvas). Variants: primary / secondary / ghost / danger.
-import type { ButtonHTMLAttributes } from 'react'
+import { forwardRef, type ButtonHTMLAttributes } from 'react'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 
@@ -10,17 +10,17 @@ const VARIANT: Record<ButtonVariant, string> = {
   danger:    'bg-paper text-danger border border-danger/30 hover:bg-danger/10',
 }
 
-export function Button({
-  variant = 'primary',
-  className = '',
-  ...rest
-}: { variant?: ButtonVariant } & ButtonHTMLAttributes<HTMLButtonElement>) {
+export const Button = forwardRef<
+  HTMLButtonElement,
+  { variant?: ButtonVariant } & ButtonHTMLAttributes<HTMLButtonElement>
+>(function Button({ variant = 'primary', className = '', ...rest }, ref) {
   return (
     <button
+      ref={ref}
       className={`inline-flex items-center justify-center gap-2 rounded-[10px] px-[18px] py-2.5
                   text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed
                   ${VARIANT[variant]} ${className}`}
       {...rest}
     />
   )
-}
+})

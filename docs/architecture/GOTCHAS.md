@@ -84,3 +84,19 @@
 - **Причина:** claim з доку/памʼяті/власного висновку — це гіпотеза, не факт (двічі ловили за сесію).
 - **Правило:** статус ✅ live потребує **≥2 згоджених evidence**, одне з яких — **invocation**, не
   лише definition; будь-яке протиріччя блокує ✅. Протокол: `docs/architecture/VERIFICATION-PROTOCOL.md`.
+
+---
+
+## React / UI (admin)
+
+### 🪤 AnimatePresence-модалка лишає невидимий оверлей, що блокує всі кліки
+- **Причина:** `<AnimatePresence>{open && <motion.div className="fixed inset-0 z-50">…}` іноді **не
+  демонтує** оверлей після `open→false` — вузол лишається в DOM з `opacity:0` але
+  `pointer-events:auto`, невидимо перехоплюючи **всі кліки на сторінці** (весь екран замерзає після
+  першого закриття). Логіка (resolve/onClose) працює, але exit-анімація не завершує unmount; додавання
+  `key` НЕ рятує (session 63, ConfirmModal). `opacity:0` **не** знімає pointer-events (на відміну від
+  `display:none`/`visibility:hidden`).
+- **Правило:** для оверлей-модалок з imperative-закриттям — `if (!open) return null` (лише
+  enter-анімація через `motion` initial/animate; миттєве закриття для confirm-діалогу — норм). Якщо
+  exit-анімація потрібна — верифікувати наживо, що вузол зникає з DOM (`overlays:0`), а не лише
+  візуально. Перевірка: після закриття `document.querySelectorAll('.fixed.inset-0.z-50').length === 0`.

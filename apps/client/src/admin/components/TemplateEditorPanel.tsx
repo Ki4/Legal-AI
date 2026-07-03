@@ -6,6 +6,7 @@ import { TemplateToolbar } from './TemplateToolbar'
 import { VariablePalette } from './VariablePalette'
 import { insertSnippet, insertLineBefore, wrapSelection } from '../lib/insertAtCursor'
 import type { EditResult } from '../lib/insertAtCursor'
+import { CLAIM_SKELETON } from '../lib/templateSkeleton'
 
 /**
  * Left panel of the «Шаблон документа» tab (specs/features/template-editor §2.1):
@@ -122,10 +123,21 @@ export function TemplateEditorPanel({
           </span>
         </div>
       ) : published === null && !draft.trim() ? (
-        <p className="text-xs text-inkMute">
-          Ця послуга ще не має шаблону. Напишіть текст документа — поля клієнта вставляються як{' '}
-          <code className="text-brand">{'{{поле}}'}</code>.
-        </p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <p className="text-xs text-inkMute">
+            Ця послуга ще не має шаблону. Напишіть текст документа — поля клієнта вставляються як{' '}
+            <code className="text-brand">{'{{поле}}'}</code> — або почніть із заготовки.
+          </p>
+          {/* §5: optional skeleton — 8 canonical blocks with styles + keep-block.
+              Placeholder wording only; the lawyer rewrites it before publishing. */}
+          <button
+            type="button"
+            onClick={() => onDraftChange(CLAIM_SKELETON)}
+            className="px-3 py-1.5 bg-paperAlt hover:bg-paperAlt/70 text-ink text-xs font-semibold rounded-lg transition-colors flex-shrink-0"
+          >
+            📄 Створити з каркаса
+          </button>
+        </div>
       ) : (
         <p className={`text-xs ${isDraftDifferent ? 'text-warn' : 'text-inkMute'}`}>
           {isDraftDifferent

@@ -69,6 +69,19 @@ describe('TemplateEditorPanel', () => {
     expect(screen.getByText(/немає у формі/).textContent).toContain('totally_unknown_var')
   })
 
+  it('offers «Створити з каркаса» only while the service has no template at all', async () => {
+    const { CLAIM_SKELETON } = await import('../../lib/templateSkeleton')
+    const onDraftChange = vi.fn()
+    renderPanel({ draft: '', published: null, onDraftChange })
+    fireEvent.click(screen.getByRole('button', { name: /Створити з каркаса/ }))
+    expect(onDraftChange).toHaveBeenCalledWith(CLAIM_SKELETON)
+  })
+
+  it('hides the skeleton button once a template exists', () => {
+    renderPanel() // draft + published are set
+    expect(screen.queryByRole('button', { name: /Створити з каркаса/ })).toBeNull()
+  })
+
   it('shows the save-first hint for a brand-new service', () => {
     renderPanel({ isNew: true })
     expect(screen.getByText(/Спочатку збережіть нову послугу/)).toBeTruthy()

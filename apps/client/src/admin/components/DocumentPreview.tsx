@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { FormConfig } from '../../types/form'
 import { splitAnnotated } from '../lib/annotatedContext'
+import { detectBlocks, type DetectedBlock } from '../lib/detectBlocks'
 import { renderAnnotatedPreview, renderPreview } from '../lib/documentPreview'
 import { sampleAnswersFor } from '../lib/sampleAnswers'
 import { Card } from '../ui'
@@ -55,10 +56,15 @@ export function DocumentPreview({
   template,
   slug,
   formConfig,
+  showBlocks = false,
 }: {
   template: string | null
   slug?: string | null
   formConfig?: FormConfig | null
+  /** Template-editor §5: read-only block labels (blockRegistry colours) at the
+   *  start of each detected canonical block. On a parse error the whole render
+   *  fails, so the labels honestly disappear with it. */
+  showBlocks?: boolean
 }) {
   const sample = useMemo(() => sampleAnswersFor(slug), [slug])
   const hasVars = !!formConfig && formConfig.steps.length > 0
@@ -80,6 +86,18 @@ export function DocumentPreview({
     for (const f of formConfig?.steps ?? []) map.set(f.id, f.label || f.id)
     return map
   }, [formConfig])
+
+  // Block labels (§5): detect canonical blocks on the SAME render the paragraphs
+  // came from (paragraphs ↔ text lines are 1:1). Unknown spans get no label —
+  // fail-closed, same as the layout preview.
+  const blockAtLine = useMemo(() => {
+    const map = new Map<number, DetectedBlock>()
+    if (!showBlocks || !result?.ok || result.text === undefined) return map
+    for (const b of detectBlocks(result.text, result.styleHints ?? {})) {
+      if (b.id !== 'unknown') map.set(b.startPara, b)
+    }
+    return map
+  }, [showBlocks, result])
 
   const modeOptions: Array<[Mode, string]> = []
   if (sample) modeOptions.push(['sample', 'Заповнений приклад'])
@@ -119,11 +137,27 @@ export function DocumentPreview({
       </div>
       <Card className="bg-paper p-8 md:p-10 max-h-[70vh] overflow-y-auto shadow-card">
         <div className="mx-auto max-w-[680px] font-serif text-[13px] leading-relaxed text-ink">
-          {result?.paragraphs.map((p, i) => (
-            <div key={i} className={p.className || undefined}>
-              {mode === 'vars' ? <AnnotatedLine text={p.text} labelById={labelById} /> : p.text || ' '}
-            </div>
-          ))}
+          {result?.paragraphs.map((p, i) => {
+            const block = blockAtLine.get(i)
+            return (
+              <div key={i}>
+                {block && (
+                  <div className="select-none font-sans mt-4 mb-1 first:mt-0" aria-hidden>
+                    <span
+                      className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: block.color }}
+                    >
+                      <span className="w-2 h-2 rounded-full flex-none" style={{ background: block.color }} />
+                      {block.label}
+                    </span>
+                  </div>
+                )}
+                <div className={p.className || undefined}>
+                  {mode === 'vars' ? <AnnotatedLine text={p.text} labelById={labelById} /> : p.text || ' '}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </Card>
     </div>

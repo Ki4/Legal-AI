@@ -6,6 +6,7 @@ import { Toast } from '../components/Toast'
 import { DynamicLegalFormBuilder } from '../../components/DynamicLegalFormBuilder'
 import { TemplateEditorPanel } from '../components/TemplateEditorPanel'
 import { TemplateDraftPreview } from '../components/TemplateDraftPreview'
+import { TemplateRevisionHistory } from '../components/TemplateRevisionHistory'
 import { validateDraft } from '../lib/documentPreview'
 import { publishTemplate } from '../lib/serviceTemplate'
 import { supabase } from '../../lib/supabase'
@@ -66,6 +67,8 @@ export function ServiceEditPage() {
   const [docDraft, setDocDraft]         = useState('')
   const [savingDraft, setSavingDraft]   = useState(false)
   const [publishing, setPublishing]     = useState(false)
+  // Bumped after every publish/restore so the revision history reloads (§5).
+  const [revisionsBump, setRevisionsBump] = useState(0)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [isDirty, setIsDirty]       = useState(false)
@@ -189,6 +192,7 @@ export function ServiceEditPage() {
     setPublishing(false)
     if (result.ok) {
       setDocPublished(docDraft)
+      setRevisionsBump((b) => b + 1)
       showToast('success', 'Опубліковано ✓ Клієнти отримують нову версію документа')
     } else {
       showToast('error', result.error)
@@ -292,19 +296,34 @@ export function ServiceEditPage() {
               <>
                 {/* Desktop: full editor. Draft state lives here so the right
                     preview panel re-renders on every keystroke. */}
-                <div className="hidden xl:block h-full">
-                  <TemplateEditorPanel
-                    draft={docDraft}
-                    published={docPublished}
-                    isNew={isNew}
-                    formConfig={config}
-                    validate={validateDraft}
-                    onDraftChange={(v) => { setDocDraft(v); markDirty() }}
-                    onSaveDraft={handleSaveDraft}
-                    onPublish={handlePublish}
-                    savingDraft={savingDraft}
-                    publishing={publishing}
-                  />
+                <div className="hidden xl:flex h-full flex-col gap-4">
+                  <div className="flex-1 min-h-0">
+                    <TemplateEditorPanel
+                      draft={docDraft}
+                      published={docPublished}
+                      isNew={isNew}
+                      formConfig={config}
+                      validate={validateDraft}
+                      onDraftChange={(v) => { setDocDraft(v); markDirty() }}
+                      onSaveDraft={handleSaveDraft}
+                      onPublish={handlePublish}
+                      savingDraft={savingDraft}
+                      publishing={publishing}
+                    />
+                  </div>
+                  {!isNew && id && (
+                    <TemplateRevisionHistory
+                      serviceId={id}
+                      userId={user?.id ?? null}
+                      refreshToken={revisionsBump}
+                      onRestored={(tpl) => {
+                        setDocDraft(tpl)
+                        setDocPublished(tpl)
+                        setRevisionsBump((b) => b + 1)
+                        showToast('success', 'Версію відновлено ✓ Вона знову опублікована')
+                      }}
+                    />
+                  )}
                 </div>
                 {/* Mobile/tablet: read-only (interview Q10 — desktop-first). */}
                 <div className="xl:hidden">

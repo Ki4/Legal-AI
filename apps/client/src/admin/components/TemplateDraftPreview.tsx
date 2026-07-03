@@ -53,7 +53,7 @@ export function TemplateDraftPreview({
 
   const body =
     view === 'document' ? (
-      <DocumentPreview template={template} slug={slug} formConfig={formConfig} />
+      <DocumentPreview template={template} slug={slug} formConfig={formConfig} showBlocks />
     ) : (
       <DocumentLayoutPreview template={template} slug={slug} />
     )

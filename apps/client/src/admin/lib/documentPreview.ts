@@ -9,6 +9,10 @@ const { buildContext, renderDocumentWithStyles } = docEngine
 export interface PreviewResult {
   ok: boolean
   paragraphs: PreviewParagraph[]
+  /** Raw rendered text + per-paragraph style keywords — paragraphs map 1:1 to
+   *  text lines, so block detection (detectBlocks) can index into them. */
+  text?: string
+  styleHints?: Record<number, string[]>
   error?: string
 }
 
@@ -22,7 +26,7 @@ export function renderPreview(template: string, answers: Record<string, unknown>
   try {
     const ctx = buildContext(answers, {})
     const { text, styleHints } = renderDocumentWithStyles(template, ctx)
-    return { ok: true, paragraphs: toParagraphs(text, styleHints) }
+    return { ok: true, paragraphs: toParagraphs(text, styleHints), text, styleHints }
   } catch (e) {
     return { ok: false, paragraphs: [], error: e instanceof Error ? e.message : String(e) }
   }
@@ -39,7 +43,7 @@ export function renderAnnotatedPreview(template: string, fieldIds: string[]): Pr
   try {
     const ctx = makeAnnotatedContext(buildContext({}, {}), new Set(fieldIds))
     const { text, styleHints } = renderDocumentWithStyles(template, ctx)
-    return { ok: true, paragraphs: toParagraphs(text, styleHints) }
+    return { ok: true, paragraphs: toParagraphs(text, styleHints), text, styleHints }
   } catch (e) {
     return { ok: false, paragraphs: [], error: e instanceof Error ? e.message : String(e) }
   }

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { TemplateEditorPanel } from '../TemplateEditorPanel'
+import { ConfirmProvider } from '../../ui'
 import type { FormConfig } from '../../../types/form'
 import type { GateResult } from '../../lib/templateGate'
 
@@ -21,19 +22,21 @@ const okGate = (): GateResult => ({ ok: true })
 
 function renderPanel(over: Partial<Parameters<typeof TemplateEditorPanel>[0]> = {}) {
   return render(
-    <TemplateEditorPanel
-      draft="Позивач: {{last_name}}"
-      published="old"
-      isNew={false}
-      formConfig={FORM}
-      validate={okGate}
-      onDraftChange={() => {}}
-      onSaveDraft={() => {}}
-      onPublish={() => {}}
-      savingDraft={false}
-      publishing={false}
-      {...over}
-    />,
+    <ConfirmProvider>
+      <TemplateEditorPanel
+        draft="Позивач: {{last_name}}"
+        published="old"
+        isNew={false}
+        formConfig={FORM}
+        validate={okGate}
+        onDraftChange={() => {}}
+        onSaveDraft={() => {}}
+        onPublish={() => {}}
+        savingDraft={false}
+        publishing={false}
+        {...over}
+      />
+    </ConfirmProvider>,
   )
 }
 
@@ -67,6 +70,35 @@ describe('TemplateEditorPanel', () => {
   it('warns about template variables the form does not ask', () => {
     renderPanel({ draft: 'Хтось: {{totally_unknown_var}}' })
     expect(screen.getByText(/немає у формі/).textContent).toContain('totally_unknown_var')
+  })
+
+  it('resets the draft to the published version after the confirm dialog', async () => {
+    const onDraftChange = vi.fn()
+    renderPanel({ onDraftChange }) // draft differs from published
+    fireEvent.click(screen.getByRole('button', { name: 'Скинути зміни' }))
+    expect(onDraftChange).not.toHaveBeenCalled() // waits for the modal
+    fireEvent.click(await screen.findByRole('button', { name: 'Скинути' }))
+    await vi.waitFor(() => expect(onDraftChange).toHaveBeenCalledWith('old'))
+  })
+
+  it('keeps the draft when the reset dialog is cancelled', async () => {
+    const onDraftChange = vi.fn()
+    renderPanel({ onDraftChange })
+    fireEvent.click(screen.getByRole('button', { name: 'Скинути зміни' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Скасувати' }))
+    await vi.waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Скинути' })).toBeNull(),
+    )
+    expect(onDraftChange).not.toHaveBeenCalled()
+  })
+
+  it('disables reset when the draft equals the published version, hides it with none', () => {
+    renderPanel({ draft: 'same', published: 'same' })
+    const reset = screen.getByRole('button', { name: 'Скинути зміни' }) as HTMLButtonElement
+    expect(reset.disabled).toBe(true)
+    cleanup()
+    renderPanel({ draft: '', published: null }) // nothing published yet — nothing to reset to
+    expect(screen.queryByRole('button', { name: 'Скинути зміни' })).toBeNull()
   })
 
   it('offers «Створити з каркаса» only while the service has no template at all', async () => {
@@ -135,7 +167,11 @@ describe('TemplateEditorPanel', () => {
         />
       )
     }
-    render(<Host />)
+    render(
+      <ConfirmProvider>
+        <Host />
+      </ConfirmProvider>,
+    )
     const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
     fireEvent.focus(textarea)
     textarea.setSelectionRange(3, 3)

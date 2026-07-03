@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { analyzeTemplate, diffFormVsTemplate } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import type { GateResult } from '../lib/templateGate'
+import { useConfirm } from '../ui'
 import { TemplateToolbar } from './TemplateToolbar'
 import { VariablePalette } from './VariablePalette'
 import { insertSnippet, insertLineBefore, wrapSelection } from '../lib/insertAtCursor'
@@ -38,6 +39,7 @@ export function TemplateEditorPanel({
   savingDraft: boolean
   publishing: boolean
 }) {
+  const confirm = useConfirm()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const pendingCaret = useRef<number | null>(null)
   // Until the lawyer has placed the caret at least once, selectionStart is 0 and
@@ -96,6 +98,26 @@ export function TemplateEditorPanel({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* One-click discard instead of endless Ctrl+Z (Sergey, s66): draft
+              becomes a copy of the published version again. Local state only —
+              «Зберегти чернетку» persists it, exactly like a manual edit would. */}
+          {published !== null && (
+            <button
+              onClick={async () => {
+                const ok = await confirm({
+                  title: 'Скинути зміни чернетки?',
+                  body: 'Чернетка стане копією чинної опублікованої версії. Поточні правки буде втрачено.',
+                  confirmLabel: 'Скинути',
+                  variant: 'warn',
+                })
+                if (ok) onDraftChange(published)
+              }}
+              disabled={!isDraftDifferent}
+              className="px-4 py-2 text-inkSoft hover:text-ink disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors"
+            >
+              Скинути зміни
+            </button>
+          )}
           <button
             onClick={onSaveDraft}
             disabled={savingDraft}

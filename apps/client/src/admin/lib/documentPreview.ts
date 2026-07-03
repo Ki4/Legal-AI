@@ -1,5 +1,6 @@
 import docEngine from '@doc-engine'
 import { makeAnnotatedContext } from './annotatedContext'
+import { mapLineToRenderedParagraph } from './caretPreviewMap'
 import { toParagraphs, type PreviewParagraph } from './documentStyles'
 import { runParseGate, type GateResult } from './templateGate'
 
@@ -56,6 +57,30 @@ export function renderAnnotatedPreview(template: string, fieldIds: string[]): Pr
  */
 export function validateDraft(template: string): GateResult {
   return runParseGate((tpl) => renderDocumentWithStyles(tpl, buildContext({}, {})), template)
+}
+
+/**
+ * Sync-highlight (S2 slice C): which preview paragraph does the caret's
+ * template line produce? Must be called with the SAME answers / annotated
+ * fields as the visible render, or the paragraph indices drift. Returns null
+ * whenever an honest answer doesn't exist (parse error, false if-branch).
+ */
+export function mapCaretToParagraph(
+  template: string,
+  line: number,
+  opts: { answers?: Record<string, unknown>; annotatedFieldIds?: string[] | null } = {},
+): number | null {
+  return mapLineToRenderedParagraph(
+    (tpl) => {
+      const base = buildContext(opts.answers ?? {}, {})
+      const ctx = opts.annotatedFieldIds?.length
+        ? makeAnnotatedContext(base, new Set(opts.annotatedFieldIds))
+        : base
+      return renderDocumentWithStyles(tpl, ctx)
+    },
+    template,
+    line,
+  )
 }
 
 export interface LayoutRenderResult {

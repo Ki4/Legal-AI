@@ -29,7 +29,7 @@ const ENGINE_ERROR_UK: [RegExp, (m: RegExpMatchArray) => string][] = [
     (m) => `невідомий тег "${m[1]}" у рядку ${m[2]} — підтримуються {{#if}}, {{#each}} та {{поле}}`,
   ],
   [
-    /^Unexpected (\{\{.+?\}\}) at line (\d+)(?: \(inside (\S+) from line (\d+)\))?$/,
+    /^Unexpected (\{\{[\s\S]+?\}\}) at line (\d+)(?: \(inside (\S+) from line (\d+)\))?$/,
     (m) =>
       `зайвий тег ${m[1]} у рядку ${m[2]}` +
       (m[3] ? ` (всередині ${m[3]}, відкритого в рядку ${m[4]})` : ''),
@@ -40,11 +40,14 @@ const ENGINE_ERROR_UK: [RegExp, (m: RegExpMatchArray) => string][] = [
   ],
   [/^Duplicate \{\{else\}\} at line (\d+)$/, (m) => `повторний {{else}} у рядку ${m[1]}`],
   [
-    /^Unterminated string literal in "(.+?)" at line (\d+)$/,
+    /^Unterminated string literal in "([\s\S]+?)" at line (\d+)$/,
     (m) => `незакриті лапки у "${m[1]}" (рядок ${m[2]})`,
   ],
+  // The src blob may span lines (s66 tail: a stray `{{!` swallows the following
+  // LINES into one tag, so `.+?` — which never matches '\n' — let the raw
+  // English message through). [\s\S] is the newline-tolerant "any char".
   [
-    /^(?:Incomplete expression|Unexpected ".+?" in expression) "(.+?)" at line (\d+)$/,
+    /^(?:Incomplete expression|Unexpected "[\s\S]+?" in expression) "([\s\S]+?)" at line (\d+)$/,
     (m) => `помилка в умові "${m[1]}" (рядок ${m[2]}) — перевірте вираз`,
   ],
   [

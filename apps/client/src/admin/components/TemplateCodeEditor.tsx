@@ -32,22 +32,31 @@ export const TemplateCodeEditor = forwardRef<
     onChange: (text: string) => void
     /** Fired when the editor gains focus (caret-placed gate in the panel). */
     onFocus?: () => void
+    /** Fired when the caret moves to another line (0-based) — sync-highlight
+     *  of the matching preview paragraph (S2 slice C). */
+    onCaretLine?: (line: number) => void
     labelFor: LabelLookup
     placeholder?: string
     ariaLabel?: string
   }
->(function TemplateCodeEditor({ value, onChange, onFocus, labelFor, placeholder, ariaLabel }, ref) {
+>(function TemplateCodeEditor(
+  { value, onChange, onFocus, onCaretLine, labelFor, placeholder, ariaLabel },
+  ref,
+) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const decoCompartment = useRef(new Compartment())
+  const lastCaretLine = useRef(-1)
   // Latest callbacks without recreating the view (written in an effect, not
   // during render — react-hooks/refs).
   const onChangeRef = useRef(onChange)
   const onFocusRef = useRef(onFocus)
+  const onCaretLineRef = useRef(onCaretLine)
   useEffect(() => {
     onChangeRef.current = onChange
     onFocusRef.current = onFocus
-  }, [onChange, onFocus])
+    onCaretLineRef.current = onCaretLine
+  }, [onChange, onFocus, onCaretLine])
 
   useEffect(() => {
     if (!hostRef.current) return
@@ -69,6 +78,14 @@ export const TemplateCodeEditor = forwardRef<
           EditorView.updateListener.of((update) => {
             if (update.docChanged) onChangeRef.current(update.state.doc.toString())
             if (update.focusChanged && update.view.hasFocus) onFocusRef.current?.()
+            if (update.selectionSet || update.docChanged) {
+              const line =
+                update.state.doc.lineAt(update.state.selection.main.head).number - 1
+              if (line !== lastCaretLine.current) {
+                lastCaretLine.current = line
+                onCaretLineRef.current?.(line)
+              }
+            }
           }),
         ],
       }),
@@ -123,9 +140,13 @@ export const TemplateCodeEditor = forwardRef<
   }))
 
   return (
+    // Paper underlay (C5): the DOCUMENT is paper — the editor keeps the Legal
+    // Light sheet in BOTH themes (literal colours, not theme tokens), matching
+    // the decoration palette which is hardcoded light. In the dark theme the
+    // page chrome darkens around a light sheet; in light nothing changes.
     <div
       ref={hostRef}
-      className="flex-1 min-h-[320px] w-full bg-paperAlt border border-lineStrong rounded-xl
+      className="flex-1 min-h-[220px] w-full bg-[#FBFAF7] border border-[#E0DCD2] rounded-xl
                  overflow-hidden focus-within:border-brand [&_.cm-editor]:h-full"
     />
   )

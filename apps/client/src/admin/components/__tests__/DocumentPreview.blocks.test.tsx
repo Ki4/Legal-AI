@@ -20,6 +20,7 @@ vi.mock('../../lib/documentPreview', () => ({
     styleHints: {},
   })),
   renderAnnotatedPreview: vi.fn(),
+  mapCaretToParagraph: vi.fn(() => null),
 }))
 
 import { renderPreview } from '../../lib/documentPreview'

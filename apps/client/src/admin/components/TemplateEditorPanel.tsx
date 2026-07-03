@@ -28,6 +28,7 @@ export function TemplateEditorPanel({
   onPublish,
   savingDraft,
   publishing,
+  onCaretLine,
 }: {
   draft: string
   published: string | null
@@ -39,6 +40,9 @@ export function TemplateEditorPanel({
   onPublish: () => void
   savingDraft: boolean
   publishing: boolean
+  /** Caret moved to another template line (0-based) — the page forwards this
+   *  to the preview for the caret↔paragraph sync-highlight (S2 slice C). */
+  onCaretLine?: (line: number) => void
 }) {
   const confirm = useConfirm()
   const editorRef = useRef<TemplateEditorHandle>(null)
@@ -208,6 +212,7 @@ export function TemplateEditorPanel({
         value={draft}
         onChange={onDraftChange}
         onFocus={() => setCaretPlaced(true)}
+        onCaretLine={onCaretLine}
         labelFor={labelFor}
         placeholder={'До ________ районного суду… {{!style: right}} Позивач: {{plaintiff_name}}'}
         ariaLabel="Шаблон документа"

@@ -69,6 +69,8 @@ export function ServiceEditPage() {
   const [publishing, setPublishing]     = useState(false)
   // Bumped after every publish/restore so the revision history reloads (§5).
   const [revisionsBump, setRevisionsBump] = useState(0)
+  // S2 slice C: editor caret line → preview paragraph sync-highlight.
+  const [caretLine, setCaretLine] = useState<number | null>(null)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [isDirty, setIsDirty]       = useState(false)
@@ -297,7 +299,11 @@ export function ServiceEditPage() {
                 {/* Desktop: full editor. Draft state lives here so the right
                     preview panel re-renders on every keystroke. */}
                 <div className="hidden xl:flex h-full flex-col gap-4">
-                  <div className="flex-1 min-h-0">
+                  {/* overflow-y-auto: in a short window the panel's min heights
+                      (editor floor + toolbar) can exceed this slot — scroll it
+                      instead of painting over the revision history below (s67
+                      overlap: the editor's min-h spilled 66px past the panel). */}
+                  <div className="flex-1 min-h-0 overflow-y-auto">
                     <TemplateEditorPanel
                       draft={docDraft}
                       published={docPublished}
@@ -309,6 +315,7 @@ export function ServiceEditPage() {
                       onPublish={handlePublish}
                       savingDraft={savingDraft}
                       publishing={publishing}
+                      onCaretLine={setCaretLine}
                     />
                   </div>
                   {!isNew && id && (
@@ -485,6 +492,7 @@ export function ServiceEditPage() {
                 template={docDraft || docPublished}
                 slug={config.service_id || null}
                 formConfig={config}
+                caretLine={caretLine}
               />
             ) : (
               <>

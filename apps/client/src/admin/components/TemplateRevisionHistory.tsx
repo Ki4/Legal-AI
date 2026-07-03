@@ -101,7 +101,9 @@ export function TemplateRevisionHistory({
       <summary className="text-sm font-semibold text-ink cursor-pointer select-none">
         Історія змін{loaded && !error ? ` (${revisions.length})` : ''}
       </summary>
-      <div className="mt-2 space-y-1.5">
+      {/* Own scroll cap: up to 30 revisions expand here — never squeeze the
+          editor above out of its slot (s67 overlap follow-up). */}
+      <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto">
         <p className="text-xs text-inkMute">
           Знімки послуги перед кожною публікацією чи відновленням. «Відновити» повертає шаблон цієї
           версії у чернетку та публікує його.

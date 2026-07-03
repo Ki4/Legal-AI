@@ -16,7 +16,12 @@ import {
 } from '@codemirror/view'
 import type { Range } from '@codemirror/state'
 import { codeFolding, foldGutter, foldService } from '@codemirror/language'
-import { matchTemplateBlocks, scanTemplateTokens, styleKeywordsOf } from './templateTokens'
+import {
+  matchTemplateBlocks,
+  matchTemplateRuns,
+  scanTemplateTokens,
+  styleKeywordsOf,
+} from './templateTokens'
 
 /** Chip label lookup: field id → Ukrainian label. Kept outside CM state so the
  *  panel can rebuild the extension when the form config changes. */
@@ -98,6 +103,15 @@ const MARK_CLASS: Record<string, Decoration> = {
 
 const BLOCK_LINE = Decoration.line({ class: 'cm-tpl-blockline' })
 
+// Inline runs (styleHints v2, slice C): the text INSIDE {{#bold}}…{{/bold}}
+// renders bold in the editor too, matching the preview («применил — сразу
+// видишь»). Purely visual, tolerant of half-written pairs (matchTemplateRuns).
+const RUN_MARK: Record<string, Decoration> = {
+  bold: Decoration.mark({ class: 'cm-tpl-run-bold' }),
+  italic: Decoration.mark({ class: 'cm-tpl-run-italic' }),
+  underline: Decoration.mark({ class: 'cm-tpl-run-underline' }),
+}
+
 function buildDecorations(view: EditorView, labelFor: LabelLookup): DecorationSet {
   const out: Range<Decoration>[] = []
   const text = view.state.doc.toString()
@@ -120,17 +134,27 @@ function buildDecorations(view: EditorView, labelFor: LabelLookup): DecorationSe
         )
       }
     } else if (token.kind === 'style') {
-      if (touchedBy(token.from, token.to)) {
+      const keywords = styleKeywordsOf(text, token)
+      // An empty {{!style:}} would collapse into an invisible pill (s67 finding)
+      // — keep the raw tag visible so the lawyer can see and fix/delete it.
+      if (keywords.length === 0 || touchedBy(token.from, token.to)) {
         out.push(MARK_CLASS.style.range(token.from, token.to))
       } else {
         out.push(
           Decoration.replace({
-            widget: new StyleChipWidget(styleKeywordsOf(text, token)),
+            widget: new StyleChipWidget(keywords),
           }).range(token.from, token.to),
         )
       }
     } else {
       out.push(MARK_CLASS[token.kind].range(token.from, token.to))
+    }
+  }
+
+  // Bold/italic/underline the text between run tags — same look as the preview.
+  for (const run of matchTemplateRuns(text)) {
+    if (run.openTo < run.closeFrom) {
+      out.push(RUN_MARK[run.style].range(run.openTo, run.closeFrom))
     }
   }
 
@@ -195,12 +219,17 @@ export const templateFolding = [
   }),
 ]
 
-/** Editor chrome + tag colours, aligned with the admin "Legal Light" palette. */
+/** Editor chrome + tag colours, aligned with the admin "Legal Light" palette.
+ *  Paper underlay (C5): background AND text colour are explicit literals — the
+ *  template is a paper document and stays light in the dark theme too (the
+ *  host div matches with the same literal background). Inheriting the page's
+ *  colour made the text invisible under <html data-theme="dark">. */
 export const templateTheme = EditorView.theme({
   '&': {
     fontSize: '13px',
     height: '100%',
-    backgroundColor: 'transparent',
+    backgroundColor: '#FBFAF7', // Legal Light paperAlt, literal on purpose
+    color: '#1F1E1B', // Legal Light ink
   },
   '.cm-scroller': {
     fontFamily:
@@ -249,6 +278,9 @@ export const templateTheme = EditorView.theme({
     whiteSpace: 'nowrap',
     cursor: 'text',
   },
+  '.cm-tpl-run-bold': { fontWeight: '700' },
+  '.cm-tpl-run-italic': { fontStyle: 'italic' },
+  '.cm-tpl-run-underline': { textDecoration: 'underline' },
   '.cm-tpl-blockline': {
     borderLeft: '3px solid #FBCFE8', // pink-200 — inside an {{#if}}/{{#each}}
     paddingLeft: '5px !important',

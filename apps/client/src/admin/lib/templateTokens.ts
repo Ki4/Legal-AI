@@ -73,6 +73,46 @@ export function matchTemplateBlocks(text: string): TemplateBlock[] {
   return out.sort((a, b) => a.openFrom - b.openFrom)
 }
 
+/** An inline run {{#bold}}…{{/bold}} (+italic/underline) — absolute offsets. */
+export interface TemplateRun {
+  style: 'bold' | 'italic' | 'underline'
+  openFrom: number
+  openTo: number
+  closeFrom: number
+  closeTo: number
+}
+
+const RUN_STYLES = ['bold', 'italic', 'underline'] as const
+
+/**
+ * Match inline style runs (styleHints v2). Tolerant like matchTemplateBlocks:
+ * unclosed opens and stray closes are dropped, a close pops the NEAREST open of
+ * its style — the parse gate, not this scanner, blocks broken runs.
+ */
+export function matchTemplateRuns(text: string): TemplateRun[] {
+  const stack: Array<{ style: TemplateRun['style']; from: number; to: number }> = []
+  const out: TemplateRun[] = []
+  for (const t of scanTemplateTokens(text)) {
+    if (t.kind !== 'logic') continue
+    const inner = text.slice(t.from + 2, t.to - 2).trim()
+    const open = RUN_STYLES.find((s) => inner === `#${s}`)
+    const close = RUN_STYLES.find((s) => inner === `/${s}`)
+    if (open) {
+      stack.push({ style: open, from: t.from, to: t.to })
+    } else if (close) {
+      for (let i = stack.length - 1; i >= 0; i--) {
+        if (stack[i].style === close) {
+          const o = stack[i]
+          stack.length = i
+          out.push({ style: close, openFrom: o.from, openTo: o.to, closeFrom: t.from, closeTo: t.to })
+          break
+        }
+      }
+    }
+  }
+  return out.sort((a, b) => a.openFrom - b.openFrom)
+}
+
 /** Style keywords of a {{!style: …}} tag ('center', 'bold', '/keep-block', …). */
 export function styleKeywordsOf(text: string, token: TemplateToken): string[] {
   const inner = text.slice(token.from + 2, token.to - 2).trim()
@@ -81,6 +121,48 @@ export function styleKeywordsOf(text: string, token: TemplateToken): string[] {
     .trim()
     .split(/\s+/)
     .filter(Boolean)
+}
+
+/**
+ * Find the template line whose text actually reaches the rendered output,
+ * starting at `line`: forward first (natural for a style directive — it styles
+ * the paragraph BELOW it), then backward, else null. A line is skipped when its
+ * content is nothing but comment/style/logic tags (standalone tags — the engine
+ * swallows the whole line) or when a tag spanning multiple lines crosses it
+ * (no safe place to host extra text). A blank line qualifies: it renders as an
+ * empty paragraph.
+ */
+export function findEmittingLine(text: string, line: number): number | null {
+  const lines = text.split('\n')
+  if (line < 0 || line >= lines.length) return null
+  const tokens = scanTemplateTokens(text)
+  const starts: number[] = []
+  let acc = 0
+  for (const l of lines) {
+    starts.push(acc)
+    acc += l.length + 1
+  }
+  const nonEmitting = (k: TokenKind) => k === 'comment' || k === 'style' || k === 'logic'
+  const emits = (i: number): boolean => {
+    const from = starts[i]
+    const to = from + lines[i].length
+    const overlapping = tokens.filter((t) => t.from < to && t.to > from)
+    if (overlapping.some((t) => t.from < from || t.to > to)) return false // mid multi-line tag
+    if (overlapping.some((t) => !nonEmitting(t.kind))) return true // {{var}}/{{helper}} emit text
+    if (overlapping.length === 0) return true // plain (possibly blank) line
+    // Only non-emitting tags: the line survives iff any plain text sits around them.
+    let rest = ''
+    let cursor = from
+    for (const t of overlapping) {
+      rest += text.slice(cursor, t.from)
+      cursor = t.to
+    }
+    rest += text.slice(cursor, to)
+    return rest.trim() !== ''
+  }
+  for (let i = line; i < lines.length; i++) if (emits(i)) return i
+  for (let i = line - 1; i >= 0; i--) if (emits(i)) return i
+  return null
 }
 
 /** Scan a template into classified {{…}} tokens, in document order. */
@@ -93,7 +175,9 @@ export function scanTemplateTokens(text: string): TemplateToken[] {
     const inner = m[1].trim()
     const from = m.index
     const to = m.index + m[0].length
-    if (inner.startsWith('!style')) {
+    if (inner.startsWith('!style:')) {
+      // The engine requires the colon (render-document.js `'!style:'`) — a
+      // colon-less {{!styleXYZ}} is a plain comment to it, so mirror that here.
       out.push({ from, to, kind: 'style' })
     } else if (inner.startsWith('!')) {
       out.push({ from, to, kind: 'comment' })

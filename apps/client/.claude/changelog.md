@@ -24,6 +24,18 @@
 **Files:** `src/admin/lib/{templateTokens.ts(new),templateEditorTheme.ts(new)}` · `src/admin/components/{TemplateCodeEditor.tsx(new),TemplateEditorPanel.tsx}` · `specs/features/template-editor/requirements.md` (+§5b) · тести `lib/__tests__/templateTokens.test.ts(new)`, `components/__tests__/TemplateEditorPanel.test.tsx` · `package.json`
 **Next (A2, сесія 68):** іконки-віджети замість `{{!style:…}}` рядків · fold умовних блоків + кольорова смуга if-діапазонів. Потім B (styleHints v2 runs — legally-critical, окрема сесія) і C (sync-підсвітка каретка↔превʼю).
 
+### 2026-07-03 (session 67, продовження) — S2 слайс A2: style-пілюлі + fold умовних блоків + смуги if-діапазонів
+**Status:** гілка `feat/template-editor-s2-codemirror` · UI **446 ✅** (+3) · tsc/eslint clean · build:admin OK · live-верифіковано (в межах автоматизації)
+**Why:** Завершення слайсу (A) плану S2: юрист бачить `{{!style:…}}` як зрозумілу пілюлю («⇔ центр · Ж жирний · ⇊ не відривати»), а умовні діапазони — як кольорову смугу з можливістю згорнути блок.
+**What:**
+- `templateTokens.ts` +`matchTemplateBlocks` (толерантний матчер пар `{{#if}}/{{#each}}` — незакриті/зайві теги мовчки відкидаються, гейт лишається єдиним блокером публікації) + `styleKeywordsOf`.
+- `templateEditorTheme.ts`: `StyleChipWidget` — `{{!style:…}}` поза курсором → фіолетова пілюля з укр. підписами (STYLE_LABELS, 9 ключових слів), курсор торкнувся → сирий тег · `Decoration.line` смуга (pink) на рядках УСЕРЕДИНІ кожного if/each-блоку · `templateFolding`: `foldService` по matchTemplateBlocks (відкривний/закривний теги лишаються видимі, placeholder «… згорнуто …») + foldGutter ▾/▸. Збірка через `Decoration.set(sorted)`.
+- Fold — чисто вью-стан: НЕ мутує чернетку (перевірено live: статус «✓ збігається» після fold/unfold; reload скидає).
+**Tests (+3):** вкладені if/each з точними діапазонами · толерантність до зламаних пар (unclosed/stray/перехресні) · styleKeywordsOf (звичайні + `/keep-block`).
+**Live verify (:5175, divorce):** пілюля «⇔ центр · Ж жирний · ⇊ не відривати» на директиві заголовка · смуги блоків у вьюпорті · fold по кліку гаттера згортає блок (▸), текст цілий · reload → чисто. Нюанс: synthetic-кліки по гаттеру нестабільні (гочас s65) — фінальний клік-тест за Сергієм.
+**Files:** `src/admin/lib/{templateTokens.ts,templateEditorTheme.ts}` · `src/admin/components/TemplateCodeEditor.tsx` · `lib/__tests__/templateTokens.test.ts`
+**Next:** слайс B (styleHints v2 runs — рушій, legally-critical, НЕ поспішати) · слайс C (sync-підсвітка каретка↔абзац превʼю).
+
 ### 2026-07-03 (session 66, wrap) — «Скинути зміни» + live-прогін Сесії 3 + MERGE конвеєра в main
 **Status:** **ЗМЕРЖЕНО в main** (merge `d1a98a6`; коміти `910a498` Сесія 3, `58e2bf9` reset, `51da2b1` roadmap) · UI **439 ✅** (+3) · Vercel-деплой тригернувся
 **Why:** Прохання Сергія по ходу сесії: скидати правки чернетки одним кліком замість нескінченного Ctrl+Z. Плюс фінальний live-прогін Сесії 3 перед merge (план s65: після Сесії 3 → merge).

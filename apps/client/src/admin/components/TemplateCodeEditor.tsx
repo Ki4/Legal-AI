@@ -10,7 +10,12 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorState, EditorSelection, Compartment } from '@codemirror/state'
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
-import { templateDecorations, templateTheme, type LabelLookup } from '../lib/templateEditorTheme'
+import {
+  templateDecorations,
+  templateFolding,
+  templateTheme,
+  type LabelLookup,
+} from '../lib/templateEditorTheme'
 
 export interface TemplateEditorHandle {
   /** Current main selection, in absolute char offsets. */
@@ -56,6 +61,7 @@ export const TemplateCodeEditor = forwardRef<
           EditorView.lineWrapping,
           cmPlaceholder(placeholder ?? ''),
           templateTheme,
+          templateFolding,
           decoCompartment.current.of(templateDecorations(labelFor)),
           EditorView.contentAttributes.of({
             'aria-label': ariaLabel ?? 'Шаблон документа',

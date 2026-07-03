@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
-import { scanTemplateTokens } from '../templateTokens'
+import { matchTemplateBlocks, scanTemplateTokens, styleKeywordsOf } from '../templateTokens'
 import { CLAIM_SKELETON } from '../templateSkeleton'
 
 const kindsOf = (text: string) => scanTemplateTokens(text).map((t) => t.kind)
@@ -36,6 +36,34 @@ describe('scanTemplateTokens — DSL tag classification (S2 slice A)', () => {
     const [a, b] = scanTemplateTokens(text)
     expect(text.slice(a.from, a.to)).toBe('{{plaintiff_name}}')
     expect(text.slice(b.from, b.to)).toBe('{{plaintiff_phone}}')
+  })
+
+  it('matches nested if/each blocks and reports exact tag ranges', () => {
+    const text = '{{#if a}}\n{{#each children}}\n{{raw}}\n{{/each}}\n{{else}}\nx\n{{/if}}'
+    const blocks = matchTemplateBlocks(text)
+    expect(blocks.map((b) => b.kind)).toEqual(['if', 'each'])
+    const ifBlock = blocks[0]
+    expect(text.slice(ifBlock.openFrom, ifBlock.openTo)).toBe('{{#if a}}')
+    expect(text.slice(ifBlock.closeFrom, ifBlock.closeTo)).toBe('{{/if}}')
+    const each = blocks[1]
+    expect(each.openFrom).toBeGreaterThan(ifBlock.openFrom)
+    expect(each.closeTo).toBeLessThan(ifBlock.closeFrom)
+  })
+
+  it('tolerates broken pairs while typing — drops them, never throws', () => {
+    expect(matchTemplateBlocks('{{#if a}} без закриття')).toEqual([])
+    expect(matchTemplateBlocks('текст {{/if}} без відкриття')).toEqual([])
+    // stray /each inside an if: the if still matches its own /if
+    const blocks = matchTemplateBlocks('{{#if a}}{{/each}}{{/if}}')
+    expect(blocks.map((b) => b.kind)).toEqual(['if'])
+  })
+
+  it('extracts style keywords from a {{!style:}} tag', () => {
+    const text = '{{!style: center bold keep-with-next}}\nЗАГОЛОВОК'
+    const [token] = scanTemplateTokens(text)
+    expect(styleKeywordsOf(text, token)).toEqual(['center', 'bold', 'keep-with-next'])
+    const closer = '{{!style: /keep-block}}'
+    expect(styleKeywordsOf(closer, scanTemplateTokens(closer)[0])).toEqual(['/keep-block'])
   })
 
   it('never throws and covers the claim skeleton and the real divorce template', () => {

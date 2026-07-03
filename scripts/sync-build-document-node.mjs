@@ -56,6 +56,7 @@ const FOOTER = `
 // anything else → legacy hardcoded js builder (no style hints)
 let document;
 let styleHints = {};
+let styleRuns = {}; // inline character runs (styleHints v2, S2-B)
 let reviewCard = null;
 let abstained = null; // null = non-hybrid; true/false = hybrid result (#73)
 let checklistResult = null; // null = no checklist configured; else {ok, missing, satisfied} (#39)
@@ -70,6 +71,7 @@ try {
     const rendered = renderDocumentWithStyles(svc.document_template, ctx);
     document = rendered.text;
     styleHints = rendered.styleHints;
+    styleRuns = rendered.styleRuns || {};
     if (svc.required_checklist && svc.required_checklist.items && svc.required_checklist.items.length) {
       checklistResult = validateChecklist(document, ctx, svc.required_checklist);
     }
@@ -79,6 +81,7 @@ try {
     const rendered = renderDocumentWithStyles(svc.document_template, ctx);
     document = rendered.text;
     styleHints = rendered.styleHints;
+    styleRuns = rendered.styleRuns || {};
     if (svc.required_checklist && svc.required_checklist.items && svc.required_checklist.items.length) {
       checklistResult = validateChecklist(document, ctx, svc.required_checklist);
     }
@@ -100,7 +103,7 @@ if (checklistResult && !checklistResult.ok) {
 }
 console.log('[Build] Generated', document.length, 'chars,', Object.keys(styleHints).length, 'styled paragraphs for', serviceSlug);
 
-return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard, _style_hints: styleHints, _abstained: abstained, _checklist_result: checklistResult } }];
+return [{ json: { _content: document, _case_id: caseId, _review_card: reviewCard, _style_hints: styleHints, _style_runs: styleRuns, _abstained: abstained, _checklist_result: checklistResult } }];
 `;
 
 const jsCode = [

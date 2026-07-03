@@ -41,6 +41,25 @@ export function insertLineBefore(text: string, selStart: number, line: string): 
 }
 
 /**
+ * Wrap the EXACT selection in an inline pair (styleHints v2 runs, S2-B):
+ * `Позивач: {{#bold}}{{plaintiff_name}}{{/bold}}` — no line juggling, offsets
+ * as selected. Caret lands right after `close` so typing continues unstyled.
+ * Callers guard against an empty selection (nothing to wrap).
+ */
+export function wrapInline(
+  text: string,
+  selStart: number,
+  selEnd: number,
+  open: string,
+  close: string,
+): EditResult {
+  const from = Math.min(selStart, selEnd)
+  const to = Math.max(selStart, selEnd)
+  const next = text.slice(0, from) + open + text.slice(from, to) + close + text.slice(to)
+  return { text: next, caret: to + open.length + close.length }
+}
+
+/**
  * Wrap whole paragraphs in a paired range macro: `open` goes on its own line
  * before the paragraph containing selStart, `close` on its own line after the
  * paragraph containing selEnd. A collapsed selection wraps just the current

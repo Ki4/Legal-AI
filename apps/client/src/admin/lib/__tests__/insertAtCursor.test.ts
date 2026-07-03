@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { insertSnippet, insertLineBefore, wrapSelection } from '../insertAtCursor'
+import { insertSnippet, insertLineBefore, wrapSelection, wrapInline } from '../insertAtCursor'
 
 describe('insertSnippet', () => {
   it('inserts at a collapsed caret and lands the caret after the snippet', () => {
@@ -64,6 +64,28 @@ describe('insertLineBefore', () => {
     // so the engine's '\n'-split sees the directive verbatim.
     expect(r.text).toBe('Перший\r\n{{!style: right}}\nДругий')
     expect(r.caret).toBe(caretInSecond + '{{!style: right}}\n'.length)
+  })
+})
+
+describe('wrapInline (styleHints v2 runs)', () => {
+  it('wraps the exact selection and lands the caret after the close tag', () => {
+    const text = 'Позивач: Іваненко, тел.'
+    const from = 9
+    const to = 17 // 'Іваненко'
+    const r = wrapInline(text, from, to, '{{#bold}}', '{{/bold}}')
+    expect(r.text).toBe('Позивач: {{#bold}}Іваненко{{/bold}}, тел.')
+    expect(r.caret).toBe(to + '{{#bold}}{{/bold}}'.length)
+    expect(r.text.slice(r.caret)).toBe(', тел.')
+  })
+
+  it('normalizes a backwards selection', () => {
+    const r = wrapInline('абвгд', 4, 1, '{{#bold}}', '{{/bold}}')
+    expect(r.text).toBe('а{{#bold}}бвг{{/bold}}д')
+  })
+
+  it('wraps a selection spanning lines verbatim (engine splits the run per paragraph)', () => {
+    const r = wrapInline('аб\nвг', 1, 4, '{{#bold}}', '{{/bold}}')
+    expect(r.text).toBe('а{{#bold}}б\nв{{/bold}}г')
   })
 })
 

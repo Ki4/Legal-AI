@@ -25,8 +25,8 @@ export interface PreviewResult {
 export function renderPreview(template: string, answers: Record<string, unknown> = {}): PreviewResult {
   try {
     const ctx = buildContext(answers, {})
-    const { text, styleHints } = renderDocumentWithStyles(template, ctx)
-    return { ok: true, paragraphs: toParagraphs(text, styleHints), text, styleHints }
+    const { text, styleHints, styleRuns } = renderDocumentWithStyles(template, ctx)
+    return { ok: true, paragraphs: toParagraphs(text, styleHints, styleRuns), text, styleHints }
   } catch (e) {
     return { ok: false, paragraphs: [], error: e instanceof Error ? e.message : String(e) }
   }

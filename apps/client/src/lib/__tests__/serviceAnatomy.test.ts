@@ -89,6 +89,15 @@ describe('analyzeTemplate', () => {
     expect(a.fieldRefs).not.toContain('gender') // helper name
   })
 
+  it('inline run tags (styleHints v2) are style markers, not field refs', () => {
+    const a = analyzeTemplate('Позивач: {{#bold}}{{last_name}}{{/bold}} і {{#italic}}курсив{{/italic}}')
+    expect(a.fieldRefs).toContain('last_name')
+    expect(a.fieldRefs).not.toContain('#bold')
+    expect(a.fieldRefs).not.toContain('/bold')
+    expect(a.fieldRefs).not.toContain('#italic')
+    expect(a.referencedPaths.some((p) => p.includes('bold') || p.includes('italic'))).toBe(false)
+  })
+
   it('empty template → hasTemplate false', () => {
     expect(analyzeTemplate('').hasTemplate).toBe(false)
     expect(analyzeTemplate('   ').hasTemplate).toBe(false)

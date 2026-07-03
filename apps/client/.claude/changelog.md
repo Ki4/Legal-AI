@@ -10,6 +10,14 @@
 
 ---
 
+### 2026-07-03 (session 66, wrap) — «Скинути зміни» + live-прогін Сесії 3 + MERGE конвеєра в main
+**Status:** **ЗМЕРЖЕНО в main** (merge `d1a98a6`; коміти `910a498` Сесія 3, `58e2bf9` reset, `51da2b1` roadmap) · UI **439 ✅** (+3) · Vercel-деплой тригернувся
+**Why:** Прохання Сергія по ходу сесії: скидати правки чернетки одним кліком замість нескінченного Ctrl+Z. Плюс фінальний live-прогін Сесії 3 перед merge (план s65: після Сесії 3 → merge).
+**What:** «Скинути зміни» у `TemplateEditorPanel` (чернетка → копія опублікованої, ConfirmModal warn; hidden без published, disabled коли draft==published; лише локальний стейт — персистить «Зберегти чернетку»). Тести панелі обгорнуто в `ConfirmProvider`.
+**Live verify (Chrome + жива БД, divorce):** історія = 2 ревізії s65 → restore: SHA до/після/з-БД-після-reload `7fcf607e5176bcfe` (прод байт-у-байт цілий), історія (3) + «Відновлення версії» · мітки 8 блоків, гаснуть при зламаному `{{#if` · скидання байт-точне, оверлеїв 0 · каркас на divorce прихований (очікувано). Нюанс: на Vite dev розширення Chrome падає по document_idle (HMR) — прогін через `javascript_tool`.
+**Хвости:** 10-й патерн `localizeEngineError` (`Unexpected "{{!" in expression` пройшов сирим) · текст каркаса → Олі.
+**Files:** `src/admin/components/TemplateEditorPanel.tsx` · `components/__tests__/TemplateEditorPanel.test.tsx` · `specs/roadmap.md` (#51 done) · `apps/client/.claude/reports/2026-07-03-aicareer-editor-analysis.md` (розбір редактора AirCareer на питання Сергія)
+
 ### 2026-07-03 (session 66) — template-editor Сесія 3: мітки блоків + «Створити з каркаса» + «Історія змін» (§5)
 **Status:** гілка `claude/document-constructor-styling-a3zkky` · UI **436 ✅** (+20) · tsc clean · змінені файли eslint-clean · build:admin OK
 **Why:** Фінальна сесія конвеєра template-editor (спека §5): юрист бачить структуру документа прямо в превʼю чернетки, стартує нову послугу з готового каркаса замість порожнього поля, і може відкотити шаблон на будь-який знімок з архіву — без SQL.

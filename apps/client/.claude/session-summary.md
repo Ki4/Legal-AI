@@ -8,7 +8,20 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
-**🟢 SESSION 65 (2026-07-03, локальна) — TEMPLATE-EDITOR: приймання 7/7 ✅ + фікси каретки/гейта/e2e + fullscreen-превʼю. Гілка `claude/document-constructor-styling-a3zkky` (top `593bbdc`, запушено). UI 416 ✅.**
+**🟢 SESSION 66 (2026-07-03) — TEMPLATE-EDITOR СЕСІЯ 3 ✅ + ЗМЕРЖЕНО В MAIN (merge `d1a98a6`, Vercel-деплой тригернувся). Конвеєр template-editor (Сесії 1-3, IMPROVEMENTS #51) ЗАКРИТО. UI 439 ✅.**
+- **Сесія 3 (спека §5), усе live-верифіковано в Chrome проти живої БД (дет. нижче в секції Session 66):**
+  мітки 8 блоків у превʼю чернетки (гаснуть при парс-помилці) · «Створити з каркаса» (скелет позову,
+  тест на реальному рушії; ⚠️ **текст каркаса → sign-off Олі ДО першої публікації**, список Олі п.5) ·
+  «Історія змін» + «Відновити» (той самий гейт, снапшот `reason='restore'`) · «Скинути зміни»
+  (прохання Сергія — замість нескінченного Ctrl+Z).
+- **Live-прогін:** restore round-trip SHA до/після/з-БД = `7fcf607e…` (прод байт-у-байт цілий), у історії
+  3-тя чесна ревізія «Відновлення версії». **AirCareer розібрано** (питання Сергія): JSON-профіль +
+  contentEditable-«листя» 1:1 до полів, НЕ round-trip WYSIWYG — підтверджує наш вибір DSL+read-only
+  превʼю; звіт `reports/2026-07-03-aicareer-editor-analysis.md`.
+- **Хвости s66:** 10-й патерн локалізації гейта (`Unexpected "{{!" in expression` пройшов сирим) ·
+  вигрузити текст каркаса Олі окремим повідомленням.
+
+**🟢 SESSION 65 (2026-07-03, локальна) — TEMPLATE-EDITOR: приймання 7/7 ✅ + фікси каретки/гейта/e2e + fullscreen-превʼю. UI 416 ✅.**
 - **Приймання пройдено** (нічний автономний прогін + рецензія критика-субагента + живий тест Сергія):
   всі 7 пунктів чеклиста ✅, прод-шаблон divorce після прогону = байт-оригінал (SHA `7fcf607e…`), у
   `service_revisions` лишились 2 чесні аудит-ревізії `publish_template` (дані для «Історії змін» Сесії 3).
@@ -25,23 +38,16 @@
   і ІНЛАЙН-жирний (кейс Сергія «Позивач: **{{plaintiff_name}}**» — зараз стилі лише попараграфні).
   Повний WYSIWYG (ProseMirror) відхилено повторно: round-trip тихо псує шаблони.
 
-**🔴 ПОРЯДОК НАСТУПНИХ СЕСІЙ (план узгоджено з Сергієм 2026-07-03):**
-1. **Сесія 66 — template-editor Сесія 3** (спека §5, та сама гілка): read-only мітки блоків у превʼю
-   (`detectBlocks` по чернетці) · «Створити з каркаса» (скелет позову 8 блоків; **текст каркаса → sign-off
-   Олі ДО проду** — можна надіслати їй заздалегідь) · «Історія змін» (список `service_revisions` +
-   «Відновити»; 2 живі ревізії вже є). Після Сесії 3 → **merge гілки в main** (приймання+фікси вже
-   верифіковані; мержити можна й раніше, якщо Сергій захоче — блокерів нема).
-2. **Сесії 67+ — S2-конвеєр (2–4 сесії, Tier 2 спека-доповнення до template-editor):**
+**🔴 ПОРЯДОК НАСТУПНИХ СЕСІЙ (узгоджено 2026-07-03; Сергій дає фідбек ПО ФАКТУ, після виконання наміченого):**
+1. **Сесії 67+ — S2-конвеєр (2–4 сесії, Tier 2 спека-доповнення до template-editor):**
    (A) CodeMirror 6 swap: підсвітка DSL, чипи-декорації над `{{поле}}`, іконки замість `{{!style:}}`,
    fold умовних блоків · (B) styleHints v2 «runs» у рушії — інлайн-стилі (ЄДИНЕ місце де не поспішати:
    legally-critical, parity-тести; синтаксис `{{#bold}}…{{/bold}}`, Google Docs `updateTextStyle` ranges)
    · (C) полірування + sync-підсвітка «каретка ↔ абзац превʼю» (на CodeMirror — безкоштовна).
    База: `reports/2026-07-03-editor-{ux-analysis,architecture-research}.md`.
-3. **Далі з беклогу s64 (вибір Сергія):** «застаріло»-петля (мін. фікс відомий: реактивація послуг у
+2. **Далі з беклогу s64:** «застаріло»-петля (мін. фікс відомий: реактивація послуг у
    `LawChangeLogPage.review()`) · медвертикаль (чекає Олю по M1–M18, категорія `medical` готова) ·
    реальний платіж (Telegram Payments замість заглушки) · #100/#101 розкладка.
-- **🪤 Гілку оновлювати через `git fetch && git reset --hard origin/<гілка>`** (git pull дає хибні
-  конфлікти після force-push). Якщо WEB-сесія ще жива — вона мусить спершу забрати `d3a079a`+`593bbdc`.
 
 **🟢 SESSION 64 — issue #86: «хибна тривога» health виявилась РЕАЛЬНИМ прод-багом → дата-фікс live + чесний health, ЗМЕРЖЕНО в main (merge `b2b5a7d`, Closes #86) + main ЗАПУШЕНО (Vercel-деплой тригернувся). Дошка: відкритий лише #24 (secrets, не пріоритет).**
 - **Суть (3 розвороти, claim≠fact double):** health увесь час казав ПРАВДУ. Живий alimony `form_config` =
@@ -71,7 +77,8 @@
 (2) #67 divorce wording «спір… відсутній» → «не є предметом цього позову»; (3) **НОВЕ s64:** формулювання
 «бажаний спосіб отримання коштів» ст.175 ч.7 + чи робити поле обовʼязковим, коли рахунку нема (зараз
 опціональне → у документі легальний, але негарний `________`); (4) валідація таблиці медпозицій M1–M18;
-(5) **НОВЕ s65:** текст каркаса позову (8 блоків) для «Створити з каркаса» — потрібен ДО проду Сесії 3.
+(5) **s65/s66:** текст каркаса позову (8 блоків, `templateSkeleton.ts` — уже live в адмінці) — sign-off
+потрібен ДО того, як хтось уперше ОПУБЛІКУЄ послугу, створену з каркаса.
 
 **Що live у проді (form-submit `D2ab06X3pVUWk1py`, active):**
 - **2 послуги** — divorce + alimony, обидві `generation_mode='template'`, **form_config ↔ template вирівняні
@@ -92,9 +99,8 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (вибір Сергія):** «застаріло»-петля (звіт готовий, мінімальний фікс відомий) ·
-медвертикаль після відповіді Олі по M1–M18 (категорія `medical` в адмінці вже готова, блок #BLOCKER-5) ·
-реальний платіж (Telegram Payments замість заглушки) · #100/#101 розкладка.
+**🔴 НАСТУПНА СЕСІЯ:** Сесія 67 = S2-конвеєр, частина (A) CodeMirror 6 (за планом вище; Сергій
+коментує по факту).
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 
@@ -105,6 +111,49 @@
 
 **⚠️ Інфра:** WebStorm-термінал (JediTerm) не скролить Claude Code TUI → великі звіти писати у `.md`
 (memory `feedback_reports_to_file`).
+
+---
+## 🆕 Session 66 (2026-07-03) — template-editor Сесія 3 + merge в main + AirCareer-розбір
+
+### Головне — стан ЗАРАЗ
+- **Конвеєр template-editor ЗАКРИТО і ЗМЕРЖЕНО в main** (merge `d1a98a6`; фіча-коміти `910a498`,
+  `58e2bf9`, roadmap `51da2b1`). Vercel-деплой тригернувся. UI **439 ✅** (+23 за сесію), tsc clean,
+  змінені файли eslint-clean, build:admin OK. Роадмап: IMPROVEMENTS #51 → done.
+
+### Що зроблено (спека §5 + фідбек Сергія по ходу)
+1. **Мітки блоків:** `renderPreview`/`renderAnnotatedPreview` повертають також `text`+`styleHints`
+   (рядки↔параграфи 1:1); `DocumentPreview` +проп `showBlocks` → `detectBlocks` по відрендереній
+   чернетці → кольорова мітка (крапка+label з `blockRegistry`) над стартом кожного канонічного блока;
+   `unknown` без мітки (fail-closed). Увімкнено лише в `TemplateDraftPreview` — дзеркала без змін.
+2. **«Створити з каркаса»:** `lib/templateSkeleton.ts` (CLAIM_SKELETON: 8 блоків, стилі, keep-block
+   Додатки+підпис, структура = живий divorce; коменти-інструкції вирізаються рендером) + кнопка в
+   порожньому стані панелі. Тест на РЕАЛЬНОМУ рушії: гейт ok, 8 блоків у порядку, keep-together.
+3. **«Історія змін»:** `serviceTemplate.ts` → спільний `gateSnapshotAndSet` (публічний API publishTemplate
+   без змін) + `listRevisions` (30, newest-first) + `restoreTemplate` (шаблон зі снапшота → ТОЙ САМИЙ
+   гейт → снапшот поточного рядка `reason='restore'` → публікація). `TemplateRevisionHistory`
+   (collapsed details, ConfirmModal warn «Так, відновити»), оновлюється по `revisionsBump`.
+4. **«Скинути зміни»** (прохання Сергія посеред сесії): чернетка → копія опублікованої, ConfirmModal
+   warn; hidden без published, disabled коли draft==published. Локальний стейт — «Зберегти чернетку»
+   персистить.
+
+### Live verify (Chrome + жива Supabase, divorce, dev:admin :5175)
+- Історія: 2 чесні ревізії s65 (02:51/02:52) → restore найстарішої → SHA до/після/з-БД-після-reload =
+  `7fcf607e5176bcfe` (байт-оригінал прод-шаблону) → у історії (3) + «Відновлення версії». Прод цілий.
+- Мітки: всі 8; зламаний `{{#if` → мітки гаснуть, alert рушія; після «Скинути зміни» — повертаються.
+- Скидання: modal → confirm → байт-точний відкат (14939), статус «✓ збігається», оверлеїв 0.
+- Каркас на divorce прихований (шаблон є) — очікувано; вміст покритий unit-тестом на рушії.
+
+### AirCareer (питання Сергія, звіт `reports/2026-07-03-aicareer-editor-analysis.md`)
+- Next.js/Vercel + Supabase + API на Railway; редактор БЕЗ бібліотек: JSON `candidateProfile` +
+  `docStyle`, кожне текстове поле = `<span contentEditable>` 1:1 до JSON-поля (Enter перехоплено,
+  plain-paste), autosave PATCH цілого профілю, undo/redo — власний reducer, PDF на сервері.
+- Висновок: правка ІНСТАНСА, не round-trip шаблону → підтверджує наш DSL+read-only превʼю. Переносний
+  патерн на майбутнє: inline-правка *значень змінних* у превʼю готового документа.
+
+### 🪤 Нюанси s66
+- Розширення Chrome на Vite dev: `screenshot`/`find` падають по document_idle (HMR websocket), а
+  `javascript_tool` працює — живий прогін вести через JS-канал.
+- `git checkout` між гілками інвалідовує Read-стан файлів у Claude Code — перечитувати перед Edit.
 
 ---
 ## 🆕 Session 65 (2026-07-03) — template-editor: приймання + фікси + fullscreen + ресёрч еволюції
@@ -179,43 +228,3 @@
 - Вибір Сергія: «застаріло»-петля · медвертикаль (після Олі) · реальний платіж · #100/#101.
 
 ---
-## 🆕 Session 63 (2026-07-02) — issue #85: категорії послуг (#103) + ConfirmModal (#102), G1-G4
-
-### Головне — стан ЗАРАЗ
-- **Уся фіча #85 жива на гілці `feat/service-categories-confirm-modal`** (1 коміт `362e6d0`, НЕ змержено).
-  Верифіковано наживо end-to-end (authed Chrome DOM) проти реальної БД. Наступний крок — **merge → close #85**.
-  *(Зроблено тієї ж сесії: merge `de92327`, #85 закрито.)*
-
-### Що зроблено (з `/interview`, easy-постава — Сергій відійшов → рішення прийняті як припущення на вето)
-- **G1 ConfirmModal (#102):** `admin/ui/ConfirmModal.tsx` (варіанти danger/warn/info) + `ConfirmProvider`/
-  `useConfirm()` (imperative, `await confirm({...})→bool`; context у `confirmContext.ts` — split заради
-  react-refresh). Змонтовано в `AdminApp`. Замінено обидва `confirm()` (DashboardPage delete=danger,
-  FormBuilder delete-tab=danger) + **додано підтвердження на «Вимкнути»** (warn). `Button`→`forwardRef`
-  (focus на «Підтвердити»). Зразок 3 варіантів у `/design`.
-- **G2 категорії (#103):** міграція `030_service_categories.sql` (`services +category text` nullable,
-  backfill наявних=`family`; enum-валідація в коді, НЕ CHECK — застосована Сергієм). SSoT
-  `lib/serviceCategories.ts` (`family`/`medical`, `categoryLabel`/`isServiceCategory`/`groupByCategory`).
-  `Service` type +category, `select(...)` +category.
-- **G3 Dashboard:** картки згруповані за категорією (заголовок+лічильник, «Без категорії» внизу) +
-  фільтр-пігулки (`FilterPill`, показуються тільки коли груп >1).
-- **G4 редактор:** `<select>` категорії у вкладці ⚙️ Налаштування (`ServiceEditPage`) + save `category`.
-  БЕЗ CRUD категорій (список у коді — рішення інтерв'ю).
-
-### 🐛 Баг знайдено+полагоджено НАЖИВО (головний урок)
-- Перша версія ConfirmModal через `AnimatePresence` **не демонтувала оверлей** після закриття:
-  `fixed inset-0 z-50` лишався в DOM (`opacity:0`, але `pointer-events:auto`) → **невидимо блокував ВСІ
-  кліки**, весь admin замерзав після першого підтвердження. Фікс: `if(!open) return null`. → GOTCHAS «React/UI (admin)».
-
-### 🅰️ Прийняті припущення (на вето Сергія — в тілі issue #85)
-1. Категорії = **фікс-enum у коді**, не таблиця → CRUD категорій НЕ робили. 2. Старт: family+medical.
-3. TWA-каталог читає category **пізніше** (зараз admin-only). 4. Без категорії = nullable → «Без категорії».
-
-### Verify
-- UI **347 ✅** (+16: 8 ConfirmModal RTL + 8 serviceCategories), tsc clean, змінені файли lint-clean,
-  `build:admin` OK. ⚠️ у репо є **передіснуючі** lint-помилки `react-hooks/set-state-in-effect` (App.tsx/
-  DocumentPreview/ServiceNotes/ServiceRequestsPage/DatePickerField — НЕ мої, не блок).
-- **Live (authed DOM):** G1 /design 3 варіанти × Esc/cancel/confirm (`overlays:0`) + реальний dashboard
-  delete+«Вимкнути» (cancel → дані цілі, оверлей демонтується); G2 колонка+backfill, редактор вантажить
-  family; G3 2 групи + пігулки з лічильниками, клік звужує до 1 картки; G4 save category→DB (toast).
-  Тестовий round-trip alimony→medical→family **відкочено** — дошка = 1 група, як було.
-

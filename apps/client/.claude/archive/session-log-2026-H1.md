@@ -2305,3 +2305,44 @@ Paste this at the start of a new chat:
 ### 🧹 Хвіст (Сергію прибрати)
 - Тестовий round-trip лишив рядок `service_notes id=1` (клієнтом не видаляється, RLS). SQL Editor (service-role):
   `DELETE FROM service_notes WHERE id = 1;`
+
+---
+## 🆕 Session 63 (2026-07-02) — issue #85: категорії послуг (#103) + ConfirmModal (#102), G1-G4
+
+### Головне — стан ЗАРАЗ
+- **Уся фіча #85 жива на гілці `feat/service-categories-confirm-modal`** (1 коміт `362e6d0`, НЕ змержено).
+  Верифіковано наживо end-to-end (authed Chrome DOM) проти реальної БД. Наступний крок — **merge → close #85**.
+  *(Зроблено тієї ж сесії: merge `de92327`, #85 закрито.)*
+
+### Що зроблено (з `/interview`, easy-постава — Сергій відійшов → рішення прийняті як припущення на вето)
+- **G1 ConfirmModal (#102):** `admin/ui/ConfirmModal.tsx` (варіанти danger/warn/info) + `ConfirmProvider`/
+  `useConfirm()` (imperative, `await confirm({...})→bool`; context у `confirmContext.ts` — split заради
+  react-refresh). Змонтовано в `AdminApp`. Замінено обидва `confirm()` (DashboardPage delete=danger,
+  FormBuilder delete-tab=danger) + **додано підтвердження на «Вимкнути»** (warn). `Button`→`forwardRef`
+  (focus на «Підтвердити»). Зразок 3 варіантів у `/design`.
+- **G2 категорії (#103):** міграція `030_service_categories.sql` (`services +category text` nullable,
+  backfill наявних=`family`; enum-валідація в коді, НЕ CHECK — застосована Сергієм). SSoT
+  `lib/serviceCategories.ts` (`family`/`medical`, `categoryLabel`/`isServiceCategory`/`groupByCategory`).
+  `Service` type +category, `select(...)` +category.
+- **G3 Dashboard:** картки згруповані за категорією (заголовок+лічильник, «Без категорії» внизу) +
+  фільтр-пігулки (`FilterPill`, показуються тільки коли груп >1).
+- **G4 редактор:** `<select>` категорії у вкладці ⚙️ Налаштування (`ServiceEditPage`) + save `category`.
+  БЕЗ CRUD категорій (список у коді — рішення інтерв'ю).
+
+### 🐛 Баг знайдено+полагоджено НАЖИВО (головний урок)
+- Перша версія ConfirmModal через `AnimatePresence` **не демонтувала оверлей** після закриття:
+  `fixed inset-0 z-50` лишався в DOM (`opacity:0`, але `pointer-events:auto`) → **невидимо блокував ВСІ
+  кліки**, весь admin замерзав після першого підтвердження. Фікс: `if(!open) return null`. → GOTCHAS «React/UI (admin)».
+
+### 🅰️ Прийняті припущення (на вето Сергія — в тілі issue #85)
+1. Категорії = **фікс-enum у коді**, не таблиця → CRUD категорій НЕ робили. 2. Старт: family+medical.
+3. TWA-каталог читає category **пізніше** (зараз admin-only). 4. Без категорії = nullable → «Без категорії».
+
+### Verify
+- UI **347 ✅** (+16: 8 ConfirmModal RTL + 8 serviceCategories), tsc clean, змінені файли lint-clean,
+  `build:admin` OK. ⚠️ у репо є **передіснуючі** lint-помилки `react-hooks/set-state-in-effect` (App.tsx/
+  DocumentPreview/ServiceNotes/ServiceRequestsPage/DatePickerField — НЕ мої, не блок).
+- **Live (authed DOM):** G1 /design 3 варіанти × Esc/cancel/confirm (`overlays:0`) + реальний dashboard
+  delete+«Вимкнути» (cancel → дані цілі, оверлей демонтується); G2 колонка+backfill, редактор вантажить
+  family; G3 2 групи + пігулки з лічильниками, клік звужує до 1 картки; G4 save category→DB (toast).
+  Тестовий round-trip alimony→medical→family **відкочено** — дошка = 1 група, як було.

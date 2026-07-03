@@ -14,16 +14,22 @@ import type { FormConfig } from '../../types/form'
 
 const CHIP =
   'inline-flex items-center gap-1.5 max-w-full px-2 py-1 text-xs text-left ' +
-  'bg-paperAlt hover:bg-paperAlt/70 border border-line rounded-lg transition-colors'
+  'bg-paperAlt hover:bg-paperAlt/70 border border-line rounded-lg transition-colors ' +
+  'disabled:opacity-50 disabled:pointer-events-none'
+
+// Same rule as the toolbar: don't steal the textarea's focus/selection on mousedown.
+const keepTextareaFocus = (e: { preventDefault: () => void }) => e.preventDefault()
 
 export function VariablePalette({
   formConfig,
   template,
   onInsert,
+  disabled,
 }: {
   formConfig: FormConfig
   template: string
   onInsert: (token: string) => void
+  disabled?: boolean
 }) {
   const unused = useMemo(() => {
     const diff = diffFormVsTemplate(formConfig, analyzeTemplate(template))
@@ -41,6 +47,8 @@ export function VariablePalette({
             key={f.id}
             type="button"
             title={`Вставити {{${f.id}}}`}
+            disabled={disabled}
+            onMouseDown={keepTextareaFocus}
             onClick={() => onInsert(`{{${f.id}}}`)}
             className={CHIP}
           >
@@ -68,6 +76,8 @@ export function VariablePalette({
               key={key}
               type="button"
               title={`Вставити {{${key}}} — обчислюється рушієм з відповідей`}
+              disabled={disabled}
+              onMouseDown={keepTextareaFocus}
               onClick={() => onInsert(`{{${key}}}`)}
               className={CHIP}
             >

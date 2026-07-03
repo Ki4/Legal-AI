@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { analyzeTemplate, diffFormVsTemplate } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import type { GateResult } from '../lib/templateGate'
@@ -38,19 +38,30 @@ export function TemplateEditorPanel({
   publishing: boolean
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const pendingCaret = useRef<number | null>(null)
+  // Until the lawyer has placed the caret at least once, selectionStart is 0 and
+  // every toolbar insert would silently land at the very top of the template.
+  const [caretPlaced, setCaretPlaced] = useState(false)
 
   // Toolbar/palette edits: apply a pure edit at the current selection, push the
-  // new text up, then restore focus + caret after React re-renders the value.
+  // new text up; the caret is restored in useLayoutEffect below — synchronously
+  // with the commit that re-renders the controlled value (rAF is paused in
+  // background windows and can lose the race with scroll/focus).
   const applyEdit = (edit: (text: string, selStart: number, selEnd: number) => EditResult) => {
     const el = textareaRef.current
     if (!el) return
     const { text, caret } = edit(draft, el.selectionStart, el.selectionEnd)
+    pendingCaret.current = caret
     onDraftChange(text)
-    requestAnimationFrame(() => {
-      el.focus()
-      el.setSelectionRange(caret, caret)
-    })
   }
+
+  useLayoutEffect(() => {
+    const el = textareaRef.current
+    if (pendingCaret.current === null || !el) return
+    el.focus()
+    el.setSelectionRange(pendingCaret.current, pendingCaret.current)
+    pendingCaret.current = null
+  }, [draft])
 
   const gate = useMemo<GateResult>(
     () => (draft.trim() ? validate(draft) : { ok: true }),
@@ -131,15 +142,21 @@ export function TemplateEditorPanel({
       )}
 
       <TemplateToolbar
-        disabled={isNew}
+        disabled={isNew || !caretPlaced}
         onStyle={(directive) => applyEdit((t, s) => insertLineBefore(t, s, directive))}
         onWrap={(open, close) => applyEdit((t, s, e) => wrapSelection(t, s, e, open, close))}
         onInsert={(snippet) => applyEdit((t, s, e) => insertSnippet(t, s, e, snippet))}
       />
+      {!caretPlaced && (
+        <p className="text-xs text-inkMute -mt-1.5">
+          Клацніть у текст шаблону — тоді кнопки стилів застосуються до абзацу під курсором.
+        </p>
+      )}
 
       <textarea
         ref={textareaRef}
         value={draft}
+        onFocus={() => setCaretPlaced(true)}
         onChange={(e) => onDraftChange(e.target.value)}
         spellCheck={false}
         className="flex-1 min-h-[320px] w-full px-4 py-3 bg-paperAlt border border-lineStrong rounded-xl
@@ -155,6 +172,7 @@ export function TemplateEditorPanel({
           <VariablePalette
             formConfig={formConfig}
             template={draft}
+            disabled={!caretPlaced}
             onInsert={(token) => applyEdit((t, s, e) => insertSnippet(t, s, e, token))}
           />
         </div>

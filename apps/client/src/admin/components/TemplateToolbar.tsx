@@ -35,6 +35,11 @@ const BTN =
   'bg-paperAlt hover:bg-paperAlt/70 border border-line rounded-lg transition-colors ' +
   'disabled:opacity-50 disabled:pointer-events-none'
 
+// Buttons must not steal focus from the textarea on mousedown — otherwise the
+// selection collapses before onClick reads it and the caret restore has nothing
+// to restore to.
+const keepTextareaFocus = (e: { preventDefault: () => void }) => e.preventDefault()
+
 export function TemplateToolbar({
   onStyle,
   onWrap,
@@ -54,6 +59,7 @@ export function TemplateToolbar({
           type="button"
           title={title}
           disabled={disabled}
+          onMouseDown={keepTextareaFocus}
           onClick={() => onStyle(directive)}
           className={BTN}
         >
@@ -68,6 +74,7 @@ export function TemplateToolbar({
         type="button"
         title="Не розривати виділені абзаци між сторінками"
         disabled={disabled}
+        onMouseDown={keepTextareaFocus}
         onClick={() => onWrap('{{!style: keep-block}}', '{{!style: /keep-block}}')}
         className={BTN}
       >
@@ -83,6 +90,7 @@ export function TemplateToolbar({
           type="button"
           title={title}
           disabled={disabled}
+          onMouseDown={keepTextareaFocus}
           onClick={() => onInsert(snippet)}
           className={BTN}
         >

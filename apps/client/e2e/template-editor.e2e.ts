@@ -14,6 +14,11 @@ const SERVICE_ID = process.env.E2E_SERVICE_ID
 test.describe('template editor — «Ольга без SQL»', () => {
   test.skip(!EMAIL || !PASSWORD || !SERVICE_ID, 'E2E_ADMIN_* env not set — run locally with creds')
 
+  // The publish test writes to the LIVE service row — capture the original
+  // template before each test and always publish it back afterwards, so the
+  // suite leaves production exactly as it found it (plus audit revisions).
+  let originalTemplate = ''
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/login')
     await page.getByRole('textbox', { name: /email/i }).fill(EMAIL!)
@@ -22,6 +27,23 @@ test.describe('template editor — «Ольга без SQL»', () => {
     await page.waitForURL('**/services')
     await page.goto(`/services/${SERVICE_ID}/edit`)
     await page.getByRole('button', { name: /Шаблон документа|Шаблон/ }).click()
+    originalTemplate = await page.getByRole('textbox').inputValue()
+  })
+
+  test.afterEach(async ({ page }) => {
+    if (!originalTemplate) return
+    const textarea = page.getByRole('textbox')
+    await textarea.fill(originalTemplate)
+    // Persist the restored draft (the broken-template test saved a broken one).
+    await page.getByRole('button', { name: 'Зберегти чернетку' }).click()
+    await expect(page.getByText(/Чернетку збережено/)).toBeVisible()
+    // Publish it back only if a test actually published something else —
+    // otherwise draft == published and the button stays disabled by design.
+    const publish = page.getByRole('button', { name: 'Опублікувати' })
+    if (await publish.isEnabled()) {
+      await publish.click()
+      await expect(page.getByText(/Чернетка збігається з опублікованою/)).toBeVisible()
+    }
   })
 
   test('style buttons take effect in the layout preview and publish succeeds', async ({ page }) => {

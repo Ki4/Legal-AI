@@ -153,7 +153,19 @@ export function DocumentPreview({
                   </div>
                 )}
                 <div className={p.className || undefined}>
-                  {mode === 'vars' ? <AnnotatedLine text={p.text} labelById={labelById} /> : p.text || ' '}
+                  {mode === 'vars' ? (
+                    <AnnotatedLine text={p.text} labelById={labelById} />
+                  ) : p.segments ? (
+                    // Inline runs (styleHints v2): {{#bold}}…{{/bold}} renders bold
+                    // right in the preview; segments concatenate back to p.text.
+                    p.segments.map((s, j) => (
+                      <span key={j} className={s.className || undefined}>
+                        {s.text}
+                      </span>
+                    ))
+                  ) : (
+                    p.text || ' '
+                  )}
                 </div>
               </div>
             )

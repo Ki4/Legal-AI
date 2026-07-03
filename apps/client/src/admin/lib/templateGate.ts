@@ -9,6 +9,17 @@ export type GateResult = { ok: true } | { ok: false; error: string }
 // known patterns here, in the UI layer — the engine itself is legally-critical
 // shared code and stays untouched. Unknown messages fall through verbatim.
 const ENGINE_ERROR_UK: [RegExp, (m: RegExpMatchArray) => string][] = [
+  // Inline runs (styleHints v2, S2-B) — specific patterns before the generic ones.
+  [
+    /^Unclosed \{\{#(bold|italic|underline)\}\} opened at line (\d+)$/,
+    (m) =>
+      `інлайн-стиль {{#${m[1]}}} відкрито в рядку ${m[2]}, але не закрито — додайте {{/${m[1]}}} у тому самому блоці`,
+  ],
+  [
+    /^Unexpected \{\{\/(\w+)\}\} at line (\d+) \(expected \{\{\/(\w+)\}\} for \{\{#\w+\}\} opened at line (\d+)\)$/,
+    (m) =>
+      `тег {{/${m[1]}}} у рядку ${m[2]} не збігається: очікується {{/${m[3]}}} для {{#${m[3]}}}, відкритого в рядку ${m[4]}`,
+  ],
   [
     /^Unclosed (\{\{#?\S+?\}\}) opened at line (\d+)$/,
     (m) => `блок ${m[1]} відкрито в рядку ${m[2]}, але він не закритий — додайте закривальний тег`,

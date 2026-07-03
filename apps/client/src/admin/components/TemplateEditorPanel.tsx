@@ -6,7 +6,7 @@ import { useConfirm } from '../ui'
 import { TemplateCodeEditor, type TemplateEditorHandle } from './TemplateCodeEditor'
 import { TemplateToolbar } from './TemplateToolbar'
 import { VariablePalette } from './VariablePalette'
-import { insertSnippet, insertLineBefore, wrapSelection } from '../lib/insertAtCursor'
+import { insertSnippet, insertLineBefore, wrapSelection, wrapInline } from '../lib/insertAtCursor'
 import type { EditResult } from '../lib/insertAtCursor'
 import { CLAIM_SKELETON } from '../lib/templateSkeleton'
 
@@ -186,6 +186,14 @@ export function TemplateEditorPanel({
       <TemplateToolbar
         disabled={isNew || !caretPlaced}
         onStyle={(directive) => applyEdit((t, s) => insertLineBefore(t, s, directive))}
+        onBold={() =>
+          // styleHints v2 (S2-B): a non-empty selection becomes an inline run
+          // ({{#bold}}…{{/bold}} — «Позивач: {{plaintiff_name}}» жирним усередині
+          // рядка); a collapsed caret keeps the old whole-paragraph directive.
+          applyEdit((t, s, e) =>
+            s === e ? insertLineBefore(t, s, '{{!style: bold}}') : wrapInline(t, s, e, '{{#bold}}', '{{/bold}}'),
+          )
+        }
         onWrap={(open, close) => applyEdit((t, s, e) => wrapSelection(t, s, e, open, close))}
         onInsert={(snippet) => applyEdit((t, s, e) => insertSnippet(t, s, e, snippet))}
       />

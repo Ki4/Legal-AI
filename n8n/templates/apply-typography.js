@@ -14,12 +14,23 @@
  *   page-break-before → paragraphStyle.pageBreakBefore = true
  *   indent          → paragraphStyle.indentFirstLine = 720pt EMU (≈ 0.5 inch / ~1.27 cm)
  *
+ * styleHints v2 "runs" (S2-B): the optional third argument styleRuns
+ *   { [paraIdx]: [{ start, end, styles: ['bold'|'italic'|'underline'] }] }
+ * carries inline character ranges (offsets relative to the paragraph, measured
+ * after variable substitution). Each run maps to one updateTextStyle request at
+ * paragraph.startIndex + offset. Run requests are emitted AFTER the v1 requests
+ * and sorted by descending startIndex (index-shift safety, research §1.3).
+ *
  * n8n entry point:
  *   const styleHints = $('Build Document').item.json._style_hints || {};
+ *   const styleRuns  = $('Build Document').item.json._style_runs || {};
  *   const docBody   = $json.body;          // from Get Document node
- *   const requests  = buildTypographyRequests(styleHints, docBody);
+ *   const requests  = buildTypographyRequests(styleHints, docBody, styleRuns);
  *   return [{ json: { requests } }];
  */
+
+/** Inline run keyword → Google Docs textStyle field. */
+const RUN_FIELDS = { bold: 'bold', italic: 'italic', underline: 'underline' };
 
 /**
  * Build Google Docs batchUpdate requests for the given style hints.
@@ -29,8 +40,9 @@
  * @param {Object} docBody  Google Docs API body object ({ content: [...] })
  * @returns {Array} Array of batchUpdate request objects (may be empty).
  */
-function buildTypographyRequests(styleHints, docBody) {
-  if (!styleHints || !docBody || !docBody.content) return [];
+function buildTypographyRequests(styleHints, docBody, styleRuns) {
+  if (!docBody || !docBody.content) return [];
+  if (!styleHints) styleHints = {};
 
   // Filter to paragraph elements only (skip sectionBreak, tableOfContents, etc.)
   const paragraphs = docBody.content.filter((el) => el.paragraph);
@@ -107,7 +119,42 @@ function buildTypographyRequests(styleHints, docBody) {
     }
   }
 
-  return requests;
+  // Inline runs (styleHints v2). Style-only requests never shift indices, but
+  // descending order is kept as a safety invariant for future request mixes.
+  const runRequests = [];
+  for (const [paraIdxStr, runs] of Object.entries(styleRuns || {})) {
+    const para = paragraphs[parseInt(paraIdxStr, 10)];
+    if (!para || !Array.isArray(runs)) continue;
+
+    for (const run of runs) {
+      const textStyle = {};
+      const fields = [];
+      for (const kw of run.styles || []) {
+        const field = RUN_FIELDS[kw];
+        if (!field) continue; // unknown keyword — silently skip (forward-compat)
+        textStyle[field] = true;
+        if (!fields.includes(field)) fields.push(field);
+      }
+      if (!fields.length) continue;
+
+      // Clamp to the paragraph's text range (excl. trailing \n) — defensive
+      // against drift between rendered text and the fetched document.
+      const startIndex = para.startIndex + run.start;
+      const endIndex = Math.min(para.startIndex + run.end, para.endIndex - 1);
+      if (endIndex <= startIndex) continue;
+
+      runRequests.push({
+        updateTextStyle: {
+          range: { startIndex, endIndex },
+          textStyle,
+          fields: fields.join(','),
+        },
+      });
+    }
+  }
+  runRequests.sort((a, b) => b.updateTextStyle.range.startIndex - a.updateTextStyle.range.startIndex);
+
+  return requests.concat(runRequests);
 }
 
 // ── Exports (for Node.js testing; ignored in n8n Code Node) ──────────────────

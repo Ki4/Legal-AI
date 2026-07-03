@@ -1,9 +1,50 @@
-# Legal AI — Session Log Archive (2026 H1, sessions 7–61)
+# Legal AI — Session Log Archive (2026 H1, sessions 7–64)
 
 > Архів старих сесій, перенесений з `apps/client/.claude/session-summary.md` (session 52, 2026-06-29)
 > заради гігієни контексту — живий summary читається на старті кожної сесії, тож тримаємо в ньому лише
 > останні ~3 сесії + блок «Стан зараз». Цей файл **не читається** автоматично — `grep` за потреби.
 > Append-only; нове додавати зверху при наступному архівуванні. Канонічне «чому» — у `changelog.md`.
+
+---
+## 🆕 Session 64 (2026-07-02) — issue #86: health-«хибна тривога» = реальний прод-баг; форми вирівняно live
+
+### Головне — стан ЗАРАЗ
+- **Змержено в main (`b2b5a7d`, Closes #86) + запушено.** Живі form_config вирівняні з шаблонами,
+  health-панель чесна: alimony 🟢 / divorce 🟡. Робоче дерево чисте, гілку видалено.
+
+### Хід розслідування (3 розвороти — урок verify-протоколу)
+1. Гіпотеза демо s62 «аналізатор не розуміє derived-поля» — ❌ (він коректно моделює computed-шар,
+   `PROVIDED_CONTEXT`/`DERIVED_SOURCES`).
+2. Гіпотеза Explore-агента «generation_mode='js', шаблон спить, тривога хибна» — ❌ (агент вивів режим із
+   міграцій; жива БД: обидві послуги `'template'`, n8n Build Document рендерить САМЕ цей шаблон).
+3. Доказ (реальний рушій + живий шаблон + ключі живої форми): **16 дір `________`** у документі alimony,
+   включно з «Відповідач: ________» і «Стягнути з ________». Зелені smoke обходили живу форму
+   (`test-webhook.mjs` шле `defendant_*`, жива форма збирала `respondent_*`).
+
+### Що зроблено
+- **Дата-фікс live (за «да» Сергія):** `alimonyConfig.ts` → SSoT нової конвенції (48 полів; конверсія
+  інлайн-конфіга з `upload-alimony-config.mjs`, tooltip→hint, +animation за ідіомою divorce). Новий
+  `scripts/upload-form-config.mjs <slug> [--check]` (esbuild-транспіляція TS SSoT → PATCH, shape-guard,
+  дифф added/removed). Залито: alimony 24→48, divorce 55→59 (+4 поля #87). Старий скрипт видалено.
+- **Чесний health (код):** `isTemplateAuthoritative()` у `serviceAnatomy.ts`; js-режим → одна amber-нотатка
+  замість per-field red/amber; `ServiceViewPage` summary, `ServiceAnatomy` stat-тріо muted+caveat,
+  `vizData.templateAuthoritative`, гейти в `ServiceDetail`/`CatalogGraph`.
+- **Тести:** інваріант «alimony: zero unmatched» + «alimony real×real → green» + js-drift (синтетика) +
+  `isTemplateAuthoritative` + 2 viz. UI 357 ✅, root 1114 ✅, tsc clean.
+- **GOTCHAS:** «Зелений smoke ≠ робочий прод, якщо smoke обходить живу форму» (4 правила).
+
+### Verify (повний ланцюг, наживо)
+- Health проти свіжих рядків БД: alimony green (0/0), divorce amber (2 unused — движок перераховує).
+- Дашборд наживо: «Готова» (bg-ok) / «Є зауваження» (bg-warn).
+- Прод-TWA `legal-twa-xi.vercel.app/?service=alimony`: нова форма рендериться (4 таби, #87-поля, show_if).
+- Рендер-доказ рушієм: 0 дір (було 16).
+- **E2e живий n8n: exec 228 success** — витяг ідеальний, повний документ 5391 симв., 1 легітимна діра
+  (опціональні поля рахунку порожні в сценарії; формулювання — список Олі).
+
+### 🪤 Уроки
+- **Зелений smoke ≠ прод**: smoke-ключі мають походити з живого form_config. Форма+шаблон = одна одиниця деплою.
+- **Стан прод-рядка звіряти по живій БД**, не по міграціях (Explore-агент дав хибний режим).
+- **Червоний health на «робочій» послузі = розслідувати до кінця**, не списувати на аналізатор.
 
 ---
 ## 🆕 Session 61 (2026-07-02) — гігієна дошки + merge #84 + архів admin-brief (закриття хвостів)

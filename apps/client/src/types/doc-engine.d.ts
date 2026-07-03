@@ -11,11 +11,17 @@ declare module '@doc-engine' {
   interface DocEngine {
     /** Form answers (+ optional AI payload) → render context with computed fields. */
     buildContext(answers: Record<string, unknown>, ai?: Record<string, unknown>): Record<string, unknown>
-    /** Render a template against a context; returns text + per-paragraph style hints. */
+    /** Render a template against a context; returns text + per-paragraph style
+     *  hints + inline character runs (styleHints v2, S2-B). Run offsets are
+     *  relative to the paragraph, measured after variable substitution. */
     renderDocumentWithStyles(
       template: string,
       context: Record<string, unknown>,
-    ): { text: string; styleHints: Record<number, string[]> }
+    ): {
+      text: string
+      styleHints: Record<number, string[]>
+      styleRuns: Record<number, Array<{ start: number; end: number; styles: string[] }>>
+    }
     /** Plain render (text only). */
     renderDocument(template: string, context: Record<string, unknown>): string
   }

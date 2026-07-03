@@ -5,10 +5,13 @@ import { TemplateToolbar } from '../TemplateToolbar'
 
 function renderToolbar(over: Partial<Parameters<typeof TemplateToolbar>[0]> = {}) {
   const onStyle = vi.fn()
+  const onBold = vi.fn()
   const onWrap = vi.fn()
   const onInsert = vi.fn()
-  render(<TemplateToolbar onStyle={onStyle} onWrap={onWrap} onInsert={onInsert} {...over} />)
-  return { onStyle, onWrap, onInsert }
+  render(
+    <TemplateToolbar onStyle={onStyle} onBold={onBold} onWrap={onWrap} onInsert={onInsert} {...over} />,
+  )
+  return { onStyle, onBold, onWrap, onInsert }
 }
 
 afterEach(cleanup)
@@ -20,6 +23,13 @@ describe('TemplateToolbar', () => {
     expect(onStyle).toHaveBeenCalledWith('{{!style: right}}')
     expect(onWrap).not.toHaveBeenCalled()
     expect(onInsert).not.toHaveBeenCalled()
+  })
+
+  it('clicking «Жирний» calls the dual-mode bold handler (not a plain directive)', () => {
+    const { onBold, onStyle } = renderToolbar()
+    fireEvent.click(screen.getByRole('button', { name: 'Жирний' }))
+    expect(onBold).toHaveBeenCalledTimes(1)
+    expect(onStyle).not.toHaveBeenCalled()
   })
 
   it('clicking «Тримати разом» reports the keep-block pair', () => {

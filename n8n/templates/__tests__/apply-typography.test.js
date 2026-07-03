@@ -142,3 +142,77 @@ describe('buildTypographyRequests', () => {
     expect(fields).toContain('keepLinesTogether')
   })
 })
+
+// ─── styleHints v2 inline runs (S2 slice B) ──────────────────────────────────
+
+describe('buildTypographyRequests — inline runs', () => {
+  it('omitted styleRuns argument keeps v1 behaviour (n8n node not yet updated)', () => {
+    const body = makeBody(['TITLE'])
+    expect(buildTypographyRequests({ 0: ['center'] }, body)).toHaveLength(1)
+  })
+
+  it('a run maps to updateTextStyle at paragraph.startIndex + offset', () => {
+    const body = makeBody(['Позивач: Іваненко Іван, тел.'])
+    const para = body.content[1]
+    const reqs = buildTypographyRequests({}, body, { 0: [{ start: 9, end: 22, styles: ['bold'] }] })
+    expect(reqs).toHaveLength(1)
+    expect(reqs[0].updateTextStyle.range).toEqual({
+      startIndex: para.startIndex + 9,
+      endIndex: para.startIndex + 22,
+    })
+    expect(reqs[0].updateTextStyle.textStyle).toEqual({ bold: true })
+    expect(reqs[0].updateTextStyle.fields).toBe('bold')
+  })
+
+  it('italic and underline map to their textStyle fields', () => {
+    const body = makeBody(['абвгд'])
+    const reqs = buildTypographyRequests({}, body, {
+      0: [
+        { start: 0, end: 2, styles: ['italic'] },
+        { start: 3, end: 5, styles: ['underline'] },
+      ],
+    })
+    expect(reqs.map((r) => r.updateTextStyle.textStyle)).toEqual(
+      expect.arrayContaining([{ italic: true }, { underline: true }]),
+    )
+  })
+
+  it('run requests are sorted by descending startIndex (index-shift safety)', () => {
+    const body = makeBody(['перший рядок', 'другий рядок'])
+    const reqs = buildTypographyRequests({}, body, {
+      0: [{ start: 0, end: 3, styles: ['bold'] }],
+      1: [{ start: 0, end: 3, styles: ['bold'] }],
+    })
+    const starts = reqs.map((r) => r.updateTextStyle.range.startIndex)
+    expect(starts).toEqual([...starts].sort((a, b) => b - a))
+  })
+
+  it('v1 paragraph requests come first, run requests after', () => {
+    const body = makeBody(['TITLE'])
+    const reqs = buildTypographyRequests({ 0: ['center'] }, body, {
+      0: [{ start: 0, end: 2, styles: ['bold'] }],
+    })
+    expect(Object.keys(reqs[0])[0]).toBe('updateParagraphStyle')
+    expect(Object.keys(reqs[1])[0]).toBe('updateTextStyle')
+  })
+
+  it('run end is clamped to the paragraph text range (excl. trailing newline)', () => {
+    const body = makeBody(['абв'])
+    const para = body.content[1]
+    const reqs = buildTypographyRequests({}, body, { 0: [{ start: 0, end: 99, styles: ['bold'] }] })
+    expect(reqs[0].updateTextStyle.range.endIndex).toBe(para.endIndex - 1)
+  })
+
+  it('unknown run keyword / empty styles / out-of-range para are skipped', () => {
+    const body = makeBody(['абв'])
+    expect(buildTypographyRequests({}, body, {
+      0: [{ start: 0, end: 2, styles: ['strike'] }],
+      5: [{ start: 0, end: 2, styles: ['bold'] }],
+    })).toEqual([])
+  })
+
+  it('degenerate run (end <= start after clamping) is skipped', () => {
+    const body = makeBody(['абв'])
+    expect(buildTypographyRequests({}, body, { 0: [{ start: 3, end: 3, styles: ['bold'] }] })).toEqual([])
+  })
+})

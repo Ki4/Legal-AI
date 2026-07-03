@@ -24,6 +24,17 @@
  *                              breaks. Desugars to a keep-with-next chain on
  *                              every paragraph of the range except the last,
  *                              so no downstream renderer needs keep-block support.
+ *   {{#bold}} … {{/bold}}      inline character-style run (styleHints v2, S2-B).
+ *   {{#italic}} … {{/italic}}  Also {{#underline}}. Runs mark a character range
+ *   {{#underline}} …           INSIDE paragraphs (OOXML "run" semantics, flat);
+ *                              offsets are measured AFTER variable substitution.
+ *                              renderDocument strips them from the text;
+ *                              renderDocumentWithStyles also returns styleRuns:
+ *                              { [paraIdx]: [{start, end, styles}] } with offsets
+ *                              relative to the paragraph. Open/close must balance
+ *                              within the same {{#if}}/{{#each}} body (a run may
+ *                              wrap a whole block, never straddle its boundary),
+ *                              so rendered events always pair up.
  *
  * Block tags / comments standing alone on a line consume that line (so the
  * template reads like the document and output stays byte-exact).
@@ -57,6 +68,9 @@ function tokenize(template) {
   return tokens;
 }
 
+/** Inline run styles (styleHints v2). Flat, minimal set — lawyer needs no more. */
+const RUN_STYLES = ['bold', 'italic', 'underline'];
+
 function classifyTag(content) {
   if (content.startsWith('!style:')) return 'style';
   if (content.startsWith('!')) return 'comment';
@@ -66,6 +80,8 @@ function classifyTag(content) {
   if (content === '/if') return 'endif';
   if (content.startsWith('#each ')) return 'each';
   if (content === '/each') return 'endeach';
+  if (content.startsWith('#') && RUN_STYLES.includes(content.slice(1))) return 'runopen';
+  if (content.startsWith('/') && RUN_STYLES.includes(content.slice(1))) return 'runclose';
   return 'interp';
 }
 
@@ -202,16 +218,40 @@ function parseTemplate(template) {
 
   function parseNodes(stopKinds, openLine, openWhat) {
     const nodes = [];
+    // Inline runs must open and close within THIS body (a run may wrap a whole
+    // {{#if}}/{{#each}} node, never straddle its boundary) — that guarantees
+    // open/close events pair up at render time no matter which branch runs.
+    const runStack = [];
+    const assertRunsClosed = () => {
+      if (runStack.length) {
+        const r = runStack[runStack.length - 1];
+        throw new Error(`Unclosed {{#${r.style}}} opened at line ${r.line}`);
+      }
+    };
     while (pos < tokens.length) {
       const t = tokens[pos];
       if (t.type === 'text') { nodes.push({ type: 'text', value: t.value }); pos++; continue; }
       const kind = classifyTag(t.content);
-      if (stopKinds.includes(kind)) return nodes;
+      if (stopKinds.includes(kind)) { assertRunsClosed(); return nodes; }
       pos++;
       if (kind === 'comment') continue;
       if (kind === 'style') {
         const styles = t.content.slice(7).trim().split(/\s+/).filter(Boolean);
         nodes.push({ type: 'style', styles, line: t.line });
+        continue;
+      }
+      if (kind === 'runopen' || kind === 'runclose') {
+        const style = t.content.slice(1);
+        if (kind === 'runopen') {
+          runStack.push({ style, line: t.line });
+        } else {
+          const open = runStack.pop();
+          if (!open) throw new Error(`Unexpected {{/${style}}} at line ${t.line}`);
+          if (open.style !== style) {
+            throw new Error(`Unexpected {{/${style}}} at line ${t.line} (expected {{/${open.style}}} for {{#${open.style}}} opened at line ${open.line})`);
+          }
+        }
+        nodes.push({ type: 'run', mode: kind === 'runopen' ? 'open' : 'close', style, line: t.line });
         continue;
       }
       if (kind === 'interp') { nodes.push(parseInterp(t)); continue; }
@@ -256,6 +296,7 @@ function parseTemplate(template) {
       throw new Error(`Unexpected {{${t.content}}} at line ${t.line}${openWhat ? ` (inside ${openWhat} from line ${openLine})` : ''}`);
     }
     if (stopKinds.length) throw new Error(`Unclosed ${openWhat} opened at line ${openLine}`);
+    assertRunsClosed();
     return nodes;
   }
 
@@ -347,6 +388,9 @@ function renderNodesInto(nodes, scopes, sb) {
       case 'style':
         sb.styleEvents.push({ charOffset: sb.text.length, styles: n.styles });
         break;
+      case 'run':
+        sb.runEvents.push({ charOffset: sb.text.length, mode: n.mode, style: n.style });
+        break;
       case 'interp':
         sb.text += formatValue(resolvePath(n.path, scopes), n.raw);
         break;
@@ -384,7 +428,7 @@ function renderNodesInto(nodes, scopes, sb) {
 /** Main entry: template string + context → document string. */
 function renderDocument(template, context) {
   const ast = parseTemplate(template);
-  const sb = { text: '', styleEvents: [] };
+  const sb = { text: '', styleEvents: [], runEvents: [] };
   renderNodesInto(ast, [{ item: context, meta: null }], sb);
   return sb.text;
 }
@@ -405,7 +449,7 @@ function renderDocument(template, context) {
  */
 function renderDocumentWithStyles(template, context) {
   const ast = parseTemplate(template);
-  const sb = { text: '', styleEvents: [] };
+  const sb = { text: '', styleEvents: [], runEvents: [] };
   renderNodesInto(ast, [{ item: context, meta: null }], sb);
 
   const styleHints = {};
@@ -432,7 +476,61 @@ function renderDocumentWithStyles(template, context) {
       }
     }
   }
-  return { text: sb.text, styleHints };
+  return { text: sb.text, styleHints, styleRuns: buildStyleRuns(sb.text, sb.runEvents) };
+}
+
+/**
+ * styleHints v2 "runs" (S2-B): pair up run open/close events (parser guarantees
+ * per-scope balance, so events always pair at render time) into absolute char
+ * intervals, then split each interval per paragraph:
+ *   { [paraIdx]: [{ start, end, styles: ['bold'] }] }
+ * start/end are 0-based offsets WITHIN the paragraph (end exclusive), measured
+ * AFTER variable substitution — the Google Docs adapter maps them 1:1 via
+ * paragraph.startIndex + start. Overlapping runs stay separate entries (each
+ * carries one style); adapters apply them cumulatively.
+ */
+function buildStyleRuns(text, runEvents) {
+  const intervals = [];
+  const openStack = [];
+  for (const ev of runEvents) {
+    if (ev.mode === 'open') {
+      openStack.push(ev);
+    } else {
+      for (let i = openStack.length - 1; i >= 0; i--) {
+        if (openStack[i].style === ev.style) {
+          if (ev.charOffset > openStack[i].charOffset) {
+            intervals.push({ from: openStack[i].charOffset, to: ev.charOffset, style: ev.style });
+          }
+          openStack.splice(i, 1);
+          break;
+        }
+      }
+    }
+  }
+  if (!intervals.length) return {};
+
+  // Paragraph start offsets: paragraph i spans [starts[i], starts[i] + lines[i].length).
+  const lines = text.split('\n');
+  const starts = [];
+  let acc = 0;
+  for (const line of lines) { starts.push(acc); acc += line.length + 1; }
+
+  const styleRuns = {};
+  for (const { from, to, style } of intervals) {
+    for (let p = 0; p < lines.length; p++) {
+      const paraStart = starts[p];
+      const paraEnd = paraStart + lines[p].length; // excludes the '\n'
+      const start = Math.max(from, paraStart) - paraStart;
+      const end = Math.min(to, paraEnd) - paraStart;
+      if (end <= start) continue;
+      if (!styleRuns[p]) styleRuns[p] = [];
+      styleRuns[p].push({ start, end, styles: [style] });
+    }
+  }
+  for (const p of Object.keys(styleRuns)) {
+    styleRuns[p].sort((a, b) => a.start - b.start || a.end - b.end);
+  }
+  return styleRuns;
 }
 
 // ─── Helpers (legally-critical logic — written & tested ONCE, shared) ────────
@@ -738,6 +836,7 @@ if (typeof module !== 'undefined' && module.exports) {
     HELPERS,
     FALLBACK,
     // internals exposed for unit tests
+    buildStyleRuns,
     truthy,
     parseExpr,
     evalExpr,

@@ -194,6 +194,8 @@ export function analyzeTemplate(tpl: string): TemplateAnalysis {
     if (content.startsWith('!')) continue                 // comment / {{!style:}}
     if (content === '/if' || content === 'else') continue
     if (content === '/each') { if (depth > 0) depth--; continue }
+    // Inline run tags (styleHints v2, S2-B) are style markers, not field paths.
+    if (/^[#/](bold|italic|underline)$/.test(content)) continue
 
     if (content.startsWith('#each ')) {
       const path = content.slice(6).trim()

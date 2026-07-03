@@ -221,4 +221,46 @@ describe('TemplateEditorPanel', () => {
     expect(applyTextSpy).toHaveBeenCalledWith(expectedText, expectedCaret)
     expect(textarea.value).toBe(expectedText) // host state updated via onDraftChange
   })
+
+  it('«Жирний» is dual-mode: selection → inline {{#bold}} run, caret → paragraph directive', () => {
+    function Host() {
+      const [draft, setDraft] = useState('Позивач: {{last_name}}')
+      return (
+        <TemplateEditorPanel
+          draft={draft}
+          published="old"
+          isNew={false}
+          formConfig={FORM}
+          validate={okGate}
+          onDraftChange={setDraft}
+          onSaveDraft={() => {}}
+          onPublish={() => {}}
+          savingDraft={false}
+          publishing={false}
+        />
+      )
+    }
+    render(
+      <ConfirmProvider>
+        <Host />
+      </ConfirmProvider>,
+    )
+    const textarea = screen.getByRole('textbox') as HTMLTextAreaElement
+    fireEvent.focus(textarea)
+
+    // Non-empty selection over {{last_name}} → exact inline wrap (styleHints v2)
+    textarea.setSelectionRange(9, 22)
+    fireEvent.click(screen.getByRole('button', { name: 'Жирний' }))
+    const wrapped = 'Позивач: {{#bold}}{{last_name}}{{/bold}}'
+    expect(applyTextSpy).toHaveBeenLastCalledWith(wrapped, 22 + '{{#bold}}{{/bold}}'.length)
+    expect(textarea.value).toBe(wrapped)
+
+    // Collapsed caret → whole-paragraph directive, exactly as before
+    textarea.setSelectionRange(3, 3)
+    fireEvent.click(screen.getByRole('button', { name: 'Жирний' }))
+    expect(applyTextSpy).toHaveBeenLastCalledWith(
+      '{{!style: bold}}\n' + wrapped,
+      3 + '{{!style: bold}}\n'.length,
+    )
+  })
 })

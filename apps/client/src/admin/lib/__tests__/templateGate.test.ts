@@ -52,6 +52,13 @@ describe('runParseGate (real engine)', () => {
     expect(gate('Звичайний текст без тегів.').ok).toBe(true)
     expect(gate('Пункт 1) текст { не тег } текст').ok).toBe(true)
   })
+
+  it('passes inline runs and blocks broken ones (styleHints v2)', () => {
+    expect(gate('Позивач: {{#bold}}{{plaintiff_name}}{{/bold}}').ok).toBe(true)
+    expect(gate('{{#bold}}без закриття').ok).toBe(false)
+    expect(gate('текст {{/bold}}').ok).toBe(false)
+    expect(gate('{{#if has_children}}{{#bold}}х{{/if}}{{/bold}}').ok).toBe(false) // straddles the block
+  })
 })
 
 describe('localizeEngineError — real engine messages arrive in Ukrainian', () => {
@@ -84,5 +91,15 @@ describe('localizeEngineError — real engine messages arrive in Ukrainian', () 
 
   it('unknown messages fall through verbatim', () => {
     expect(localizeEngineError('Something novel exploded')).toBe('Something novel exploded')
+  })
+
+  it('inline runs (styleHints v2): unclosed / mismatched / stray in Ukrainian', () => {
+    expect(errorOf('рядок\n{{#bold}}без закриття')).toBe(
+      'Помилка в шаблоні: інлайн-стиль {{#bold}} відкрито в рядку 2, але не закрито — додайте {{/bold}} у тому самому блоці',
+    )
+    expect(errorOf('{{#bold}}х{{/italic}}')).toBe(
+      'Помилка в шаблоні: тег {{/italic}} у рядку 1 не збігається: очікується {{/bold}} для {{#bold}}, відкритого в рядку 1',
+    )
+    expect(errorOf('текст {{/underline}}')).toMatch(/зайвий тег \{\{\/underline\}\} у рядку 1/)
   })
 })

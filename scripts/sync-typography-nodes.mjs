@@ -33,9 +33,10 @@ const TYPOGRAPHY_CODE = `// ═════════════════�
 ${read('n8n/templates/apply-typography.js')}
 
 const styleHints = $('Build Document').item.json._style_hints || {};
+const styleRuns = $('Build Document').item.json._style_runs || {};
 const docBody = $json.body;
-const requests = buildTypographyRequests(styleHints, docBody);
-console.log('[Typography] styleHints paragraphs:', Object.keys(styleHints).length, '| requests:', requests.length);
+const requests = buildTypographyRequests(styleHints, docBody, styleRuns);
+console.log('[Typography] styleHints paragraphs:', Object.keys(styleHints).length, '| run paragraphs:', Object.keys(styleRuns).length, '| requests:', requests.length);
 return [{ json: { requests } }];
 `;
 

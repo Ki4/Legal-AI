@@ -10,6 +10,13 @@
 
 ---
 
+### 2026-07-03 (session 65, продовження) — template-editor: fullscreen-превʼю + палітра згорнута за замовчуванням
+**Status:** гілка `claude/document-constructor-styling-a3zkky` · UI **416 ✅** (+3) · tsc/eslint clean · верифіковано наживо
+**Why:** UX-фідбек Сергія: превʼю в бічній колонці замале й «не відображає дійсність», редактору бракує місця. Швидкі плоди з аналізу (`reports/2026-07-03-editor-ux-analysis.md` §4) — до великого S2.
+**What:** `TemplateDraftPreview` — кнопка ⤢ + клік по превʼю (cursor-zoom-in) відкривають той самий контент (таби Документ/Розкладка збережено) fullscreen-оверлеєм `fixed inset-0 z-50`; Esc/✕ закривають; unmount через `if(!open) return null`-патерн (гочас ConfirmModal, без мертвих оверлеїв). Палітра «Змінні форми» в `TemplateEditorPanel` тепер згорнута за замовчуванням (вертикальне місце — редактору). +3 тести (открытие через кнопку/клік, Esc, збереження вибраного таба всередині fullscreen; діти-превʼю замокані — '@doc-engine' alias недоступний під vitest).
+**Live verify:** оверлей = повний viewport 1536×639 з контентом документа; Esc → 0 діалогів у DOM; палітра `open:false`. Нюанс: у DOM два екземпляри превʼю (desktop+mobile) — вимірювати видимий.
+**Files:** `src/admin/components/TemplateDraftPreview.tsx` · `src/admin/components/TemplateEditorPanel.tsx` · `src/admin/components/__tests__/TemplateDraftPreview.test.tsx` (new)
+
 ### 2026-07-03 (session 65) — template-editor: фікс каретки + guard вставки-в-0 + локалізація гейта + e2e-restore
 **Status:** гілка `claude/document-constructor-styling-a3zkky` · UI **413 ✅** (+7) · tsc clean · змінені файли eslint-clean · усі 3 фікси верифіковано наживо в браузері
 **Why:** Живий прогін Сергія підтвердив баг нічної приймальні: після кнопок тулбара каретка стрибає, а без каретки директиви тихо лягають у ПОЧАТОК шаблону (три злиплі `{{!style:}}` на скріншоті). Рецензія критика додала: e2e-тест публікує в живу БД без відкату, повідомлення гейта — англійський сирець рушія.

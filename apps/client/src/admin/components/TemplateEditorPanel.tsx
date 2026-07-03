@@ -164,7 +164,8 @@ export function TemplateEditorPanel({
         placeholder={'До ________ районного суду…\n{{!style: right}}\nПозивач: {{plaintiff_name}}'}
       />
 
-      <details open>
+      {/* Collapsed by default — the editor needs the vertical space more. */}
+      <details>
         <summary className="text-sm font-semibold text-ink cursor-pointer select-none">
           Змінні форми
         </summary>

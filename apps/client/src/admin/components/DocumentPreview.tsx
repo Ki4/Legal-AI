@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import type { FormConfig } from '../../types/form'
 import { splitAnnotated } from '../lib/annotatedContext'
 import { detectBlocks, type DetectedBlock } from '../lib/detectBlocks'
-import { renderAnnotatedPreview, renderPreview } from '../lib/documentPreview'
+import { mapCaretToParagraph, renderAnnotatedPreview, renderPreview } from '../lib/documentPreview'
 import { sampleAnswersFor } from '../lib/sampleAnswers'
 import { Card } from '../ui'
 
@@ -57,6 +57,7 @@ export function DocumentPreview({
   slug,
   formConfig,
   showBlocks = false,
+  caretLine = null,
 }: {
   template: string | null
   slug?: string | null
@@ -65,6 +66,10 @@ export function DocumentPreview({
    *  start of each detected canonical block. On a parse error the whole render
    *  fails, so the labels honestly disappear with it. */
   showBlocks?: boolean
+  /** S2 slice C: 0-based template line of the editor caret — the matching
+   *  preview paragraph is highlighted and scrolled into view. Fail-soft: no
+   *  honest match (parse error, false if-branch) → no highlight. */
+  caretLine?: number | null
 }) {
   const sample = useMemo(() => sampleAnswersFor(slug), [slug])
   const hasVars = !!formConfig && formConfig.steps.length > 0
@@ -98,6 +103,29 @@ export function DocumentPreview({
     }
     return map
   }, [showBlocks, result])
+
+  // Caret↔paragraph sync (slice C). Deferred so fast caret movement doesn't
+  // queue a probe render per keystroke; the mapping itself is a single extra
+  // engine render with the SAME context as the visible mode.
+  const deferredCaret = useDeferredValue(caretLine)
+  const highlightPara = useMemo(() => {
+    if (deferredCaret == null || !template || !result?.ok) return null
+    if (mode === 'vars' && formConfig) {
+      return mapCaretToParagraph(template, deferredCaret, {
+        annotatedFieldIds: formConfig.steps.map((s) => s.id),
+      })
+    }
+    return mapCaretToParagraph(template, deferredCaret, {
+      answers: mode === 'sample' && sample ? sample : {},
+    })
+  }, [deferredCaret, template, mode, sample, formConfig, result])
+
+  const highlightRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    // jsdom has no scrollIntoView — guard with ?. (same as elsewhere).
+    if (highlightPara !== null)
+      highlightRef.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+  }, [highlightPara])
 
   const modeOptions: Array<[Mode, string]> = []
   if (sample) modeOptions.push(['sample', 'Заповнений приклад'])
@@ -139,8 +167,15 @@ export function DocumentPreview({
         <div className="mx-auto max-w-[680px] font-serif text-[13px] leading-relaxed text-ink">
           {result?.paragraphs.map((p, i) => {
             const block = blockAtLine.get(i)
+            const highlighted = i === highlightPara
             return (
-              <div key={i}>
+              <div
+                key={i}
+                ref={highlighted ? highlightRef : undefined}
+                className={`transition-colors rounded-md -mx-2 px-2 ${
+                  highlighted ? 'bg-brand/10' : ''
+                }`}
+              >
                 {block && (
                   <div className="select-none font-sans mt-4 mb-1 first:mt-0" aria-hidden>
                     <span

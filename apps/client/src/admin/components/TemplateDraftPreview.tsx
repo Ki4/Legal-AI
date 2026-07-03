@@ -18,10 +18,14 @@ export function TemplateDraftPreview({
   template,
   slug,
   formConfig,
+  caretLine = null,
 }: {
   template: string | null
   slug?: string | null
   formConfig?: FormConfig | null
+  /** S2 slice C: editor caret line for the caret↔paragraph sync-highlight
+   *  («Документ» view only — the layout view has its own pagination). */
+  caretLine?: number | null
 }) {
   const [view, setView] = useState<'document' | 'layout'>('document')
   const [fullscreen, setFullscreen] = useState(false)
@@ -53,7 +57,13 @@ export function TemplateDraftPreview({
 
   const body =
     view === 'document' ? (
-      <DocumentPreview template={template} slug={slug} formConfig={formConfig} showBlocks />
+      <DocumentPreview
+        template={template}
+        slug={slug}
+        formConfig={formConfig}
+        showBlocks
+        caretLine={caretLine}
+      />
     ) : (
       <DocumentLayoutPreview template={template} slug={slug} />
     )

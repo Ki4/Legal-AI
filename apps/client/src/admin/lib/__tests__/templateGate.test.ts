@@ -93,6 +93,17 @@ describe('localizeEngineError — real engine messages arrive in Ukrainian', () 
     expect(localizeEngineError('Something novel exploded')).toBe('Something novel exploded')
   })
 
+  it('stray {{! mid-template: the swallowed src spans LINES and still localizes (s66 tail)', () => {
+    // A lone `{{!` inside an expression swallows the following lines into one
+    // tag — the engine's src blob then contains '\n', which `.+?` never matches.
+    const tpl = '{{#if a {{!\nЗразок тексту\nще рядок}}\nx\n{{/if}}'
+    expect(errorOf(tpl)).toMatch(/^Помилка в шаблоні: помилка в умові "/)
+    // and the raw engine message for the same case localizes directly:
+    expect(
+      localizeEngineError('Unexpected "{{!" in expression "a {{!\nтекст" at line 1'),
+    ).toBe('помилка в умові "a {{!\nтекст" (рядок 1) — перевірте вираз')
+  })
+
   it('inline runs (styleHints v2): unclosed / mismatched / stray in Ukrainian', () => {
     expect(errorOf('рядок\n{{#bold}}без закриття')).toBe(
       'Помилка в шаблоні: інлайн-стиль {{#bold}} відкрито в рядку 2, але не закрито — додайте {{/bold}} у тому самому блоці',

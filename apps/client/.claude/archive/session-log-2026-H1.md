@@ -2417,3 +2417,44 @@ Paste this at the start of a new chat:
 - У DOM редактора ДВА екземпляри превʼю (desktop+mobile) — вимірювати/клікати видимий (rect > 0).
 
 ---
+## 🆕 Session 66 (2026-07-03) — template-editor Сесія 3 + merge в main + AirCareer-розбір
+
+### Головне — стан ЗАРАЗ
+- **Конвеєр template-editor ЗАКРИТО і ЗМЕРЖЕНО в main** (merge `d1a98a6`; фіча-коміти `910a498`,
+  `58e2bf9`, roadmap `51da2b1`). Vercel-деплой тригернувся. UI **439 ✅** (+23 за сесію), tsc clean,
+  змінені файли eslint-clean, build:admin OK. Роадмап: IMPROVEMENTS #51 → done.
+
+### Що зроблено (спека §5 + фідбек Сергія по ходу)
+1. **Мітки блоків:** `renderPreview`/`renderAnnotatedPreview` повертають також `text`+`styleHints`
+   (рядки↔параграфи 1:1); `DocumentPreview` +проп `showBlocks` → `detectBlocks` по відрендереній
+   чернетці → кольорова мітка (крапка+label з `blockRegistry`) над стартом кожного канонічного блока;
+   `unknown` без мітки (fail-closed). Увімкнено лише в `TemplateDraftPreview` — дзеркала без змін.
+2. **«Створити з каркаса»:** `lib/templateSkeleton.ts` (CLAIM_SKELETON: 8 блоків, стилі, keep-block
+   Додатки+підпис, структура = живий divorce; коменти-інструкції вирізаються рендером) + кнопка в
+   порожньому стані панелі. Тест на РЕАЛЬНОМУ рушії: гейт ok, 8 блоків у порядку, keep-together.
+3. **«Історія змін»:** `serviceTemplate.ts` → спільний `gateSnapshotAndSet` (публічний API publishTemplate
+   без змін) + `listRevisions` (30, newest-first) + `restoreTemplate` (шаблон зі снапшота → ТОЙ САМИЙ
+   гейт → снапшот поточного рядка `reason='restore'` → публікація). `TemplateRevisionHistory`
+   (collapsed details, ConfirmModal warn «Так, відновити»), оновлюється по `revisionsBump`.
+4. **«Скинути зміни»** (прохання Сергія посеред сесії): чернетка → копія опублікованої, ConfirmModal
+   warn; hidden без published, disabled коли draft==published. Локальний стейт — «Зберегти чернетку»
+   персистить.
+
+### Live verify (Chrome + жива Supabase, divorce, dev:admin :5175)
+- Історія: 2 чесні ревізії s65 (02:51/02:52) → restore найстарішої → SHA до/після/з-БД-після-reload =
+  `7fcf607e5176bcfe` (байт-оригінал прод-шаблону) → у історії (3) + «Відновлення версії». Прод цілий.
+- Мітки: всі 8; зламаний `{{#if` → мітки гаснуть, alert рушія; після «Скинути зміни» — повертаються.
+- Скидання: modal → confirm → байт-точний відкат (14939), статус «✓ збігається», оверлеїв 0.
+- Каркас на divorce прихований (шаблон є) — очікувано; вміст покритий unit-тестом на рушії.
+
+### AirCareer (питання Сергія, звіт `reports/2026-07-03-aicareer-editor-analysis.md`)
+- Next.js/Vercel + Supabase + API на Railway; редактор БЕЗ бібліотек: JSON `candidateProfile` +
+  `docStyle`, кожне текстове поле = `<span contentEditable>` 1:1 до JSON-поля (Enter перехоплено,
+  plain-paste), autosave PATCH цілого профілю, undo/redo — власний reducer, PDF на сервері.
+- Висновок: правка ІНСТАНСА, не round-trip шаблону → підтверджує наш DSL+read-only превʼю. Переносний
+  патерн на майбутнє: inline-правка *значень змінних* у превʼю готового документа.
+
+### 🪤 Нюанси s66
+- Розширення Chrome на Vite dev: `screenshot`/`find` падають по document_idle (HMR websocket), а
+  `javascript_tool` працює — живий прогін вести через JS-канал.
+- `git checkout` між гілками інвалідовує Read-стан файлів у Claude Code — перечитувати перед Edit.

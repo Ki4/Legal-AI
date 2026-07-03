@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { Maximize2, X, Eye, EyeOff } from 'lucide-react'
 import { analyzeTemplate, diffFormVsTemplate, providedContextKeys } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import type { GateResult } from '../lib/templateGate'
@@ -29,6 +30,10 @@ export function TemplateEditorPanel({
   savingDraft,
   publishing,
   onCaretLine,
+  focusMode = false,
+  onToggleFocus,
+  previewVisible = true,
+  onTogglePreviewVisible,
 }: {
   draft: string
   published: string | null
@@ -43,6 +48,13 @@ export function TemplateEditorPanel({
   /** Caret moved to another template line (0-based) — the page forwards this
    *  to the preview for the caret↔paragraph sync-highlight (S2 slice C). */
   onCaretLine?: (line: number) => void
+  /** S2 slice D: rendered inside the full-viewport focus overlay — swaps the
+   *  title+description header for a slim action row (issue #87 decision 6). */
+  focusMode?: boolean
+  onToggleFocus?: () => void
+  /** Focus mode only: whether the split preview pane is visible next to the editor. */
+  previewVisible?: boolean
+  onTogglePreviewVisible?: () => void
 }) {
   const confirm = useConfirm()
   const editorRef = useRef<TemplateEditorHandle>(null)
@@ -100,53 +112,109 @@ export function TemplateEditorPanel({
   const isDraftDifferent = draft !== (published ?? '')
   const canPublish = gate.ok && draft.trim().length > 0 && isDraftDifferent && !publishing
 
+  // Shared between the normal header and the focus-mode slim action row
+  // (issue #87 decision 6) so publish/save/discard behave identically in both.
+  const resetButton = published !== null && (
+    <button
+      onClick={async () => {
+        const ok = await confirm({
+          title: 'Скинути зміни чернетки?',
+          body: 'Чернетка стане копією чинної опублікованої версії. Поточні правки буде втрачено.',
+          confirmLabel: 'Скинути',
+          variant: 'warn',
+        })
+        if (ok) onDraftChange(published)
+      }}
+      disabled={!isDraftDifferent}
+      className="px-4 py-2 text-inkSoft hover:text-ink disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors"
+    >
+      Скинути зміни
+    </button>
+  )
+  const saveDraftButton = (
+    <button
+      onClick={onSaveDraft}
+      disabled={savingDraft}
+      className="px-4 py-2 bg-paperAlt hover:bg-paperAlt/70 disabled:opacity-50 text-ink text-sm font-semibold rounded-xl transition-colors"
+    >
+      {savingDraft ? 'Зберігаю…' : 'Зберегти чернетку'}
+    </button>
+  )
+  const publishButton = (
+    <button
+      onClick={onPublish}
+      disabled={!canPublish}
+      title={gate.ok ? undefined : 'Виправте помилку в шаблоні, щоб опублікувати'}
+      className="px-4 py-2 bg-brand hover:bg-brand/90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
+    >
+      {publishing ? 'Публікую…' : 'Опублікувати'}
+    </button>
+  )
+
   return (
     <div className="flex flex-col h-full gap-3">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <h2 className="text-lg font-bold text-ink">Шаблон документа</h2>
-          <p className="text-inkSoft text-sm">
-            Правки зберігаються у чернетку. Клієнти отримують документ лише з опублікованої версії.
-          </p>
+      {focusMode ? (
+        // Slim action row — the title+description chrome costs vertical space
+        // the focus mode exists to reclaim (s68/s69 finding: a short window
+        // leaves the editor almost no room).
+        <div className="flex items-center justify-between gap-3 flex-wrap flex-shrink-0">
+          <span className="text-xs font-semibold text-inkMute uppercase tracking-wide">
+            Шаблон документа — фокус-режим
+          </span>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {resetButton}
+            {saveDraftButton}
+            {publishButton}
+            {onTogglePreviewVisible && (
+              <button
+                type="button"
+                onClick={onTogglePreviewVisible}
+                title={previewVisible ? 'Сховати превʼю' : 'Показати превʼю'}
+                aria-label={previewVisible ? 'Сховати превʼю' : 'Показати превʼю'}
+                className="p-2 text-inkMute hover:text-ink rounded-lg hover:bg-paperAlt transition-colors"
+              >
+                {previewVisible ? <EyeOff size={17} aria-hidden /> : <Eye size={17} aria-hidden />}
+              </button>
+            )}
+            {onToggleFocus && (
+              <button
+                type="button"
+                onClick={onToggleFocus}
+                title="Закрити фокус-режим (або Esc)"
+                aria-label="Закрити фокус-режим"
+                className="p-2 text-inkSoft hover:text-ink rounded-lg hover:bg-paperAlt transition-colors"
+              >
+                <X size={19} aria-hidden />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {/* One-click discard instead of endless Ctrl+Z (Sergey, s66): draft
-              becomes a copy of the published version again. Local state only —
-              «Зберегти чернетку» persists it, exactly like a manual edit would. */}
-          {published !== null && (
-            <button
-              onClick={async () => {
-                const ok = await confirm({
-                  title: 'Скинути зміни чернетки?',
-                  body: 'Чернетка стане копією чинної опублікованої версії. Поточні правки буде втрачено.',
-                  confirmLabel: 'Скинути',
-                  variant: 'warn',
-                })
-                if (ok) onDraftChange(published)
-              }}
-              disabled={!isDraftDifferent}
-              className="px-4 py-2 text-inkSoft hover:text-ink disabled:opacity-50 text-sm font-semibold rounded-xl transition-colors"
-            >
-              Скинути зміни
-            </button>
-          )}
-          <button
-            onClick={onSaveDraft}
-            disabled={savingDraft}
-            className="px-4 py-2 bg-paperAlt hover:bg-paperAlt/70 disabled:opacity-50 text-ink text-sm font-semibold rounded-xl transition-colors"
-          >
-            {savingDraft ? 'Зберігаю…' : 'Зберегти чернетку'}
-          </button>
-          <button
-            onClick={onPublish}
-            disabled={!canPublish}
-            title={gate.ok ? undefined : 'Виправте помилку в шаблоні, щоб опублікувати'}
-            className="px-4 py-2 bg-brand hover:bg-brand/90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
-          >
-            {publishing ? 'Публікую…' : 'Опублікувати'}
-          </button>
+      ) : (
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-ink">Шаблон документа</h2>
+            <p className="text-inkSoft text-sm">
+              Правки зберігаються у чернетку. Клієнти отримують документ лише з опублікованої версії.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {onToggleFocus && (
+              <button
+                type="button"
+                onClick={onToggleFocus}
+                title="Фокус-режим — на весь екран"
+                aria-label="Фокус-режим"
+                className="p-2 text-inkMute hover:text-ink rounded-lg hover:bg-paperAlt transition-colors"
+              >
+                <Maximize2 size={16} aria-hidden />
+              </button>
+            )}
+            {resetButton}
+            {saveDraftButton}
+            {publishButton}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Status line: parse error > draft-vs-published state */}
       {!gate.ok ? (

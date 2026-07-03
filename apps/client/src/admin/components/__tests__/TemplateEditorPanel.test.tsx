@@ -222,6 +222,46 @@ describe('TemplateEditorPanel', () => {
     expect(textarea.value).toBe(expectedText) // host state updated via onDraftChange
   })
 
+  it('shows a «Фокус-режим» button when onToggleFocus is provided, hidden otherwise', () => {
+    const onToggleFocus = vi.fn()
+    renderPanel({ onToggleFocus })
+    const focusBtn = screen.getByRole('button', { name: 'Фокус-режим' })
+    fireEvent.click(focusBtn)
+    expect(onToggleFocus).toHaveBeenCalledTimes(1)
+
+    cleanup()
+    renderPanel()
+    expect(screen.queryByRole('button', { name: 'Фокус-режим' })).toBeNull()
+  })
+
+  it('focus mode swaps the title+description header for a slim action row with exit + preview toggle', () => {
+    const onToggleFocus = vi.fn()
+    const onTogglePreviewVisible = vi.fn()
+    renderPanel({
+      focusMode: true,
+      onToggleFocus,
+      previewVisible: true,
+      onTogglePreviewVisible,
+    })
+    expect(screen.queryByText('Шаблон документа')).toBeNull() // title chrome gone
+    expect(screen.queryByRole('button', { name: 'Фокус-режим' })).toBeNull() // enter-button gone
+
+    fireEvent.click(screen.getByRole('button', { name: 'Закрити фокус-режим' }))
+    expect(onToggleFocus).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сховати превʼю' }))
+    expect(onTogglePreviewVisible).toHaveBeenCalledTimes(1)
+
+    // Publish/save/reset stay available in focus mode (decision 6)
+    expect(screen.getByRole('button', { name: 'Опублікувати' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Зберегти чернетку' })).toBeTruthy()
+  })
+
+  it('focus mode preview toggle reflects hidden state', () => {
+    renderPanel({ focusMode: true, previewVisible: false, onTogglePreviewVisible: () => {} })
+    expect(screen.getByRole('button', { name: 'Показати превʼю' })).toBeTruthy()
+  })
+
   it('«Жирний» is dual-mode: selection → inline {{#bold}} run, caret → paragraph directive', () => {
     function Host() {
       const [draft, setDraft] = useState('Позивач: {{last_name}}')

@@ -7,6 +7,7 @@ import { DynamicLegalFormBuilder } from '../../components/DynamicLegalFormBuilde
 import { TemplateEditorPanel } from '../components/TemplateEditorPanel'
 import { TemplateDraftPreview } from '../components/TemplateDraftPreview'
 import { TemplateRevisionHistory } from '../components/TemplateRevisionHistory'
+import { Splitter } from '../components/Splitter'
 import { validateDraft } from '../lib/documentPreview'
 import { publishTemplate } from '../lib/serviceTemplate'
 import { supabase } from '../../lib/supabase'
@@ -71,6 +72,14 @@ export function ServiceEditPage() {
   const [revisionsBump, setRevisionsBump] = useState(0)
   // S2 slice C: editor caret line → preview paragraph sync-highlight.
   const [caretLine, setCaretLine] = useState<number | null>(null)
+  // S2 slice D (issue #87): full-viewport focus mode for the template tab —
+  // desktop-only (the toggle only renders inside the xl-gated editor branch
+  // below), never persisted across visits (decision 5).
+  const [focusMode, setFocusMode] = useState(false)
+  const [focusPreviewVisible, setFocusPreviewVisible] = useState(true)
+  // Controlled so the Esc handler below can tell which layer is top-most
+  // (decision 3: Esc closes the fullscreen preview first, focus mode second).
+  const [focusPreviewFullscreen, setFocusPreviewFullscreen] = useState(false)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [isDirty, setIsDirty]       = useState(false)
@@ -93,6 +102,27 @@ export function ServiceEditPage() {
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [isDirty])
+
+  // Focus mode: Esc closes the TOP-MOST layer only (decision 3) — the split
+  // preview's own fullscreen (⤢) overlay first, focus mode itself second.
+  // focusPreviewFullscreen must stay a dependency (not read via a functional
+  // updater) so the listener always sees its current value — otherwise a
+  // stale closure would let a single Esc close both layers at once.
+  useEffect(() => {
+    if (!focusMode) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (focusPreviewFullscreen) setFocusPreviewFullscreen(false)
+      else setFocusMode(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [focusMode, focusPreviewFullscreen])
+
+  function exitFocusMode() {
+    setFocusMode(false)
+    setFocusPreviewFullscreen(false)
+  }
 
   // Load existing service
   useEffect(() => {
@@ -208,6 +238,76 @@ export function ServiceEditPage() {
     { id: 'settings', icon: '⚙️', label: 'Налаштування',      short: 'Опції' },
   ]
 
+  // Shared between the normal editor slot and the focus-mode overlay below —
+  // same draft state, same handlers, only the surrounding chrome differs.
+  const templateEditorProps = {
+    draft: docDraft,
+    published: docPublished,
+    isNew,
+    formConfig: config,
+    validate: validateDraft,
+    onDraftChange: (v: string) => { setDocDraft(v); markDirty() },
+    onSaveDraft: handleSaveDraft,
+    onPublish: handlePublish,
+    savingDraft,
+    publishing,
+    onCaretLine: setCaretLine,
+  }
+
+  // Focus mode (issue #87 decision 2): sidebar + top-bar + tabs disappear —
+  // this REPLACES the whole page output instead of layering an overlay on
+  // top, so there is only ever one live TemplateCodeEditor/CodeMirror
+  // instance (no duplicate mount, no caret-sync races between two editors).
+  // «Історія змін» is intentionally not rendered here (decision: hidden in
+  // focus mode).
+  if (focusMode) {
+    return (
+      <div className="h-screen w-screen flex flex-col bg-canvas overflow-hidden">
+        <div className="flex-1 min-h-0 p-4">
+          {focusPreviewVisible ? (
+            <Splitter
+              storageKey="admin-template-focus-split"
+              first={
+                <div className="h-full overflow-y-auto pr-2">
+                  <TemplateEditorPanel
+                    {...templateEditorProps}
+                    focusMode
+                    onToggleFocus={exitFocusMode}
+                    previewVisible={focusPreviewVisible}
+                    onTogglePreviewVisible={() => setFocusPreviewVisible((v) => !v)}
+                  />
+                </div>
+              }
+              second={
+                <div className="h-full pl-2">
+                  <TemplateDraftPreview
+                    template={docDraft || docPublished}
+                    slug={config.service_id || null}
+                    formConfig={config}
+                    caretLine={caretLine}
+                    fullscreen={focusPreviewFullscreen}
+                    onFullscreenChange={setFocusPreviewFullscreen}
+                  />
+                </div>
+              }
+            />
+          ) : (
+            <div className="h-full overflow-y-auto">
+              <TemplateEditorPanel
+                {...templateEditorProps}
+                focusMode
+                onToggleFocus={exitFocusMode}
+                previewVisible={focusPreviewVisible}
+                onTogglePreviewVisible={() => setFocusPreviewVisible((v) => !v)}
+              />
+            </div>
+          )}
+        </div>
+        {toast && <Toast type={toast.type} message={toast.message} />}
+      </div>
+    )
+  }
+
   return (
     <AdminLayout>
       <div className="flex flex-col h-[calc(100vh-49px)] md:h-screen overflow-x-hidden">
@@ -305,17 +405,8 @@ export function ServiceEditPage() {
                       overlap: the editor's min-h spilled 66px past the panel). */}
                   <div className="flex-1 min-h-0 overflow-y-auto">
                     <TemplateEditorPanel
-                      draft={docDraft}
-                      published={docPublished}
-                      isNew={isNew}
-                      formConfig={config}
-                      validate={validateDraft}
-                      onDraftChange={(v) => { setDocDraft(v); markDirty() }}
-                      onSaveDraft={handleSaveDraft}
-                      onPublish={handlePublish}
-                      savingDraft={savingDraft}
-                      publishing={publishing}
-                      onCaretLine={setCaretLine}
+                      {...templateEditorProps}
+                      onToggleFocus={() => setFocusMode(true)}
                     />
                   </div>
                   {!isNew && id && (

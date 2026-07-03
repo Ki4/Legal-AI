@@ -45,4 +45,23 @@ describe('TemplateDraftPreview — fullscreen overlay', () => {
     const dialog = screen.getByRole('dialog')
     expect(dialog.querySelector('[data-testid="layout-preview"]')).toBeTruthy()
   })
+
+  it('accepts controlled fullscreen state (S2 slice D: focus mode owns the Esc precedence)', () => {
+    const onFullscreenChange = vi.fn()
+    const { rerender } = render(
+      <TemplateDraftPreview template="Текст" fullscreen={false} onFullscreenChange={onFullscreenChange} />,
+    )
+    expect(screen.queryByRole('dialog')).toBeNull()
+
+    // Clicking ⤢ reports the intent via the callback instead of opening itself
+    fireEvent.click(screen.getByRole('button', { name: /на весь екран/ }))
+    expect(onFullscreenChange).toHaveBeenCalledWith(true)
+    expect(screen.queryByRole('dialog')).toBeNull() // parent hasn't re-rendered with fullscreen=true yet
+
+    rerender(<TemplateDraftPreview template="Текст" fullscreen onFullscreenChange={onFullscreenChange} />)
+    expect(screen.getByRole('dialog')).toBeTruthy()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onFullscreenChange).toHaveBeenCalledWith(false)
+  })
 })

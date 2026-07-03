@@ -19,6 +19,8 @@ export function TemplateDraftPreview({
   slug,
   formConfig,
   caretLine = null,
+  fullscreen: fullscreenProp,
+  onFullscreenChange,
 }: {
   template: string | null
   slug?: string | null
@@ -26,9 +28,17 @@ export function TemplateDraftPreview({
   /** S2 slice C: editor caret line for the caret↔paragraph sync-highlight
    *  («Документ» view only — the layout view has its own pagination). */
   caretLine?: number | null
+  /** Optional controlled fullscreen state (S2 slice D: the focus-mode Esc
+   *  handler needs to know whether this overlay is the top-most layer before
+   *  deciding whether Esc closes it or focus mode). Uncontrolled by default —
+   *  every other call site keeps managing it internally, unchanged. */
+  fullscreen?: boolean
+  onFullscreenChange?: (v: boolean) => void
 }) {
   const [view, setView] = useState<'document' | 'layout'>('document')
-  const [fullscreen, setFullscreen] = useState(false)
+  const [fullscreenState, setFullscreenState] = useState(false)
+  const fullscreen = fullscreenProp ?? fullscreenState
+  const setFullscreen = onFullscreenChange ?? setFullscreenState
 
   useEffect(() => {
     if (!fullscreen) return
@@ -37,7 +47,7 @@ export function TemplateDraftPreview({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [fullscreen])
+  }, [fullscreen, setFullscreen])
 
   const tabs = (
     <>

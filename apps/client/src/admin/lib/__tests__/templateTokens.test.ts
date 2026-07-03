@@ -66,6 +66,56 @@ describe('scanTemplateTokens — DSL tag classification (S2 slice A)', () => {
     expect(styleKeywordsOf(closer, scanTemplateTokens(closer)[0])).toEqual(['/keep-block'])
   })
 
+  it('keeps exact positions in CRLF text (SQL-imported templates may carry \\r\\n)', () => {
+    const text = 'Позивач: {{plaintiff_name}}\r\n{{!style: center}}\r\nЗАЯВА'
+    const [a, b] = scanTemplateTokens(text)
+    expect(text.slice(a.from, a.to)).toBe('{{plaintiff_name}}')
+    expect(text.slice(b.from, b.to)).toBe('{{!style: center}}')
+  })
+
+  it('finds adjacent tags with zero gap — monotonic ranges hold at the boundary', () => {
+    const tokens = scanTemplateTokens('{{first_name}}{{last_name}}')
+    expect(tokens.map((t) => [t.from, t.to])).toEqual([
+      [0, 14],
+      [14, 27],
+    ])
+  })
+
+  it('classifies an empty tag {{}} as helper without crashing', () => {
+    expect(kindsOf('{{}}')).toEqual(['helper'])
+  })
+
+  it('finds the inner tag of triple braces {{{x}}} with exact offsets', () => {
+    const text = 'сума: {{{amount}}}'
+    const [t] = scanTemplateTokens(text)
+    expect(text.slice(t.from, t.to)).toBe('{{amount}}')
+  })
+
+  it('matches a tag whose inner text spans lines (char class admits \\n)', () => {
+    const tokens = scanTemplateTokens('{{#if\nhas_children}}')
+    expect(tokens.map((t) => t.kind)).toEqual(['logic'])
+  })
+
+  it('tolerates CROSSED pairs: /if pops its open and silently drops the each under it', () => {
+    // {{#if}} {{#each}} {{/if}} {{/each}} — mid-edit state; the gate, not the
+    // scanner, is what blocks publishing. The if matches; the each is dropped.
+    const blocks = matchTemplateBlocks('{{#if a}}\n{{#each b}}\n{{/if}}\n{{/each}}')
+    expect(blocks.map((b) => b.kind)).toEqual(['if'])
+  })
+
+  it('matches an open/close pair on the SAME line (fold service must offer no fold)', () => {
+    const text = '{{#if a}}текст{{/if}}'
+    const [b] = matchTemplateBlocks(text)
+    expect(b.kind).toBe('if')
+    expect(b.openFrom).toBe(0)
+    expect(text.slice(b.closeFrom, b.closeTo)).toBe('{{/if}}')
+  })
+
+  it('returns [] keywords for an empty {{!style:}} — the pill renders blank (see report)', () => {
+    const text = '{{!style:}}'
+    expect(styleKeywordsOf(text, scanTemplateTokens(text)[0])).toEqual([])
+  })
+
   it('never throws and covers the claim skeleton and the real divorce template', () => {
     const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../..')
     const divorce = readFileSync(

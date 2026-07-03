@@ -219,12 +219,17 @@ export const templateFolding = [
   }),
 ]
 
-/** Editor chrome + tag colours, aligned with the admin "Legal Light" palette. */
+/** Editor chrome + tag colours, aligned with the admin "Legal Light" palette.
+ *  Paper underlay (C5): background AND text colour are explicit literals — the
+ *  template is a paper document and stays light in the dark theme too (the
+ *  host div matches with the same literal background). Inheriting the page's
+ *  colour made the text invisible under <html data-theme="dark">. */
 export const templateTheme = EditorView.theme({
   '&': {
     fontSize: '13px',
     height: '100%',
-    backgroundColor: 'transparent',
+    backgroundColor: '#FBFAF7', // Legal Light paperAlt, literal on purpose
+    color: '#1F1E1B', // Legal Light ink
   },
   '.cm-scroller': {
     fontFamily:

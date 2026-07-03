@@ -140,9 +140,13 @@ export const TemplateCodeEditor = forwardRef<
   }))
 
   return (
+    // Paper underlay (C5): the DOCUMENT is paper — the editor keeps the Legal
+    // Light sheet in BOTH themes (literal colours, not theme tokens), matching
+    // the decoration palette which is hardcoded light. In the dark theme the
+    // page chrome darkens around a light sheet; in light nothing changes.
     <div
       ref={hostRef}
-      className="flex-1 min-h-[220px] w-full bg-paperAlt border border-lineStrong rounded-xl
+      className="flex-1 min-h-[220px] w-full bg-[#FBFAF7] border border-[#E0DCD2] rounded-xl
                  overflow-hidden focus-within:border-brand [&_.cm-editor]:h-full"
     />
   )

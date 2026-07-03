@@ -97,7 +97,7 @@
 - [x] Document generation: зробити сервіс-агностичним — **doc-engine** (фіча #34, session 20): декларативний шаблон-DSL у `services.document_template` + спільний движок `render-document.js` + dispatch по `generation_mode`. Пілот alimony live на шаблоні (117 parity-тестів байт-у-байт). Хвости:
   - [x] Портувати divorce на шаблон — **зроблено** (фіча #35, session 21): 263 parity-тести байт-у-байт, live e2e + rollback-флип перевірені; обидві послуги на `generation_mode='template'`. Сервіс-специфічні словники (REASONS_MAP, EXEMPT_REASONS) і динамічна нумерація «ПРОШУ» живуть у самому шаблоні. Винос legacy-білдерів з ноди → IMPROVEMENTS #52
   - [x] Фаза 2: типографіка Google Docs з `{{!style:}}` директив (IMPROVEMENTS #50, session 27, PR#43 merged + задеплоєно) 🟡
-  - [ ] Admin-UI редактор шаблону для юриста (IMPROVEMENTS #51) 🔵
+  - [x] Admin-UI редактор шаблону для юриста (IMPROVEMENTS #51) — **template-editor** (Tier 2, спека `specs/features/template-editor/`, сесії 1-3, web+s65+s66): чернетка/публікація з парс-гейтом на реальному рушії + снапшот-архів `service_revisions` з «Історія змін»+«Відновити» + тулбар стилів/палітра змінних/чипи + мітки 8 блоків у превʼю + «Створити з каркаса» (текст каркаса — sign-off Олі до проду) + «Скинути зміни». Далі: S2-конвеєр (CodeMirror 6 + styleHints v2 runs) 🟢
 - [x] Checklist validator — детермінований regex-чек обов'язкових юридичних пунктів (issue #4 / IMPROVEMENTS #39, `specs/features/checklist-validator/`): живий деплой завершено сесія 31 (migration 021 застосована, workflow задеплоєно, чеклісти divorce+alimony завантажені, smoke test зелений) 🟢
 - [ ] RLS: посилити row-level security 🟡
 - [x] Тести для n8n Code nodes — 79 тестів (validate, shared utils, divorce document), commit b3c9013

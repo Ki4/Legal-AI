@@ -248,6 +248,14 @@ const PROVIDED_CONTEXT = new Set<string>([
   'monthly_delta', 'price_of_claim', 'court_fee', 'court_fee_is_floor',
 ])
 
+/**
+ * Engine-computed context keys for the variable palette (template-editor §4b).
+ * Exposed as a sorted copy — the Set itself stays private to this module.
+ */
+export function providedContextKeys(): string[] {
+  return [...PROVIDED_CONTEXT].sort()
+}
+
 /** Computed key / ai sub-path → the form fields it derives from. */
 const DERIVED_SOURCES: Record<string, string[]> = {
   plaintiff_name: ['last_name', 'first_name', 'middle_name'],

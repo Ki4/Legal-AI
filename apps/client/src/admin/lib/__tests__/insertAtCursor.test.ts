@@ -55,6 +55,16 @@ describe('insertLineBefore', () => {
     const r = insertLineBefore(text, 2, '{{!style: indent}}')
     expect(r.text).toBe('a\n{{!style: indent}}\nb')
   })
+
+  it('keeps the directive line clean in CRLF text (previous line keeps its \\r)', () => {
+    const text = 'Перший\r\nДругий'
+    const caretInSecond = text.indexOf('Другий') + 2
+    const r = insertLineBefore(text, caretInSecond, '{{!style: right}}')
+    // The directive occupies its own \n-terminated line — no \r glued to it,
+    // so the engine's '\n'-split sees the directive verbatim.
+    expect(r.text).toBe('Перший\r\n{{!style: right}}\nДругий')
+    expect(r.caret).toBe(caretInSecond + '{{!style: right}}\n'.length)
+  })
 })
 
 describe('wrapSelection', () => {

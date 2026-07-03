@@ -10,6 +10,41 @@
 
 ---
 
+### 2026-07-03 (session 67, автономний клік-тест) — A1+A2: 15/15 живих кейсів ✅, реальні кліки через computer-тул (гочас s65 закрито), +9 edge-тестів
+**Status:** гілка `feat/template-editor-s2-codemirror` · UI **455 ✅** (+9) · прод/БД не торкнуто (фінал: «Скинути зміни» → байт-у-байт 14939)
+**Why:** Сергій попросив прокликати самому, знайти де може зламатись, написати тест-кейси і прогнати. Методичний прорив: (1) main-world інʼєкція `<script>` обходить ізольований світ розширення — EditorView доступний через `.cm-content → cmTile.view` (⚠️ НЕ `cmView` — перейменовано у свіжому CM); (2) **`computer`-тул дає СПРАВЖНІ кліки** — реальна каретка, `hasFocus=true`, фокус-гейт розблоковується; скриншоти на Vite dev падають, а кліки за координатами з `getBoundingClientRect` працюють → каретко-тести відтепер автоматизовні.
+**What (15 кейсів):** головний тест класу s65-бага РЕАЛЬНИМИ кліками (клік у середину абзацу → «Праворуч» → директива рівно перед рядком 3020, каретка 3064+18=3082, початок документа чистий) · чип↔raw на всіх 5 положеннях курсора · пілюля↔raw · fold/unfold реальним кліком по гаттеру (synthetic по гаттеру нестабільний — підтверджено) · undo/redo Ctrl-Z/Y · «Скинути зміни»+ConfirmModal ×2 (байт-точний відкат, оверлеїв 0) · незакритий `{{#if}}` → локалізований alert + публікація заблокована · багатострядковий тег не валить рендер · смуги if-блоків · каретка-в-0 + «Центр» (легітимна вставка на початок) · консоль 0 помилок · dispatch 2–5 мс.
+**Знахідки:** ⚠️ порожня `{{!style:}}` → невидима 14px-пілюля (тег зникає з очей; рекомендація — fallback-підпис або raw) · 🟡 транзиентний `▸` на нефолдабельному рядку після серії скролів (1 раз, не відтворився) · 🟡 один 45с фриз CDP на першому великому батчі (не відтворився; підозра на артефакт автоматизації) · 📝 квирк: `{{!styleXYZ}}`-коментар класифікується як style (фікс тривіальний, на полірування).
+**Tests (+9):** templateTokens +8 (CRLF-позиції, суміжні теги, `{{}}`, `{{{x}}}`, багаторядковий тег, перехресні пари, пара на одному рядку, порожній `{{!style:}}`) · insertAtCursor +1 (CRLF: директива на чистому `\n`-рядку).
+**Files:** `lib/__tests__/{templateTokens,insertAtCursor}.test.ts` · звіт `apps/client/.claude/reports/2026-07-03-s2-editor-autonomous-test-run.md`
+**Next:** Сергію лишилось тільки візуально-смакове (вигляд пілюль/чипів, гаттер після скролу) → merge → слайс B (styleHints v2 runs).
+
+### 2026-07-03 (session 67) — S2 слайс A1: CodeMirror 6 замість textarea + підсвітка DSL + чипи змінних
+**Status:** гілка `feat/template-editor-s2-codemirror` · UI **443 ✅** (+4) · tsc clean · нові файли eslint-clean · build:admin OK · live-верифіковано (в межах автоматизації; живий клік — за Сергієм)
+**Why:** S2-конвеєр (спека §5b, вердикт ресёрчу s65): юрист «пише текст, а не код». CodeMirror 6 — документ ЛИШАЄТЬСЯ DSL-рядком (інваріант 1: жодного (де)серіалізатора), декорації чисто візуальні (інваріант 2: найгірший збій = негарно показало).
+**What:**
+- `lib/templateTokens.ts` — чистий сканер: класифікує кожен `{{…}}` (comment/style/logic/var/helper) з точними позиціями; engine-free, тестується на реальному divorce-шаблоні і каркасі (монотонні діапазони — контракт RangeSetBuilder).
+- `lib/templateEditorTheme.ts` — CM-декорації: кольори за типом тега (патерн HotDocs) + `{{поле}}` → чип з укр. label (Decoration.replace); курсор/виділення торкається тега → сирий DSL (патерн Obsidian Live Preview, рекомпут на doc/selection/focus). Чип-семантика: form-поле → label · обчислюване рушієм / each-scope (`@index1`, `this`, `raw`) → нейтральний чип з id · невідоме → янтарний (та сама семантика, що «немає у формі»).
+- `components/TemplateCodeEditor.tsx` — обгортка EditorView (history, defaultKeymap, lineWrapping, placeholder; Compartment для labelFor). Імперативний handle `{getSelection, applyText(text, caret), focus}` — **той самий контракт applyEdit**, текст+каретка комітяться ОДНІЄЮ транзакцією → рас каретки s65 (rAF/useLayoutEffect) зник за побудовою.
+- `TemplateEditorPanel`: textarea → TemplateCodeEditor; caret-гейт (s65) працює через onFocus редактора; вся pendingCaret-механіка видалена.
+- Залежності: `@codemirror/{state,view,language,commands}`, `@lezer/highlight`.
+**Tests (+4):** сканер (класифікація всіх видів тегів, var-імена з `@`, точні позиції, реальний divorce + каркас) · панельні тести переведено на textarea-стаб з контрактом handle (CM у jsdom не працює — layout API; поведінка CM верифікована live).
+**Live verify (Chrome + жива БД, divorce, :5175):** CM рендерить 15KB шаблон · 6 чипів з укр. підписами, 0 хибно-янтарних (`plaintiff_name` нейтральний) · фокус-гейт розблоковує тулбар · курсор до межі тега → чип розгортається у сирий `{{plaintiff_name}}` · «Праворуч» вставляє `{{!style: right}}` РІВНО перед рядком каретки (insert-at-0 нема) · «Скинути зміни» синхронізує зовнішній value у CM · чернетку скинуто, прод не торкнуто. Обмеження автоматизації (гочас s65): synthetic click не рухає каретку — фінальний клік-тест за Сергієм.
+**Files:** `src/admin/lib/{templateTokens.ts(new),templateEditorTheme.ts(new)}` · `src/admin/components/{TemplateCodeEditor.tsx(new),TemplateEditorPanel.tsx}` · `specs/features/template-editor/requirements.md` (+§5b) · тести `lib/__tests__/templateTokens.test.ts(new)`, `components/__tests__/TemplateEditorPanel.test.tsx` · `package.json`
+**Next (A2, сесія 68):** іконки-віджети замість `{{!style:…}}` рядків · fold умовних блоків + кольорова смуга if-діапазонів. Потім B (styleHints v2 runs — legally-critical, окрема сесія) і C (sync-підсвітка каретка↔превʼю).
+
+### 2026-07-03 (session 67, продовження) — S2 слайс A2: style-пілюлі + fold умовних блоків + смуги if-діапазонів
+**Status:** гілка `feat/template-editor-s2-codemirror` · UI **446 ✅** (+3) · tsc/eslint clean · build:admin OK · live-верифіковано (в межах автоматизації)
+**Why:** Завершення слайсу (A) плану S2: юрист бачить `{{!style:…}}` як зрозумілу пілюлю («⇔ центр · Ж жирний · ⇊ не відривати»), а умовні діапазони — як кольорову смугу з можливістю згорнути блок.
+**What:**
+- `templateTokens.ts` +`matchTemplateBlocks` (толерантний матчер пар `{{#if}}/{{#each}}` — незакриті/зайві теги мовчки відкидаються, гейт лишається єдиним блокером публікації) + `styleKeywordsOf`.
+- `templateEditorTheme.ts`: `StyleChipWidget` — `{{!style:…}}` поза курсором → фіолетова пілюля з укр. підписами (STYLE_LABELS, 9 ключових слів), курсор торкнувся → сирий тег · `Decoration.line` смуга (pink) на рядках УСЕРЕДИНІ кожного if/each-блоку · `templateFolding`: `foldService` по matchTemplateBlocks (відкривний/закривний теги лишаються видимі, placeholder «… згорнуто …») + foldGutter ▾/▸. Збірка через `Decoration.set(sorted)`.
+- Fold — чисто вью-стан: НЕ мутує чернетку (перевірено live: статус «✓ збігається» після fold/unfold; reload скидає).
+**Tests (+3):** вкладені if/each з точними діапазонами · толерантність до зламаних пар (unclosed/stray/перехресні) · styleKeywordsOf (звичайні + `/keep-block`).
+**Live verify (:5175, divorce):** пілюля «⇔ центр · Ж жирний · ⇊ не відривати» на директиві заголовка · смуги блоків у вьюпорті · fold по кліку гаттера згортає блок (▸), текст цілий · reload → чисто. Нюанс: synthetic-кліки по гаттеру нестабільні (гочас s65) — фінальний клік-тест за Сергієм.
+**Files:** `src/admin/lib/{templateTokens.ts,templateEditorTheme.ts}` · `src/admin/components/TemplateCodeEditor.tsx` · `lib/__tests__/templateTokens.test.ts`
+**Next:** слайс B (styleHints v2 runs — рушій, legally-critical, НЕ поспішати) · слайс C (sync-підсвітка каретка↔абзац превʼю).
+
 ### 2026-07-03 (session 66, wrap) — «Скинути зміни» + live-прогін Сесії 3 + MERGE конвеєра в main
 **Status:** **ЗМЕРЖЕНО в main** (merge `d1a98a6`; коміти `910a498` Сесія 3, `58e2bf9` reset, `51da2b1` roadmap) · UI **439 ✅** (+3) · Vercel-деплой тригернувся
 **Why:** Прохання Сергія по ходу сесії: скидати правки чернетки одним кліком замість нескінченного Ctrl+Z. Плюс фінальний live-прогін Сесії 3 перед merge (план s65: після Сесії 3 → merge).

@@ -1,11 +1,49 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { TemplateEditorPanel } from '../TemplateEditorPanel'
 import { ConfirmProvider } from '../../ui'
 import type { FormConfig } from '../../../types/form'
 import type { GateResult } from '../../lib/templateGate'
+
+// CodeMirror does not run under jsdom (layout/measure APIs) — the editor is
+// stubbed with a textarea implementing the SAME contract (value/onChange/
+// onFocus + getSelection/applyText/focus handle). The panel logic under test
+// (caret gate, applyEdit wiring, buttons) is editor-agnostic by design;
+// CM-specific behaviour is covered by templateTokens tests + live verify.
+const { applyTextSpy } = vi.hoisted(() => ({ applyTextSpy: vi.fn() }))
+vi.mock('../TemplateCodeEditor', async () => {
+  const React = await import('react')
+  return {
+    TemplateCodeEditor: React.forwardRef(function Stub(
+      props: {
+        value: string
+        onChange: (t: string) => void
+        onFocus?: () => void
+        placeholder?: string
+      },
+      ref: React.Ref<unknown>,
+    ) {
+      const taRef = React.useRef<HTMLTextAreaElement>(null)
+      React.useImperativeHandle(ref, () => ({
+        getSelection: () => ({
+          start: taRef.current?.selectionStart ?? 0,
+          end: taRef.current?.selectionEnd ?? 0,
+        }),
+        applyText: (text: string, caret: number) => applyTextSpy(text, caret),
+        focus: () => taRef.current?.focus(),
+      }))
+      return React.createElement('textarea', {
+        ref: taRef,
+        value: props.value,
+        placeholder: props.placeholder,
+        onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => props.onChange(e.target.value),
+        onFocus: props.onFocus,
+      })
+    }),
+  }
+})
 
 // The panel is engine-free by design: the gate is injected, so this smoke test
 // needs no '@doc-engine' alias (unavailable under `vitest run`).
@@ -40,6 +78,7 @@ function renderPanel(over: Partial<Parameters<typeof TemplateEditorPanel>[0]> = 
   )
 }
 
+beforeEach(() => applyTextSpy.mockClear())
 afterEach(cleanup)
 
 describe('TemplateEditorPanel', () => {
@@ -147,9 +186,9 @@ describe('TemplateEditorPanel', () => {
     expect(screen.queryByText(/Клацніть у текст шаблону/)).toBeNull()
   })
 
-  it('restores focus and caret into the textarea after a toolbar insert', () => {
-    // Stateful host: the caret is restored in useLayoutEffect on the commit
-    // that re-renders the controlled value — needs a real state round-trip.
+  it('applies toolbar edits at the editor selection as ONE text+caret transaction', () => {
+    // Stateful host: applyEdit reads the selection from the editor handle,
+    // computes the pure edit and commits text+caret via applyText.
     function Host() {
       const [draft, setDraft] = useState('Позивач: {{last_name}}')
       return (
@@ -176,11 +215,10 @@ describe('TemplateEditorPanel', () => {
     fireEvent.focus(textarea)
     textarea.setSelectionRange(3, 3)
     fireEvent.click(screen.getByRole('button', { name: 'Праворуч' }))
-    expect(textarea.value).toBe('{{!style: right}}\nПозивач: {{last_name}}')
+    const expectedText = '{{!style: right}}\nПозивач: {{last_name}}'
     // insertLineBefore keeps the caret at its text position, shifted by the insert
-    const expected = 3 + '{{!style: right}}\n'.length
-    expect(document.activeElement).toBe(textarea)
-    expect(textarea.selectionStart).toBe(expected)
-    expect(textarea.selectionEnd).toBe(expected)
+    const expectedCaret = 3 + '{{!style: right}}\n'.length
+    expect(applyTextSpy).toHaveBeenCalledWith(expectedText, expectedCaret)
+    expect(textarea.value).toBe(expectedText) // host state updated via onDraftChange
   })
 })

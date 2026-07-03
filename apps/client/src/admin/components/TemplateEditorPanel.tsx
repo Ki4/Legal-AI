@@ -1,8 +1,9 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { analyzeTemplate, diffFormVsTemplate } from '../../lib/serviceAnatomy'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { analyzeTemplate, diffFormVsTemplate, providedContextKeys } from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import type { GateResult } from '../lib/templateGate'
 import { useConfirm } from '../ui'
+import { TemplateCodeEditor, type TemplateEditorHandle } from './TemplateCodeEditor'
 import { TemplateToolbar } from './TemplateToolbar'
 import { VariablePalette } from './VariablePalette'
 import { insertSnippet, insertLineBefore, wrapSelection } from '../lib/insertAtCursor'
@@ -40,31 +41,38 @@ export function TemplateEditorPanel({
   publishing: boolean
 }) {
   const confirm = useConfirm()
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const pendingCaret = useRef<number | null>(null)
-  // Until the lawyer has placed the caret at least once, selectionStart is 0 and
+  const editorRef = useRef<TemplateEditorHandle>(null)
+  // Until the lawyer has placed the caret at least once, the selection is 0 and
   // every toolbar insert would silently land at the very top of the template.
   const [caretPlaced, setCaretPlaced] = useState(false)
 
-  // Toolbar/palette edits: apply a pure edit at the current selection, push the
-  // new text up; the caret is restored in useLayoutEffect below — synchronously
-  // with the commit that re-renders the controlled value (rAF is paused in
-  // background windows and can lose the race with scroll/focus).
+  // Toolbar/palette edits: apply a pure edit at the current selection. CodeMirror
+  // commits text + caret in ONE transaction (applyText), so there is no caret
+  // restore race by construction (the s65 rAF/useLayoutEffect dance is gone).
   const applyEdit = (edit: (text: string, selStart: number, selEnd: number) => EditResult) => {
-    const el = textareaRef.current
-    if (!el) return
-    const { text, caret } = edit(draft, el.selectionStart, el.selectionEnd)
-    pendingCaret.current = caret
+    const editor = editorRef.current
+    if (!editor) return
+    const { start, end } = editor.getSelection()
+    const { text, caret } = edit(draft, start, end)
+    editor.applyText(text, caret)
     onDraftChange(text)
   }
 
-  useLayoutEffect(() => {
-    const el = textareaRef.current
-    if (pendingCaret.current === null || !el) return
-    el.focus()
-    el.setSelectionRange(pendingCaret.current, pendingCaret.current)
-    pendingCaret.current = null
-  }, [draft])
+  // Chip labels for {{поле}} decorations: Ukrainian label from the form config;
+  // engine-computed context keys (plaintiff_name, court_fee, ai…) get a neutral
+  // chip with their own id — amber "unknown" is reserved for true typos (the
+  // same semantics as the «немає у формі» warning below).
+  const labelFor = useCallback(
+    (fieldId: string) => {
+      const field = formConfig.steps.find((s) => s.id === fieldId)
+      if (field) return field.label || fieldId
+      // Each-scope helpers ('@index1', 'this', item props like 'raw') and
+      // engine-computed keys are legitimate — neutral chip with their own id.
+      if (fieldId.startsWith('@') || fieldId === 'this' || fieldId === 'raw') return fieldId
+      return providedContextKeys().includes(fieldId) ? fieldId : undefined
+    },
+    [formConfig],
+  )
 
   const gate = useMemo<GateResult>(
     () => (draft.trim() ? validate(draft) : { ok: true }),
@@ -187,15 +195,14 @@ export function TemplateEditorPanel({
         </p>
       )}
 
-      <textarea
-        ref={textareaRef}
+      <TemplateCodeEditor
+        ref={editorRef}
         value={draft}
+        onChange={onDraftChange}
         onFocus={() => setCaretPlaced(true)}
-        onChange={(e) => onDraftChange(e.target.value)}
-        spellCheck={false}
-        className="flex-1 min-h-[320px] w-full px-4 py-3 bg-paperAlt border border-lineStrong rounded-xl
-                   text-ink text-[13px] font-mono leading-relaxed focus:outline-none focus:border-brand resize-none"
-        placeholder={'До ________ районного суду…\n{{!style: right}}\nПозивач: {{plaintiff_name}}'}
+        labelFor={labelFor}
+        placeholder={'До ________ районного суду… {{!style: right}} Позивач: {{plaintiff_name}}'}
+        ariaLabel="Шаблон документа"
       />
 
       {/* Collapsed by default — the editor needs the vertical space more. */}

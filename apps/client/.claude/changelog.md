@@ -10,6 +10,20 @@
 
 ---
 
+### 2026-07-03 (session 67) — S2 слайс A1: CodeMirror 6 замість textarea + підсвітка DSL + чипи змінних
+**Status:** гілка `feat/template-editor-s2-codemirror` · UI **443 ✅** (+4) · tsc clean · нові файли eslint-clean · build:admin OK · live-верифіковано (в межах автоматизації; живий клік — за Сергієм)
+**Why:** S2-конвеєр (спека §5b, вердикт ресёрчу s65): юрист «пише текст, а не код». CodeMirror 6 — документ ЛИШАЄТЬСЯ DSL-рядком (інваріант 1: жодного (де)серіалізатора), декорації чисто візуальні (інваріант 2: найгірший збій = негарно показало).
+**What:**
+- `lib/templateTokens.ts` — чистий сканер: класифікує кожен `{{…}}` (comment/style/logic/var/helper) з точними позиціями; engine-free, тестується на реальному divorce-шаблоні і каркасі (монотонні діапазони — контракт RangeSetBuilder).
+- `lib/templateEditorTheme.ts` — CM-декорації: кольори за типом тега (патерн HotDocs) + `{{поле}}` → чип з укр. label (Decoration.replace); курсор/виділення торкається тега → сирий DSL (патерн Obsidian Live Preview, рекомпут на doc/selection/focus). Чип-семантика: form-поле → label · обчислюване рушієм / each-scope (`@index1`, `this`, `raw`) → нейтральний чип з id · невідоме → янтарний (та сама семантика, що «немає у формі»).
+- `components/TemplateCodeEditor.tsx` — обгортка EditorView (history, defaultKeymap, lineWrapping, placeholder; Compartment для labelFor). Імперативний handle `{getSelection, applyText(text, caret), focus}` — **той самий контракт applyEdit**, текст+каретка комітяться ОДНІЄЮ транзакцією → рас каретки s65 (rAF/useLayoutEffect) зник за побудовою.
+- `TemplateEditorPanel`: textarea → TemplateCodeEditor; caret-гейт (s65) працює через onFocus редактора; вся pendingCaret-механіка видалена.
+- Залежності: `@codemirror/{state,view,language,commands}`, `@lezer/highlight`.
+**Tests (+4):** сканер (класифікація всіх видів тегів, var-імена з `@`, точні позиції, реальний divorce + каркас) · панельні тести переведено на textarea-стаб з контрактом handle (CM у jsdom не працює — layout API; поведінка CM верифікована live).
+**Live verify (Chrome + жива БД, divorce, :5175):** CM рендерить 15KB шаблон · 6 чипів з укр. підписами, 0 хибно-янтарних (`plaintiff_name` нейтральний) · фокус-гейт розблоковує тулбар · курсор до межі тега → чип розгортається у сирий `{{plaintiff_name}}` · «Праворуч» вставляє `{{!style: right}}` РІВНО перед рядком каретки (insert-at-0 нема) · «Скинути зміни» синхронізує зовнішній value у CM · чернетку скинуто, прод не торкнуто. Обмеження автоматизації (гочас s65): synthetic click не рухає каретку — фінальний клік-тест за Сергієм.
+**Files:** `src/admin/lib/{templateTokens.ts(new),templateEditorTheme.ts(new)}` · `src/admin/components/{TemplateCodeEditor.tsx(new),TemplateEditorPanel.tsx}` · `specs/features/template-editor/requirements.md` (+§5b) · тести `lib/__tests__/templateTokens.test.ts(new)`, `components/__tests__/TemplateEditorPanel.test.tsx` · `package.json`
+**Next (A2, сесія 68):** іконки-віджети замість `{{!style:…}}` рядків · fold умовних блоків + кольорова смуга if-діапазонів. Потім B (styleHints v2 runs — legally-critical, окрема сесія) і C (sync-підсвітка каретка↔превʼю).
+
 ### 2026-07-03 (session 66, wrap) — «Скинути зміни» + live-прогін Сесії 3 + MERGE конвеєра в main
 **Status:** **ЗМЕРЖЕНО в main** (merge `d1a98a6`; коміти `910a498` Сесія 3, `58e2bf9` reset, `51da2b1` roadmap) · UI **439 ✅** (+3) · Vercel-деплой тригернувся
 **Why:** Прохання Сергія по ходу сесії: скидати правки чернетки одним кліком замість нескінченного Ctrl+Z. Плюс фінальний live-прогін Сесії 3 перед merge (план s65: після Сесії 3 → merge).

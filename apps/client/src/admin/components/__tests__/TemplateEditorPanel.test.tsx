@@ -106,9 +106,55 @@ describe('TemplateEditorPanel', () => {
     expect(screen.getByText(/збігається з опублікованою/i)).toBeTruthy()
   })
 
-  it('warns about template variables the form does not ask', () => {
-    renderPanel({ draft: 'Хтось: {{totally_unknown_var}}' })
-    expect(screen.getByText(/немає у формі/).textContent).toContain('totally_unknown_var')
+  // ── Publish gate against structural '________' holes (#88 §1/§3/§7) ────────
+  describe('dead-ref publish gate', () => {
+    it('blocks publish and shows the danger banner for an unknown variable', () => {
+      renderPanel({ draft: 'Хтось: {{totally_unknown_var}}' })
+      const banner = screen.getByRole('alert')
+      expect(banner.textContent).toContain('Опублікувати неможливо')
+      expect(banner.textContent).toContain('{{totally_unknown_var}}')
+      // the draft-is-safe exit line (parse-error idiom)
+      expect(banner.textContent).toContain('Чернетку можна зберегти')
+      const publish = screen.getByRole('button', { name: 'Опублікувати' }) as HTMLButtonElement
+      expect(publish.disabled).toBe(true)
+      expect(publish.title).toContain('немає у формі')
+      // never lose work: draft save stays enabled
+      const save = screen.getByRole('button', { name: 'Зберегти чернетку' }) as HTMLButtonElement
+      expect(save.disabled).toBe(false)
+    })
+
+    it('blocks the computed/ai layer too: declension typo + sources-less computed key', () => {
+      renderPanel({ draft: '{{ai.defendant_dative}} і {{plaintiff_name}}' })
+      const banner = screen.getByRole('alert')
+      expect(banner.textContent).toContain('{{ai.defendant_dative}}')
+      // FORM has only last_name → plaintiff_name alive; use a form without sources
+      cleanup()
+      renderPanel({
+        draft: '{{plaintiff_name}}',
+        formConfig: { ...FORM, steps: [{ id: 'other', tab: 'g', type: 'text', label: 'Інше' }] },
+      })
+      expect(screen.getByRole('alert').textContent).toContain('потребує хоча б одного з полів')
+      expect((screen.getByRole('button', { name: 'Опублікувати' }) as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    it('|raw does not bypass the gate (silent-empty is still a structural hole)', () => {
+      renderPanel({ draft: '{{ghost_field|raw}}' })
+      expect((screen.getByRole('button', { name: 'Опублікувати' }) as HTMLButtonElement).disabled).toBe(true)
+    })
+
+    it('js-mode (dormant draft): informational amber, publish NOT blocked by dead refs', () => {
+      renderPanel({ draft: 'Хтось: {{totally_unknown_var}}', generationMode: 'js' })
+      expect(screen.queryByRole('alert')).toBeNull() // no danger banner
+      expect(screen.getByText(/не впливає/).textContent).toContain('{{totally_unknown_var}}')
+      const publish = screen.getByRole('button', { name: 'Опублікувати' }) as HTMLButtonElement
+      expect(publish.disabled).toBe(false)
+    })
+
+    it('clean template with known fields and computed keys → no banner, publish enabled', () => {
+      renderPanel({ draft: '{{last_name}} {{plaintiff_name}} {{#if ai.reasoning}}x{{/if}}' })
+      expect(screen.queryByRole('alert')).toBeNull()
+      expect((screen.getByRole('button', { name: 'Опублікувати' }) as HTMLButtonElement).disabled).toBe(false)
+    })
   })
 
   it('resets the draft to the published version after the confirm dialog', async () => {

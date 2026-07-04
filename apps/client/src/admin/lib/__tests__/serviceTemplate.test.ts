@@ -151,6 +151,68 @@ describe('restoreTemplate', () => {
   })
 })
 
+// ── Dead-ref backstop (#88 §2b): the gate re-runs server-side against the ──
+// SAVED form_config fetched inside gateSnapshotAndSet — closes the «Відновити»
+// bypass (parse-only before) and any UI bypass of the panel gate.
+describe('dead-ref backstop (publish + restore)', () => {
+  const FORM_CONFIG = {
+    service_id: 'divorce', title: 'Т', tabs: [],
+    steps: [{ id: 'last_name', type: 'text', label: 'Прізвище' }],
+  }
+
+  it('publish: blocks a template whose refs the current form cannot fill — DB untouched', async () => {
+    const { client, calls } = makeSupabase({ ...SERVICE, form_config: FORM_CONFIG })
+    const result = await publishTemplate(
+      { supabase: client, validate: okGate },
+      { serviceId: 'svc-1', draft: 'Хтось: {{ghost_field}}', userId: 'u1' },
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('{{ghost_field}}')
+    // select ran (the gate needs the row), but no snapshot and no update
+    expect(calls.filter((c) => c.op !== 'select')).toEqual([])
+  })
+
+  it('restore: an old revision that drifted from the current form is blocked with the «У чернетку» exit', async () => {
+    const { client, calls } = makeSupabase({ ...SERVICE, form_config: FORM_CONFIG })
+    const revision: RevisionRow = {
+      id: 'rev-1', reason: 'publish_template', created_at: '2026-01-01',
+      snapshot: { document_template: 'Було: {{respondent_last_name}}' }, // legacy field the form dropped
+    }
+    const result = await restoreTemplate(
+      { supabase: client, validate: okGate },
+      { serviceId: 'svc-1', revision, userId: 'u1' },
+    )
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toContain('{{respondent_last_name}}')
+      expect(result.error).toContain('У чернетку')
+    }
+    expect(calls.filter((c) => c.op !== 'select')).toEqual([])
+  })
+
+  it('js-mode: dormant draft publishes without the dead-ref gate (#86 lesson)', async () => {
+    const { client, calls } = makeSupabase({ ...SERVICE, generation_mode: 'js', form_config: FORM_CONFIG })
+    const result = await publishTemplate(
+      { supabase: client, validate: okGate },
+      { serviceId: 'svc-1', draft: 'Хтось: {{ghost_field}}', userId: 'u1' },
+    )
+    expect(result.ok).toBe(true)
+    expect(calls.some((c) => c.op === 'update')).toBe(true)
+  })
+
+  it('computed layer is gated too: {{plaintiff_name}} without any name source blocks', async () => {
+    const { client } = makeSupabase({
+      ...SERVICE,
+      form_config: { ...FORM_CONFIG, steps: [{ id: 'other', type: 'text', label: 'Інше' }] },
+    })
+    const result = await publishTemplate(
+      { supabase: client, validate: okGate },
+      { serviceId: 'svc-1', draft: '{{plaintiff_name}}', userId: 'u1' },
+    )
+    expect(result.ok).toBe(false)
+  })
+})
+
 describe('listRevisions', () => {
   it('returns rows newest-first from service_revisions', async () => {
     const rows = [REVISION]

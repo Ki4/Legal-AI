@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
+import { createRequire } from 'node:module'
 import type { FormConfig } from '../../types/form'
 import {
   analyzeTemplate,
@@ -9,12 +10,15 @@ import {
   diffFormVsTemplate,
   collectBrokenShowIf,
   collectEmptyLabelFields,
+  collectDeadRefs,
   describeShowIf,
   serviceHealth,
   isTemplateAuthoritative,
+  templateDrivesGeneration,
   fieldTypeLabel,
   lawCodeFromUrl,
   analyzeService,
+  providedContextKeys,
 } from '../serviceAnatomy'
 import { divorceFormConfig } from '../../data/divorceFormConfig'
 import { alimonyChangeFormConfig } from '../../data/alimonyChangeFormConfig'
@@ -134,6 +138,93 @@ describe('diffFormVsTemplate — real templates', () => {
     expect(diff.unmatchedPlaceholders).toEqual([])
     // never a false positive from the computed layer
     for (const k of COMPUTED_KEYS) expect(diff.unmatchedPlaceholders).not.toContain(k)
+  })
+})
+
+// ─────────────── Dead refs (publish-gate #88 §3) + engine parity ─────────────
+// The gate's predicate: a template ref the engine can NEVER fill for this form.
+// Red-team blocker (s72): the bare unmatched list was blind to the computed/ai
+// layer — {{ai.typo}}, {{answers.ghost}}, {{plaintiff_name}}-without-sources all
+// printed '________' in EVERY document while passing unmatched===[].
+
+const FORM = (ids: string[]): FormConfig => ({
+  service_id: 's', title: 't', tabs: [],
+  steps: ids.map((id) => ({ id, tab: 'g', label: id, type: 'text' as const })),
+})
+const dead = (tplText: string, ids: string[]) => collectDeadRefs(FORM(ids), analyzeTemplate(tplText))
+
+describe('collectDeadRefs — 4 structural classes', () => {
+  it('class 1: bare field ref with no form field (incl. |raw silent-empty)', () => {
+    expect(dead('{{payment_receipt}}', [])).toEqual([{ ref: 'payment_receipt', kind: 'unmatched-field' }])
+    // |raw suppresses the visible fallback but the hole is the same — still dead
+    expect(dead('{{payment_receipt|raw}}', [])).toEqual([{ ref: 'payment_receipt', kind: 'unmatched-field' }])
+    expect(dead('{{payment_receipt}}', ['payment_receipt'])).toEqual([])
+  })
+
+  it('class 2: computed key with NONE of its source fields in the form', () => {
+    const d = dead('{{plaintiff_name}}', [])
+    expect(d).toEqual([{ ref: 'plaintiff_name', kind: 'missing-sources', sources: ['last_name', 'first_name', 'middle_name'] }])
+    // ≥1 source present → engine renders something (joinName skips empties)
+    expect(dead('{{plaintiff_name}}', ['last_name'])).toEqual([])
+    // silent-vanish case: {{#each children}} without children_details
+    expect(dead('{{#each children}}{{name}}{{/each}}', [])).toEqual([
+      { ref: 'children', kind: 'missing-sources', sources: ['children_details'] },
+    ])
+    // defendant aliases: spouse_* convention satisfies the requirement (divorce)
+    expect(dead('{{defendant_name}}', ['spouse_last_name'])).toEqual([])
+  })
+
+  it('class 2 exemption: graceful-default keys never block (render defaults, not holes)', () => {
+    expect(dead('{{gender plaintiff_gender \'він\' \'вона\'}} {{n_children}}', [])).toEqual([])
+  })
+
+  it('class 3: unknown ai./ai_raw. subpath (declension typo)', () => {
+    expect(dead('{{ai.defendant_dative}}', [])).toEqual([{ ref: 'ai.defendant_dative', kind: 'unknown-ai-path' }])
+    // known subpath with sources present → alive; ai.reasoning is source-free (LLM)
+    expect(dead('{{ai.plaintiff_genitive}}', ['last_name'])).toEqual([])
+    expect(dead('{{#if ai.reasoning}}x{{/if}}', [])).toEqual([])
+    // ai_raw escape hatch: known keys legitimately empty, unknown keys dead
+    expect(dead('{{#if ai_raw.reasoning}}x{{/if}}', [])).toEqual([])
+    expect(dead('{{#if ai_raw.ghost}}x{{/if}}', [])).toEqual([{ ref: 'ai_raw.ghost', kind: 'unknown-ai-path' }])
+  })
+
+  it('class 3b: known ai declension with NO source fields → dead (guard ends in FALLBACK)', () => {
+    expect(dead('{{ai.marriage_place_locative}}', [])).toEqual([
+      { ref: 'ai.marriage_place_locative', kind: 'missing-sources', sources: ['marriage_place'] },
+    ])
+  })
+
+  it('class 4: answers.* escape hatch to a nonexistent field', () => {
+    expect(dead('{{answers.ghost}}', [])).toEqual([{ ref: 'answers.ghost', kind: 'unknown-answers-path' }])
+    expect(dead('{{answers.has_children}}', ['has_children'])).toEqual([])
+  })
+
+  it('live templates: ZERO dead refs (superset of the #86 unmatched invariant)', () => {
+    expect(collectDeadRefs(alimonyChangeFormConfig, analyzeTemplate(tpl('alimony-change')))).toEqual([])
+    expect(collectDeadRefs(alimonyConfig, analyzeTemplate(tpl('alimony')))).toEqual([])
+    expect(collectDeadRefs(divorceFormConfig, analyzeTemplate(tpl('divorce')))).toEqual([])
+  })
+})
+
+describe('templateDrivesGeneration (gate predicate, stricter than isTemplateAuthoritative)', () => {
+  it('template/hybrid/null drive generation; js and future modes do not', () => {
+    expect(templateDrivesGeneration('template')).toBe(true)
+    expect(templateDrivesGeneration('hybrid')).toBe(true)
+    expect(templateDrivesGeneration(null)).toBe(true) // first publish auto-flips null → template
+    expect(templateDrivesGeneration('js')).toBe(false)
+    expect(templateDrivesGeneration('ai_generate')).toBe(false) // #86 lesson: dormant draft ≠ blocked
+  })
+})
+
+// Mirror-drift insurance (red-team should-fix): the git-template invariant does
+// not cover DB-edited templates, so pin the mirror DIRECTLY to the engine: the
+// computed layer buildContext() actually returns === PROVIDED_CONTEXT.
+describe('buildContext ↔ PROVIDED_CONTEXT parity (mirror drift guard)', () => {
+  it('engine computed keys === providedContextKeys()', () => {
+    const require = createRequire(import.meta.url)
+    const engine = require(resolve(REPO, 'n8n/templates/render-document.js'))
+    const engineKeys = Object.keys(engine.buildContext({}, {})).sort()
+    expect(engineKeys).toEqual(providedContextKeys())
   })
 })
 

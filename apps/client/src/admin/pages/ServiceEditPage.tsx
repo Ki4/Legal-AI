@@ -176,7 +176,12 @@ export function ServiceEditPage() {
 
     let error
     if (isNew) {
-      ({ error } = await supabase.from('services').insert(payload))
+      // A service authored in admin is template-driven from birth: the lawyer writes a
+      // document_template, never a hardcoded js builder. Without this the DB default
+      // (generation_mode='js', migration 014) would route the new slug to the legacy
+      // builder branch in n8n and throw. Set only on insert — updates must never
+      // clobber an existing service's mode (e.g. 'hybrid').
+      ({ error } = await supabase.from('services').insert({ ...payload, generation_mode: 'template' }))
     } else {
       ({ error } = await supabase.from('services').update(payload).eq('id', id))
     }

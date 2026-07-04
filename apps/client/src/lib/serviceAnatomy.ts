@@ -289,6 +289,115 @@ const DERIVED_SOURCES: Record<string, string[]> = {
  */
 const PIPELINE_PROVIDED = new Set<string>([])
 
+// ─────────────────── Dead references (publish-gate, #88 §3) ──────────────────
+// A "dead ref" is a template reference the engine can NEVER fill for this form —
+// every generated document prints '________' there (or a whole branch silently
+// vanishes), regardless of what the client answers. Decidable at publish time.
+// Policy: apps/client/.claude/reports/2026-07-04-publish-gate-policy.md.
+
+export type DeadRefKind =
+  | 'unmatched-field'      // {{typo_field}} — no form field, no provider
+  | 'unknown-ai-path'      // {{ai.defendant_dative}} — engine has no such key
+  | 'unknown-answers-path' // {{answers.ghost}} — escape hatch to a nonexistent field
+  | 'missing-sources'      // {{plaintiff_name}} on a form with none of its source fields
+
+export interface DeadRef {
+  /** the path as referenced in the template, e.g. 'ai.defendant_dative' */
+  ref: string
+  kind: DeadRefKind
+  /** missing-sources: the form fields that could feed this key (none present) */
+  sources?: string[]
+}
+
+/**
+ * ai./ai_raw. subpaths the engine actually provides — mirror of buildContext()
+ * aiSafe keys + the legacy spouse_* aliases buildContext accepts as raw input.
+ * Guarded (with PROVIDED_CONTEXT) by the buildContext parity test.
+ */
+const KNOWN_AI_SUBPATHS = new Set<string>([
+  'plaintiff_instrumental', 'plaintiff_genitive',
+  'defendant_instrumental', 'defendant_genitive',
+  'marriage_place_locative', 'children_genitive', 'reasoning',
+  'spouse_instrumental', 'spouse_genitive',
+])
+
+/**
+ * Computed keys that render a USABLE default when their sources are absent
+ * (detectGender → 'male', n_children → 1, court_fee_is_floor → false) — wrong
+ * content is possible, but never a '________' hole or a vanished block, so the
+ * publish gate must not block on them (red-team: false-positive class).
+ */
+const GRACEFUL_DEFAULTS = new Set<string>([
+  'plaintiff_gender', 'defendant_gender', 'first_child_gender', 'n_children',
+  'court_fee_is_floor',
+])
+
+/**
+ * All template references that are structurally dead for this form (4 classes).
+ * Pure + engine-free: the same predicate feeds the publish gate, the symmetric
+ * form-save gate, the restore gate and the health panel, so they can't drift.
+ */
+export function collectDeadRefs(form: FormConfig, a: TemplateAnalysis): DeadRef[] {
+  const fieldIds = new Set((form.steps ?? []).map((s) => s.id))
+  const dead: DeadRef[] = []
+
+  // 1. bare field refs with no provider (the classic «немає у формі»)
+  for (const r of a.fieldRefs) {
+    if (!fieldIds.has(r) && !PIPELINE_PROVIDED.has(r)) dead.push({ ref: r, kind: 'unmatched-field' })
+  }
+
+  // 2–4. computed-layer refs the engine cannot actually fill on THIS form
+  for (const ref of a.computedRefs) {
+    const dot = ref.indexOf('.')
+    const root = dot === -1 ? ref : ref.slice(0, dot)
+    const sub = dot === -1 ? '' : ref.slice(dot + 1)
+
+    if (root === 'ai' || root === 'ai_raw') {
+      if (sub && !KNOWN_AI_SUBPATHS.has(sub)) {
+        dead.push({ ref, kind: 'unknown-ai-path' })
+        continue
+      }
+      // known ai.X with declared form sources (declensions, locative) — the
+      // guard/fallback chain ends in FALLBACK when every source is absent.
+      // ai_raw.X is exempt: it's the raw-payload escape hatch used to branch
+      // on "did AI provide X", legitimately empty.
+      const sources = root === 'ai' ? DERIVED_SOURCES[`ai.${sub}`] : undefined
+      if (sources && !sources.some((s) => fieldIds.has(s))) {
+        dead.push({ ref, kind: 'missing-sources', sources })
+      }
+      continue
+    }
+
+    if (root === 'answers') {
+      if (sub && !fieldIds.has(sub)) dead.push({ ref, kind: 'unknown-answers-path' })
+      continue
+    }
+
+    // plain computed key (plaintiff_name, children, court_fee, …): dead when the
+    // form has NONE of its source fields (joinName/parse* then yield FALLBACK,
+    // or an {{#if has_children}} branch is always-false — a silent vanish).
+    if (GRACEFUL_DEFAULTS.has(root)) continue
+    const sources = DERIVED_SOURCES[root]
+    if (sources && !sources.some((s) => fieldIds.has(s))) {
+      dead.push({ ref, kind: 'missing-sources', sources })
+    }
+  }
+
+  return dead
+}
+
+/**
+ * Does the stored document_template drive production generation for this mode?
+ * Stricter cousin of isTemplateAuthoritative (used by the publish gate): the
+ * n8n dispatch renders the template only for 'template'/'hybrid'; null is
+ * included because the first publish auto-flips null → 'template'
+ * (serviceTemplate.gateSnapshotAndSet). A future 'ai_generate' therefore
+ * defaults to the informational (non-blocking) treatment — issue #86 lesson.
+ */
+export function templateDrivesGeneration(generationMode: string | null): boolean {
+  return generationMode === null || TEMPLATE_MODES.has(generationMode)
+}
+
 // ───────────────────────────── Form ↔ template diff ──────────────────────────
 
 export interface FieldDiff {
@@ -404,10 +513,27 @@ export interface HealthInput {
   generationMode: string | null
   hasTemplate: boolean
   diff: FieldDiff
+  /** structurally dead template refs (collectDeadRefs) — superset of
+   *  diff.unmatchedPlaceholders; when provided it drives the red reasons. */
+  deadRefs?: DeadRef[]
   brokenShowIf: string[]
   emptyLabelFields: string[]
   /** human article labels flagged stale/changed, e.g. ["ст.192 СК"] */
   staleCitations: string[]
+}
+
+/** One human sentence per dead ref — shared by health panel and publish gate. */
+export function describeDeadRef(d: DeadRef): string {
+  switch (d.kind) {
+    case 'unmatched-field':
+      return `Шаблон очікує дані «${d.ref}», яких форма не питає`
+    case 'unknown-ai-path':
+      return `Шаблон використовує «${d.ref}» — рушій не має такого ключа (одрук у назві?)`
+    case 'unknown-answers-path':
+      return `Шаблон читає «${d.ref}», але такого поля у формі немає`
+    case 'missing-sources':
+      return `«${d.ref}» потребує хоча б одного з полів: ${(d.sources ?? []).join(', ')}`
+  }
 }
 
 /**
@@ -429,7 +555,10 @@ export function serviceHealth(i: HealthInput): ServiceHealth {
   if (i.generationMode === 'js') amber.push('Генерація через legacy-білдер (не шаблон)')
 
   if (authoritative) {
-    for (const p of i.diff.unmatchedPlaceholders) red.push(`Шаблон очікує дані «${p}», яких форма не питає`)
+    // deadRefs (4 classes, #88) supersedes the bare unmatched list when provided;
+    // callers that haven't computed it keep the legacy class-1-only behavior.
+    if (i.deadRefs) for (const d of i.deadRefs) red.push(describeDeadRef(d))
+    else for (const p of i.diff.unmatchedPlaceholders) red.push(`Шаблон очікує дані «${p}», яких форма не питає`)
   } else if (i.hasTemplate && (i.diff.unmatchedPlaceholders.length || i.diff.unusedFields.length)) {
     amber.push(
       `Чернетка шаблону розходиться з формою (бракує ${i.diff.unmatchedPlaceholders.length}, ` +
@@ -452,6 +581,7 @@ export function serviceHealth(i: HealthInput): ServiceHealth {
 export interface ServiceAnalysis {
   analysis: TemplateAnalysis
   diff: FieldDiff
+  deadRefs: DeadRef[]
   health: ServiceHealth
 }
 
@@ -470,13 +600,15 @@ export function analyzeService(
     : { service_id: '', title: '', tabs: [], steps: [] }
   const analysis = analyzeTemplate(template ?? '')
   const diff = diffFormVsTemplate(safeForm, analysis)
+  const deadRefs = collectDeadRefs(safeForm, analysis)
   const health = serviceHealth({
     generationMode,
     hasTemplate: analysis.hasTemplate,
     diff,
+    deadRefs,
     brokenShowIf: collectBrokenShowIf(safeForm),
     emptyLabelFields: collectEmptyLabelFields(safeForm),
     staleCitations,
   })
-  return { analysis, diff, health }
+  return { analysis, diff, deadRefs, health }
 }

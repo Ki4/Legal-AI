@@ -129,3 +129,13 @@
   enter-анімація через `motion` initial/animate; миттєве закриття для confirm-діалогу — норм). Якщо
   exit-анімація потрібна — верифікувати наживо, що вузол зникає з DOM (`overlays:0`), а не лише
   візуально. Перевірка: після закриття `document.querySelectorAll('.fixed.inset-0.z-50').length === 0`.
+
+## Дані / контракт форма↔шаблон
+
+### 🪤 Флип `generation_mode` js→template поза UI робить бойовим шаблон, що не проходив гейт
+- **Причина:** publish/restore/form-save гейтяться dead-ref-предикатом (#88, s72), але зміна
+  `generation_mode` робиться SQL-ом/dashboard-ом (в UI перемикача нема) — спляча чернетка стає
+  бойовою без жодної перевірки. Саме цей клас відвантажив #86 (16 дір «________» у проді).
+- **Правило:** перед будь-яким флипом js→template/hybrid — відкрити health-панель послуги
+  (`ServiceViewPage`) і дочекатися 🟢 по dead refs (`collectDeadRefs` === 0 проти ЖИВОГО
+  form_config). Довгостроково — render-time hard-fail (IMPROVEMENTS #104).

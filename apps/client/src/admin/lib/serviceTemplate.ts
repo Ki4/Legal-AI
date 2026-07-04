@@ -8,6 +8,12 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { GateResult } from './templateGate'
+import {
+  analyzeTemplate,
+  collectDeadRefs,
+  templateDrivesGeneration,
+} from '../../lib/serviceAnatomy'
+import type { FormConfig } from '../../types/form'
 
 export interface PublishDeps {
   supabase: SupabaseClient
@@ -46,6 +52,28 @@ async function gateSnapshotAndSet(
     .single()
   if (selErr || !svc) {
     return { ok: false, error: `Не вдалося прочитати послугу: ${selErr?.message ?? 'не знайдено'}` }
+  }
+
+  // Dead-ref backstop (#88 §2b): the SAVED form_config is fetched fresh here, so
+  // this closes both the «Відновити» path (an old revision vs a reworked form —
+  // parse-only before) and any UI bypass of the panel gate. Engine-free pure
+  // analysis (serviceAnatomy), so unit tests still run without '@doc-engine'.
+  if (templateDrivesGeneration((svc.generation_mode as string | null) ?? null)) {
+    const deadRefs = collectDeadRefs(
+      (svc.form_config as FormConfig | null) ?? { service_id: '', title: '', tabs: [], steps: [] },
+      analyzeTemplate(template),
+    )
+    if (deadRefs.length > 0) {
+      const list = deadRefs.map((d) => `{{${d.ref}}}`).join(', ')
+      return {
+        ok: false,
+        error:
+          reason === 'restore'
+            ? `Не можна відновити цю версію: її шаблон використовує змінні, яких немає в чинній формі: ${list}. ` +
+              'Скористайтеся «У чернетку», поправте змінні й опублікуйте.'
+            : `Не можна опублікувати: шаблон використовує змінні, яких немає у формі: ${list}.`,
+      }
+    }
   }
 
   const { error: revErr } = await supabase.from('service_revisions').insert({

@@ -38,12 +38,17 @@ export function TemplateRevisionHistory({
   userId,
   refreshToken,
   onRestored,
+  onRestoreToDraft,
 }: {
   serviceId: string
   userId: string | null
   /** Bump to reload the list (the page increments it after each publish). */
   refreshToken: number
   onRestored: (template: string) => void
+  /** «У чернетку» — copy the revision's template into the local draft WITHOUT
+   *  publishing (#88 §2b: the exit path when a restore is blocked because the
+   *  old template no longer matches the current form). */
+  onRestoreToDraft?: (template: string) => void
 }) {
   const confirm = useConfirm()
   const [revisions, setRevisions] = useState<RevisionRow[]>([])
@@ -68,6 +73,21 @@ export function TemplateRevisionHistory({
       cancelled = true
     }
   }, [serviceId, refreshToken])
+
+  async function handleRestoreToDraft(rev: RevisionRow) {
+    const template = rev.snapshot?.document_template
+    if (typeof template !== 'string' || !template.trim()) {
+      setError('У цій ревізії немає шаблону — відновлювати нічого.')
+      return
+    }
+    const ok = await confirm({
+      title: 'Скопіювати цю версію у чернетку?',
+      body: 'Поточну чернетку буде замінено текстом цієї версії. Публікації не станеться — перегляньте, поправте і опублікуйте самі.',
+      confirmLabel: 'У чернетку',
+      variant: 'warn',
+    })
+    if (ok) onRestoreToDraft?.(template)
+  }
 
   async function handleRestore(rev: RevisionRow) {
     if (!supabase) return
@@ -105,8 +125,8 @@ export function TemplateRevisionHistory({
           editor above out of its slot (s67 overlap follow-up). */}
       <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto">
         <p className="text-xs text-inkMute">
-          Знімки послуги перед кожною публікацією чи відновленням. «Відновити» повертає шаблон цієї
-          версії у чернетку та публікує його.
+          Знімки послуги перед кожною публікацією чи відновленням. «Відновити» публікує шаблон цієї
+          версії; «У чернетку» лише копіює його для правок, без публікації.
         </p>
         {error && (
           <p role="alert" className="text-xs text-danger bg-danger/10 border border-danger/30 rounded-lg px-3 py-2">
@@ -124,6 +144,18 @@ export function TemplateRevisionHistory({
               </span>
               <span className="block text-[11px] text-inkMute">{formatWhen(rev.created_at)}</span>
             </div>
+            {onRestoreToDraft && (
+              <button
+                type="button"
+                onClick={() => handleRestoreToDraft(rev)}
+                disabled={restoringId !== null}
+                title="Скопіювати шаблон цієї версії у чернетку без публікації"
+                className="px-3 py-1.5 text-xs font-semibold text-inkSoft hover:text-ink bg-paper hover:bg-paper/70
+                           border border-line rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+              >
+                У чернетку
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleRestore(rev)}

@@ -12,6 +12,12 @@ import { validateDraft } from '../lib/documentPreview'
 import { publishTemplate } from '../lib/serviceTemplate'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useConfirm } from '../ui'
+import {
+  analyzeTemplate,
+  collectDeadRefs,
+  templateDrivesGeneration,
+} from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import {
   type ServiceStatus,
@@ -62,10 +68,19 @@ export function ServiceEditPage() {
   const [category, setCategory]   = useState<string | null>(null)
   // New services start disabled — lawyer activates after review (DB default too).
   const [status, setStatus]       = useState<ServiceStatus>('disabled')
+  // Publish-gate (#88): the gate blocks only when the template drives generation.
+  // Admin-created services are template-driven from birth; loaded from DB otherwise.
+  const [generationMode, setGenerationMode] = useState<string | null>(isNew ? 'template' : null)
+  // Last SAVED form_config — baseline for the symmetric form-save gate (#88 §2c):
+  // block only dead refs the save would INTRODUCE, never pre-existing ones.
+  const [savedConfig, setSavedConfig] = useState<FormConfig | null>(null)
   // Template editor (specs/features/template-editor): draft is edited here; the
   // bot generates ONLY from the published document_template until «Опублікувати».
   const [docPublished, setDocPublished] = useState<string | null>(null)
   const [docDraft, setDocDraft]         = useState('')
+  // Last PERSISTED draft — beforeunload must also cover unsaved template edits
+  // (handleSave doesn't save the draft; «Зберегти чернетку» does).
+  const [savedDraft, setSavedDraft]     = useState('')
   const [savingDraft, setSavingDraft]   = useState(false)
   const [publishing, setPublishing]     = useState(false)
   // Bumped after every publish/restore so the revision history reloads (§5).
@@ -82,10 +97,20 @@ export function ServiceEditPage() {
   const [focusPreviewFullscreen, setFocusPreviewFullscreen] = useState(false)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
-  const [isDirty, setIsDirty]       = useState(false)
+  // Dirty tracking is DECOMPOSED (#88 red-team): formDirty covers the
+  // handleSave payload (form/settings/status) and keys the «Зберегти і
+  // опублікувати» confirm; draft dirtiness is derived — a template keystroke
+  // must NOT count as "unsaved service changes" (it would fire on ~every
+  // publish and train the lawyer to ignore the warning).
+  const [formDirty, setFormDirty]   = useState(false)
   const [previewModal, setPreviewModal] = useState(false)
   const [previewAnswerKey, setPreviewAnswerKey] = useState(0)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const confirm = useConfirm()
+
+  const draftDirty = docDraft !== savedDraft
+  // Anything unsaved at all — beforeunload guard + the top-bar dot.
+  const isDirty = formDirty || draftDirty
 
   function showToast(type: 'success' | 'error', message: string) {
     setToast({ type, message })
@@ -138,25 +163,53 @@ export function ServiceEditPage() {
           return
         }
         if (!data) return
-        setConfig((data.form_config as FormConfig) ?? DEFAULT_CONFIG)
+        const loadedConfig = (data.form_config as FormConfig) ?? DEFAULT_CONFIG
+        const loadedDraft = data.document_template_draft ?? data.document_template ?? ''
+        setConfig(loadedConfig)
+        setSavedConfig(loadedConfig)
         setAiPrompt(data.ai_prompt ?? DEFAULT_PROMPT)
         setDocPublished(data.document_template ?? null)
-        setDocDraft(data.document_template_draft ?? data.document_template ?? '')
+        setDocDraft(loadedDraft)
+        setSavedDraft(loadedDraft)
+        setGenerationMode((data.generation_mode as string | null) ?? null)
         setIcon(data.icon ?? '⚖️')
         setDesc(data.description ?? '')
         setPrice(data.price ?? 0)
         setCategory(data.category ?? null)
         setStatus(toServiceStatus(data.status))
-        setIsDirty(false)
+        setFormDirty(false)
       })
   }, [id, isNew])
 
   function markDirty() {
-    setIsDirty(true)
+    setFormDirty(true)
   }
 
-  async function handleSave() {
-    if (!supabase || !user) return
+  async function handleSave(): Promise<boolean> {
+    if (!supabase || !user) return false
+
+    // Symmetric edge of the publish gate (#88 §2c): a form save must not orphan
+    // the PUBLISHED template (delete/rename a field it references → '________'
+    // in every client document, one click, no banner). Block only dead refs this
+    // save would INTRODUCE — a template already broken before the edit must not
+    // lock unrelated settings changes.
+    if (!isNew && docPublished?.trim() && templateDrivesGeneration(generationMode)) {
+      const analysis = analyzeTemplate(docPublished)
+      const before = new Set(
+        savedConfig ? collectDeadRefs(savedConfig, analysis).map((d) => d.ref) : [],
+      )
+      const introduced = collectDeadRefs(config, analysis).filter((d) => !before.has(d.ref))
+      if (introduced.length > 0) {
+        showToast(
+          'error',
+          `Не можна зберегти: опублікований шаблон використовує ${introduced
+            .map((d) => `{{${d.ref}}}`)
+            .join(', ')}. Спершу приберіть ці змінні з шаблону й опублікуйте його — потім змінюйте форму.`,
+        )
+        return false
+      }
+    }
+
     setSaving(true)
 
     const payload = {
@@ -189,13 +242,15 @@ export function ServiceEditPage() {
     setSaving(false)
     if (!error) {
       setSaved(true)
-      setIsDirty(false)
+      setFormDirty(false)
+      setSavedConfig(config)
       setTimeout(() => setSaved(false), 2000)
       showToast('success', 'Збережено ✓')
       if (isNew) navigate('/services')
-    } else {
-      showToast('error', `Помилка збереження: ${error.message}`)
+      return true
     }
+    showToast('error', `Помилка збереження: ${error.message}`)
+    return false
   }
 
   function handleConfigChange(c: FormConfig) {
@@ -214,13 +269,52 @@ export function ServiceEditPage() {
       .eq('id', id)
     setSavingDraft(false)
     if (error) showToast('error', `Не вдалося зберегти чернетку: ${error.message}`)
-    else showToast('success', 'Чернетку збережено ✓')
+    else {
+      setSavedDraft(docDraft)
+      showToast('success', 'Чернетку збережено ✓')
+    }
   }
 
-  // «Опублікувати» — parse gate → snapshot to service_revisions → copy draft
-  // into document_template (serviceTemplate.publishTemplate).
+  // «Опублікувати» — confirm (#88 §5) → parse+dead-ref gate → snapshot to
+  // service_revisions → copy draft into document_template.
   async function handlePublish() {
     if (!supabase || !id) return
+
+    // Copy depends on what actually happens: for a non-active service nothing
+    // reaches clients until the status flips (new services start disabled) —
+    // promising «клієнти одразу отримають» there would teach the lawyer the
+    // confirm exaggerates. formDirty → the confirm BECOMES the save action
+    // (atomic save+publish), not a warning to click through: after it, the
+    // saved form == the live config the gate validated against.
+    const active = status === 'active'
+    const firstPublish = docPublished === null
+    const ok = await confirm({
+      title: firstPublish ? 'Опублікувати шаблон?' : 'Опублікувати нову версію документа?',
+      body: [
+        !active
+          ? 'Шаблон стане чинним. Клієнти побачать послугу після того, як ви ввімкнете статус «Активна».'
+          : firstPublish
+            ? 'Послуга почне створювати документи для клієнтів за цим шаблоном.'
+            : 'Клієнти одразу отримуватимуть нову версію документа.',
+        firstPublish
+          ? ''
+          : 'Попередню версію буде збережено в «Історії змін» (внизу вкладки «Шаблон документа») — за потреби її можна відновити.',
+        formDirty
+          ? 'У послуги є незбережені зміни форми чи налаштувань — вони збережуться разом із публікацією.'
+          : '',
+      ].filter(Boolean).join(' '),
+      confirmLabel: formDirty ? 'Зберегти і опублікувати' : 'Опублікувати',
+      variant: 'warn',
+    })
+    if (!ok) return
+
+    // Atomic save+publish (#88 §4): removes the ordering hole where the gate
+    // passed against an in-browser form the production DB never saw.
+    if (formDirty) {
+      const savedOk = await handleSave()
+      if (!savedOk) return // save failed/blocked — its toast explains why
+    }
+
     setPublishing(true)
     const result = await publishTemplate(
       { supabase, validate: validateDraft },
@@ -229,6 +323,8 @@ export function ServiceEditPage() {
     setPublishing(false)
     if (result.ok) {
       setDocPublished(docDraft)
+      setSavedDraft(docDraft) // publish also persists the draft (draft == published)
+      setGenerationMode((m) => m ?? 'template') // first publish auto-flips null → template
       setRevisionsBump((b) => b + 1)
       showToast('success', 'Опубліковано ✓ Клієнти отримують нову версію документа')
     } else {
@@ -236,12 +332,22 @@ export function ServiceEditPage() {
     }
   }
 
+  // AI-prompt tab only when the template does NOT drive generation (#88 §4):
+  // for template/hybrid services n8n reads prompts from n8n/prompts/, never
+  // from services.ai_prompt — an editable no-op prompt presented as an equal
+  // tab trains the lawyer to distrust the UI (admin-critique #3).
   const TABS: { id: Tab; icon: string; label: string; short: string }[] = [
     { id: 'form',     icon: '📋', label: 'Конструктор форми', short: 'Форма' },
     { id: 'template', icon: '📄', label: 'Шаблон документа',  short: 'Шаблон' },
-    { id: 'ai',       icon: '🤖', label: 'AI-промпт',         short: 'AI' },
+    ...(!templateDrivesGeneration(generationMode)
+      ? [{ id: 'ai' as Tab, icon: '🤖', label: 'AI-промпт', short: 'AI' }]
+      : []),
     { id: 'settings', icon: '⚙️', label: 'Налаштування',      short: 'Опції' },
   ]
+  // If the active tab is not visible (e.g. mode arrived from the DB after the
+  // user clicked around), fall back to the form tab instead of rendering
+  // content without its tab button.
+  const visibleTab: Tab = TABS.some((t) => t.id === tab) ? tab : 'form'
 
   // Shared between the normal editor slot and the focus-mode overlay below —
   // same draft state, same handlers, only the surrounding chrome differs.
@@ -250,8 +356,11 @@ export function ServiceEditPage() {
     published: docPublished,
     isNew,
     formConfig: config,
+    generationMode,
     validate: validateDraft,
-    onDraftChange: (v: string) => { setDocDraft(v); markDirty() },
+    // Draft dirtiness is derived (docDraft !== savedDraft) — a template
+    // keystroke must NOT set formDirty (#88 red-team: warning fatigue).
+    onDraftChange: (v: string) => setDocDraft(v),
     onSaveDraft: handleSaveDraft,
     onPublish: handlePublish,
     savingDraft,
@@ -379,7 +488,7 @@ export function ServiceEditPage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap
-                ${tab === t.id
+                ${visibleTab === t.id
                   ? 'bg-paperAlt text-ink'
                   : 'text-inkMute hover:text-ink hover:bg-paperAlt/50'}`}
             >
@@ -394,12 +503,12 @@ export function ServiceEditPage() {
           <div className="flex-1 overflow-y-auto p-6">
 
             {/* ── FORM BUILDER ── */}
-            {tab === 'form' && (
+            {visibleTab === 'form' && (
               <FormBuilder config={config} onChange={handleConfigChange} />
             )}
 
             {/* ── TEMPLATE EDITOR ── */}
-            {tab === 'template' && (
+            {visibleTab === 'template' && (
               <>
                 {/* Desktop: full editor. Draft state lives here so the right
                     preview panel re-renders on every keystroke. */}
@@ -421,9 +530,14 @@ export function ServiceEditPage() {
                       refreshToken={revisionsBump}
                       onRestored={(tpl) => {
                         setDocDraft(tpl)
+                        setSavedDraft(tpl) // restore persisted draft==published
                         setDocPublished(tpl)
                         setRevisionsBump((b) => b + 1)
                         showToast('success', 'Версію відновлено ✓ Вона знову опублікована')
+                      }}
+                      onRestoreToDraft={(tpl) => {
+                        setDocDraft(tpl) // local only — savedDraft untouched, so the draft reads as unsaved
+                        showToast('success', 'Версію скопійовано у чернетку — перегляньте, збережіть або опублікуйте')
                       }}
                     />
                   )}
@@ -443,13 +557,25 @@ export function ServiceEditPage() {
             )}
 
             {/* ── AI PROMPT ── */}
-            {tab === 'ai' && (
+            {visibleTab === 'ai' && (
               <div className="max-w-2xl space-y-6">
                 <div>
                   <h2 className="text-lg font-bold text-ink mb-1">AI-промпт для документу</h2>
+                  {/* No present-tense promise: this tab only renders for non-template
+                      modes (today legacy 'js'), where the prompt does NOT drive the
+                      document — the lead and the banner must tell the same story. */}
                   <p className="text-inkSoft text-sm mb-4">
-                    Цей промпт отримує AI-модель разом з відповідями клієнта. Від нього залежить якість документу.
+                    Текст, який отримає AI-модель разом з відповідями клієнта, якщо документ
+                    створюватиме AI.
                   </p>
+
+                  {generationMode === 'js' && (
+                    <div className="mb-4 px-4 py-3 bg-warn/10 border border-warn/40 rounded-xl text-sm text-inkSoft">
+                      ⚠️ Ця послуга зараз генерується вбудованим кодом (режим «js») — промпт нижче
+                      не впливає на документ. Поле збережено для майбутнього AI-режиму, який поки
+                      не підключений.
+                    </div>
+                  )}
 
                   {/* Tips */}
                   <div className="bg-paperAlt rounded-xl p-4 mb-4 space-y-2">
@@ -486,28 +612,11 @@ export function ServiceEditPage() {
                                font-mono leading-relaxed focus:outline-none focus:border-brand resize-none"
                   />
                 </div>
-
-                {/* Quality checklist */}
-                <div className="bg-paperAlt rounded-xl p-5">
-                  <p className="text-sm font-semibold text-ink mb-3">Чеклист якості документу</p>
-                  {[
-                    'Промпт містить конкретну роль юриста',
-                    'Вказані відповідні статті законів',
-                    'Описана структура документу',
-                    'Є заборона на вигадку фактів',
-                    'Вказана юрисдикція (Україна)',
-                  ].map((item, i) => (
-                    <label key={i} className="flex items-center gap-3 py-1.5 cursor-pointer group">
-                      <input type="checkbox" className="w-4 h-4 accent-brand" />
-                      <span className="text-sm text-inkSoft group-hover:text-inkSoft">{item}</span>
-                    </label>
-                  ))}
-                </div>
               </div>
             )}
 
             {/* ── SETTINGS ── */}
-            {tab === 'settings' && (
+            {visibleTab === 'settings' && (
               <div className="max-w-lg space-y-5">
                 <h2 className="text-lg font-bold text-ink mb-4">Налаштування послуги</h2>
 
@@ -583,7 +692,7 @@ export function ServiceEditPage() {
           {/* Right panel — live preview (desktop only). Form preview normally;
               the document-draft preview when the template tab is active. */}
           <div className="hidden xl:flex w-96 flex-shrink-0 border-l border-line flex-col">
-            {tab === 'template' ? (
+            {visibleTab === 'template' ? (
               <TemplateDraftPreview
                 template={docDraft || docPublished}
                 slug={config.service_id || null}

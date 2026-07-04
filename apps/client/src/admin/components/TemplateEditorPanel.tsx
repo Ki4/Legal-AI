@@ -1,6 +1,12 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Maximize2, X, Eye, EyeOff } from 'lucide-react'
-import { analyzeTemplate, diffFormVsTemplate, providedContextKeys } from '../../lib/serviceAnatomy'
+import {
+  analyzeTemplate,
+  collectDeadRefs,
+  describeDeadRef,
+  providedContextKeys,
+  templateDrivesGeneration,
+} from '../../lib/serviceAnatomy'
 import type { FormConfig } from '../../types/form'
 import type { GateResult } from '../lib/templateGate'
 import { useConfirm } from '../ui'
@@ -23,6 +29,7 @@ export function TemplateEditorPanel({
   published,
   isNew,
   formConfig,
+  generationMode = null,
   validate,
   onDraftChange,
   onSaveDraft,
@@ -39,6 +46,9 @@ export function TemplateEditorPanel({
   published: string | null
   isNew: boolean
   formConfig: FormConfig
+  /** services.generation_mode — the publish gate only blocks when the template
+   *  actually drives production generation (template/hybrid/null; #86 lesson). */
+  generationMode?: string | null
   validate: (template: string) => GateResult
   onDraftChange: (v: string) => void
   onSaveDraft: () => void
@@ -94,11 +104,12 @@ export function TemplateEditorPanel({
     () => (draft.trim() ? validate(draft) : { ok: true }),
     [draft, validate],
   )
-  // Unknown-variable warning (§2.2): reuse the existing template↔form diff — the
-  // engine's computed fields are already whitelisted there (PROVIDED_CONTEXT).
-  const unmatched = useMemo(() => {
+  // Structurally dead refs (publish-gate #88 §3): template references the engine
+  // can never fill for this form — '________' (or a silently vanished block) in
+  // EVERY generated document. 4 classes incl. the computed/ai layer.
+  const deadRefs = useMemo(() => {
     if (!draft.trim() || !gate.ok) return []
-    return diffFormVsTemplate(formConfig, analyzeTemplate(draft)).unmatchedPlaceholders
+    return collectDeadRefs(formConfig, analyzeTemplate(draft))
   }, [draft, gate.ok, formConfig])
 
   if (isNew) {
@@ -109,8 +120,14 @@ export function TemplateEditorPanel({
     )
   }
 
+  // Hard block, no override (policy §1): a structural hole is never legitimate
+  // in a court document; the draft can always be saved. js-mode (dormant draft)
+  // stays informational-only — #86 lesson.
+  const authoritative = templateDrivesGeneration(generationMode)
+  const blockedByDeadRefs = authoritative && deadRefs.length > 0
   const isDraftDifferent = draft !== (published ?? '')
-  const canPublish = gate.ok && draft.trim().length > 0 && isDraftDifferent && !publishing
+  const canPublish =
+    gate.ok && draft.trim().length > 0 && isDraftDifferent && !publishing && !blockedByDeadRefs
 
   // Shared between the normal header and the focus-mode slim action row
   // (issue #87 decision 6) so publish/save/discard behave identically in both.
@@ -144,7 +161,13 @@ export function TemplateEditorPanel({
     <button
       onClick={onPublish}
       disabled={!canPublish}
-      title={gate.ok ? undefined : 'Виправте помилку в шаблоні, щоб опублікувати'}
+      title={
+        !gate.ok
+          ? 'Виправте помилку в шаблоні, щоб опублікувати'
+          : blockedByDeadRefs
+            ? 'Шаблон посилається на змінні, яких немає у формі — виправте, щоб опублікувати'
+            : undefined
+      }
       className="px-4 py-2 bg-brand hover:bg-brand/90 disabled:opacity-50 text-white text-sm font-semibold rounded-xl transition-colors"
     >
       {publishing ? 'Публікую…' : 'Опублікувати'}
@@ -248,12 +271,34 @@ export function TemplateEditorPanel({
         </p>
       )}
 
-      {unmatched.length > 0 && (
-        <div className="text-xs text-warn bg-warn/10 border border-warn/30 rounded-xl px-3 py-2.5">
-          ⚠ Шаблон використовує змінні, яких немає у формі: {unmatched.join(', ')}. Документ
-          надрукує «________» замість них.
+      {deadRefs.length > 0 && (blockedByDeadRefs ? (
+        // Hard block (policy §7): prospective wording (this renders live while
+        // typing, not on a publish attempt), tokens as they look in the template,
+        // a «змінні ↔ поля» bridge, an exit path, and the draft-is-safe line
+        // (same idiom as the parse-error banner above).
+        <div role="alert" className="text-xs text-danger bg-danger/10 border border-danger/30 rounded-xl px-3 py-2.5 space-y-1">
+          <p className="font-semibold">
+            Опублікувати неможливо: шаблон використовує змінні, для яких у формі немає полів:{' '}
+            {deadRefs.map((d) => `{{${d.ref}}}`).join(', ')}.
+          </p>
+          <p>У кожному документі замість них надрукується «________» або зникнуть цілі блоки тексту.</p>
+          <ul className="list-disc pl-4 space-y-0.5">
+            {deadRefs.map((d) => <li key={d.ref}>{describeDeadRef(d)}</li>)}
+          </ul>
+          <p>
+            Що зробити: створіть відповідні поля у «Конструкторі форми» або виправте назви змінних у
+            шаблоні. Чернетку можна зберегти й повернутися пізніше — блокується лише публікація.
+          </p>
         </div>
-      )}
+      ) : (
+        // js-mode: the template is a dormant draft (generation runs the legacy
+        // builder) — informational only, never a block (#86 false-alarm lesson).
+        <div className="text-xs text-warn bg-warn/10 border border-warn/30 rounded-xl px-3 py-2.5">
+          ⚠ Чернетка використовує змінні, яких немає у формі:{' '}
+          {deadRefs.map((d) => `{{${d.ref}}}`).join(', ')}. На генерацію це зараз не впливає
+          (послуга працює у legacy-режимі), але виправте до перемикання на шаблон.
+        </div>
+      ))}
 
       <TemplateToolbar
         disabled={isNew || !caretPlaced}

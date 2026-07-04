@@ -51,7 +51,8 @@ export function AdminApp() {
       <Route path="notes" element={<AdminGuard><NotesInboxPage /></AdminGuard>} />
       <Route path="requests" element={<AdminGuard><ServiceRequestsPage /></AdminGuard>} />
       <Route path="law-changes" element={<AdminGuard><LawChangeLogPage /></AdminGuard>} />
-      <Route path="design" element={<DesignKitPage />} />
+      {/* Dev-only style reference — still behind auth: no public page on prod (#88 §2) */}
+      <Route path="design" element={<AdminGuard><DesignKitPage /></AdminGuard>} />
       <Route path="*" element={<Navigate to="/services" replace />} />
     </Routes>
     </ConfirmProvider>

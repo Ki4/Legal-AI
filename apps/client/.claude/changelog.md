@@ -10,6 +10,19 @@
 
 ---
 
+### 2026-07-04 (session 73) — #88 п.2–6: quick wins адмінки + фікси adversarial-ревью (12 знахідок)
+**Status:** гілка `fix/admin-quick-wins` · UI **534 ✅** (+14 нових: 4 AdminApp / 4 Dashboard / 6 ServiceEdit) · tsc/build:admin OK · Refs #88
+**Why:** Решта чекліста #88 (критик s71): мертві контроли і тихі збої підривають довіру Олі, /design був публічною dev-сторінкою на проді. Дифф прогнано через adversarial-ревью (workflow: 3 лінзи → верифікація кожної знахідки; 12 підтверджено, 1 відбито) — усе виправлено тут же.
+**What:**
+- **§2 /design під AdminGuard** (`AdminApp.tsx`) — анонім → redirect на login.
+- **§3 мертвий чек-лист якості видалено** (5 чекбоксів без `checked`/`onChange` на вкладці AI).
+- **§4 вкладку «AI-промпт» сховано для template-driven режимів** (предикат `templateDrivesGeneration`: template|hybrid|null — той самий, що в publish-гейті). Факт: `services.ai_prompt` не читає ЖОДЕН живий workflow (лише архівний v5; hybrid-промпти живуть у `n8n/prompts/`). Для legacy `js` вкладка лишається з чесним банером «промпт не впливає на документ» + узгодженим lead-абзацом (без обіцянки неіснуючого перемикача «AI-режиму»). `visibleTab`-fallback, якщо активна вкладка зникає.
+- **§5 Dashboard: збій завантаження = помилка + «Спробувати ще раз»** (укр. пояснення, сирий error.message дрібним моноширинним для діагностики зі скриншота), а не фейкове «Ще немає послуг»; стат-смужки приховано на час помилки.
+- **§6 «Abstention rate» → «Складні справи (AI передав юристу): X%»**.
+- **Фікси ревью (найважливіші):** (1) **BLOCKER у новому ж тесті**: Proxy-заглушка сторінок — thenable (`get`-trap віддає функцію і на `then`) → async vi.mock-фабрика ніколи не резолвиться → vitest deadlock на collection, `npm test` висів би вічно локально і в CI; переписано на плоскі об'єкти `{ [exportName]: stub }`. (2) **Регресія Dashboard**: deps `[user]`→`[userId]` (supabase емить СВІЖИЙ об'єкт user на кожен TOKEN_REFRESHED ≈ щогодини → каталог колапсував би в skeleton) + `cancelled`-guard у cleanup проти stale-відповідей (пізня помилка застарілого запиту не затре свіжий каталог). (3) Застарілий копірайт: empty-state Dashboard («налаштуйте форму і шаблон документа») і FormBuilder «ID поля — …шаблоні документа» більше не шлють юриста в сховану вкладку. (4) Тест-гігієна: hybrid/null-кейси вкладки (живий alimony-change = hybrid; регрес предиката до `==='template'` тепер валить тест), loading-стан AdminGuard, повний контракт useAuth-мока.
+**Files:** `src/admin/AdminApp.tsx` · `src/admin/pages/{DashboardPage,ServiceEditPage}.tsx` · `src/admin/components/FormBuilder.tsx` · тести: `src/admin/__tests__/AdminApp.test.tsx` (new) · `src/admin/pages/__tests__/{DashboardPage,ServiceEditPage}.test.tsx` (new)
+**Next:** live-verify всього пакета #88 на :5174 (гейт п.1 + п.2–6) → merge у main (Closes #88) → UX-пакет TWA (план вихідних).
+
 ### 2026-07-04 (session 72) — #88 п.1: publish-gate проти структурних «________» + confirm публікації (4 ребра контракту)
 **Status:** гілка `fix/admin-quick-wins` · UI **520 ✅** (+17 нових: 48 anatomy / 21 panel / 12 serviceTemplate) · tsc/build:admin OK · eslint: 8 помилок **pre-existing на main** (react-hooks плагін-дрейф, мій diff тих рядків не торкається) · Refs #88
 **Why:** Найнебезпечніша дія адмінки — «Опублікувати» — була єдиною руйнівною без confirm і без захисту від структурних дір: шаблон міг посилатись на `{{поле}}`, якого форма не дасть ніколи → «________» (або тихо зниклий блок) у КОЖНОМУ судовому документі. Дизайн пройшов adversarial red-team (3 лінзи, 3 blocker-и): контракт форма↔шаблон має ЧОТИРИ ребра, гейтити треба всі. Політика: `.claude/reports/2026-07-04-publish-gate-policy.md` (v2) + рішення в `DECISIONS.md` (похідний реєстр, збережуваний відхилено).

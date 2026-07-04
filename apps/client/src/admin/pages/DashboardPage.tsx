@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Briefcase } from 'lucide-react'
+import { Plus, Briefcase, AlertTriangle } from 'lucide-react'
 import { AdminLayout } from '../components/AdminLayout'
 import { ServiceCard } from '../components/ServiceCard'
 import { supabase } from '../../lib/supabase'
@@ -49,6 +49,9 @@ interface ChecklistStats {
 export function DashboardPage() {
   const [services, setServices]          = useState<Service[]>([])
   const [loading, setLoading]            = useState(true)
+  // Main catalog query failure — must never masquerade as «Ще немає послуг» (#88 §5).
+  const [loadError, setLoadError]        = useState<string | null>(null)
+  const [retryToken, setRetryToken]      = useState(0)
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null)  // null = усі категорії
   const [abstentionStats, setAbstention] = useState<AbstentionStats | null>(null)
   const [checklistStats, setChecklist]   = useState<ChecklistStats | null>(null)
@@ -56,15 +59,35 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const confirm = useConfirm()
 
-  useEffect(() => {
-    if (!supabase || !user) return
+  // Depend on the id, not the user object: supabase emits a FRESH user object
+  // on every auth event (e.g. hourly TOKEN_REFRESHED), and re-running this
+  // effect would collapse the loaded catalog into the skeleton each time.
+  const userId = user?.id ?? null
 
+  useEffect(() => {
+    if (!supabase || !userId) return
+
+    // Out-of-order guard: a retry/auth re-run while a slower request is still
+    // in flight must not let the stale response land last (e.g. a late error
+    // replacing a freshly rendered catalog).
+    let cancelled = false
+
+    setLoading(true)
+    setLoadError(null)
     supabase
       .from('services')
       .select('id, slug, title, description, icon, price, status, category, generation_mode, document_template, form_config')
-      .eq('lawyer_id', user.id)
+      .eq('lawyer_id', userId)
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          // An empty dashboard on a network/RLS failure invites the lawyer to
+          // recreate services that actually exist — surface the error instead.
+          setLoadError(error.message)
+          setLoading(false)
+          return
+        }
         const rows = (data ?? []).map((r) => ({ ...r, status: toServiceStatus(r.status) })) as Service[]
         setServices(rows)
         setLoading(false)
@@ -77,7 +100,7 @@ export function DashboardPage() {
       .not('abstained', 'is', null)
       .gte('created_at', thirtyDaysAgo)
       .then(({ data }) => {
-        if (!data || data.length === 0) return
+        if (cancelled || !data || data.length === 0) return
         setAbstention({
           total:     data.length,
           abstained: data.filter((r) => r.abstained === true).length,
@@ -90,13 +113,15 @@ export function DashboardPage() {
       .not('checklist_failed', 'is', null)
       .gte('created_at', thirtyDaysAgo)
       .then(({ data }) => {
-        if (!data || data.length === 0) return
+        if (cancelled || !data || data.length === 0) return
         setChecklist({
           total:  data.length,
           failed: data.filter((r) => r.checklist_failed === true).length,
         })
       })
-  }, [user])
+
+    return () => { cancelled = true }
+  }, [userId, retryToken])
 
   async function changeStatus(svc: Service, next: ServiceStatus) {
     if (!supabase) return
@@ -170,13 +195,14 @@ export function DashboardPage() {
           </button>
         </div>
 
-        {/* Abstention rate (hybrid AI cases only, last 30 days) */}
-        {abstentionRate !== null && (
+        {/* Abstention rate (hybrid AI cases only, last 30 days) — lawyer-facing
+            wording, not ML jargon (#88 §6) */}
+        {!loadError && abstentionRate !== null && (
           <div className="mb-5 px-4 py-2.5 bg-paper border border-line rounded-xl
                           flex items-center gap-2 text-xs text-inkSoft">
             <span className={abstentionRate > 20 ? 'text-warn' : 'text-inkMute'}>●</span>
             <span>
-              Abstention rate:{' '}
+              Складні справи (AI передав юристу):{' '}
               <span className={`font-semibold ${abstentionRate > 20 ? 'text-warn' : 'text-inkSoft'}`}>
                 {abstentionRate}%
               </span>
@@ -186,7 +212,7 @@ export function DashboardPage() {
         )}
 
         {/* Checklist failures (required-clause validator, #39 — any case with a checklist configured) */}
-        {checklistFailRate !== null && (
+        {!loadError && checklistFailRate !== null && (
           <div className="mb-5 px-4 py-2.5 bg-paper border border-line rounded-xl
                           flex items-center gap-2 text-xs text-inkSoft">
             <span className={checklistStats!.failed > 0 ? 'text-warn' : 'text-inkMute'}>●</span>
@@ -209,15 +235,39 @@ export function DashboardPage() {
           </div>
         )}
 
+        {/* Load failure — error + retry instead of a fake-empty catalog (#88 §5) */}
+        {!loading && loadError && (
+          <div className="text-center py-24">
+            <div className="inline-flex w-14 h-14 rounded-2xl bg-danger/10 text-danger items-center justify-center mb-4">
+              <AlertTriangle size={26} strokeWidth={1.6} />
+            </div>
+            <h3 className="text-lg font-semibold text-ink mb-2">Не вдалося завантажити послуги</h3>
+            <p className="text-inkMute text-sm mb-2 max-w-sm mx-auto">
+              Перевірте інтернет-зʼєднання і спробуйте ще раз. Якщо помилка повторюється —
+              покажіть цей екран розробнику.
+            </p>
+            {/* raw message kept small so support can diagnose from a screenshot */}
+            <p className="text-[11px] text-inkMute/70 font-mono mb-6 max-w-sm mx-auto break-words">
+              {loadError}
+            </p>
+            <button
+              onClick={() => setRetryToken((t) => t + 1)}
+              className="px-6 py-2.5 bg-brand hover:bg-brand/90 text-white text-sm font-semibold rounded-xl transition-colors"
+            >
+              Спробувати ще раз
+            </button>
+          </div>
+        )}
+
         {/* Empty */}
-        {!loading && services.length === 0 && (
+        {!loading && !loadError && services.length === 0 && (
           <div className="text-center py-24">
             <div className="inline-flex w-14 h-14 rounded-2xl bg-brand/10 text-brand items-center justify-center mb-4">
               <Briefcase size={26} strokeWidth={1.6} />
             </div>
             <h3 className="text-lg font-semibold text-ink mb-2">Ще немає послуг</h3>
             <p className="text-inkMute text-sm mb-6 max-w-xs mx-auto">
-              Створіть першу юридичну послугу — налаштуйте форму і AI-промпт для документу
+              Створіть першу юридичну послугу — налаштуйте форму і шаблон документа
             </p>
             <button
               onClick={() => navigate('/services/new')}
@@ -229,7 +279,7 @@ export function DashboardPage() {
         )}
 
         {/* Category filter — only when there is more than one group to switch between */}
-        {!loading && groups.length > 1 && (
+        {!loading && !loadError && groups.length > 1 && (
           <div className="flex flex-wrap items-center gap-2 mb-6">
             <FilterPill active={categoryFilter === null} onClick={() => setCategoryFilter(null)}>
               Усі <span className="opacity-60">{services.length}</span>
@@ -247,7 +297,7 @@ export function DashboardPage() {
         )}
 
         {/* Grouped grid */}
-        {!loading && services.length > 0 && visibleGroups.map((group) => (
+        {!loading && !loadError && services.length > 0 && visibleGroups.map((group) => (
           <section key={group.key || 'none'} className="mb-8 last:mb-0">
             <div className="flex items-center gap-2.5 mb-3">
               <h2 className="text-[13px] font-semibold text-inkSoft uppercase tracking-wide">{group.label}</h2>

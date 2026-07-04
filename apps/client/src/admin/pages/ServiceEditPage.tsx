@@ -332,12 +332,22 @@ export function ServiceEditPage() {
     }
   }
 
+  // AI-prompt tab only when the template does NOT drive generation (#88 §4):
+  // for template/hybrid services n8n reads prompts from n8n/prompts/, never
+  // from services.ai_prompt — an editable no-op prompt presented as an equal
+  // tab trains the lawyer to distrust the UI (admin-critique #3).
   const TABS: { id: Tab; icon: string; label: string; short: string }[] = [
     { id: 'form',     icon: '📋', label: 'Конструктор форми', short: 'Форма' },
     { id: 'template', icon: '📄', label: 'Шаблон документа',  short: 'Шаблон' },
-    { id: 'ai',       icon: '🤖', label: 'AI-промпт',         short: 'AI' },
+    ...(!templateDrivesGeneration(generationMode)
+      ? [{ id: 'ai' as Tab, icon: '🤖', label: 'AI-промпт', short: 'AI' }]
+      : []),
     { id: 'settings', icon: '⚙️', label: 'Налаштування',      short: 'Опції' },
   ]
+  // If the active tab is not visible (e.g. mode arrived from the DB after the
+  // user clicked around), fall back to the form tab instead of rendering
+  // content without its tab button.
+  const visibleTab: Tab = TABS.some((t) => t.id === tab) ? tab : 'form'
 
   // Shared between the normal editor slot and the focus-mode overlay below —
   // same draft state, same handlers, only the surrounding chrome differs.
@@ -478,7 +488,7 @@ export function ServiceEditPage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap
-                ${tab === t.id
+                ${visibleTab === t.id
                   ? 'bg-paperAlt text-ink'
                   : 'text-inkMute hover:text-ink hover:bg-paperAlt/50'}`}
             >
@@ -493,12 +503,12 @@ export function ServiceEditPage() {
           <div className="flex-1 overflow-y-auto p-6">
 
             {/* ── FORM BUILDER ── */}
-            {tab === 'form' && (
+            {visibleTab === 'form' && (
               <FormBuilder config={config} onChange={handleConfigChange} />
             )}
 
             {/* ── TEMPLATE EDITOR ── */}
-            {tab === 'template' && (
+            {visibleTab === 'template' && (
               <>
                 {/* Desktop: full editor. Draft state lives here so the right
                     preview panel re-renders on every keystroke. */}
@@ -547,13 +557,25 @@ export function ServiceEditPage() {
             )}
 
             {/* ── AI PROMPT ── */}
-            {tab === 'ai' && (
+            {visibleTab === 'ai' && (
               <div className="max-w-2xl space-y-6">
                 <div>
                   <h2 className="text-lg font-bold text-ink mb-1">AI-промпт для документу</h2>
+                  {/* No present-tense promise: this tab only renders for non-template
+                      modes (today legacy 'js'), where the prompt does NOT drive the
+                      document — the lead and the banner must tell the same story. */}
                   <p className="text-inkSoft text-sm mb-4">
-                    Цей промпт отримує AI-модель разом з відповідями клієнта. Від нього залежить якість документу.
+                    Текст, який отримає AI-модель разом з відповідями клієнта, якщо документ
+                    створюватиме AI.
                   </p>
+
+                  {generationMode === 'js' && (
+                    <div className="mb-4 px-4 py-3 bg-warn/10 border border-warn/40 rounded-xl text-sm text-inkSoft">
+                      ⚠️ Ця послуга зараз генерується вбудованим кодом (режим «js») — промпт нижче
+                      не впливає на документ. Поле збережено для майбутнього AI-режиму, який поки
+                      не підключений.
+                    </div>
+                  )}
 
                   {/* Tips */}
                   <div className="bg-paperAlt rounded-xl p-4 mb-4 space-y-2">
@@ -590,28 +612,11 @@ export function ServiceEditPage() {
                                font-mono leading-relaxed focus:outline-none focus:border-brand resize-none"
                   />
                 </div>
-
-                {/* Quality checklist */}
-                <div className="bg-paperAlt rounded-xl p-5">
-                  <p className="text-sm font-semibold text-ink mb-3">Чеклист якості документу</p>
-                  {[
-                    'Промпт містить конкретну роль юриста',
-                    'Вказані відповідні статті законів',
-                    'Описана структура документу',
-                    'Є заборона на вигадку фактів',
-                    'Вказана юрисдикція (Україна)',
-                  ].map((item, i) => (
-                    <label key={i} className="flex items-center gap-3 py-1.5 cursor-pointer group">
-                      <input type="checkbox" className="w-4 h-4 accent-brand" />
-                      <span className="text-sm text-inkSoft group-hover:text-inkSoft">{item}</span>
-                    </label>
-                  ))}
-                </div>
               </div>
             )}
 
             {/* ── SETTINGS ── */}
-            {tab === 'settings' && (
+            {visibleTab === 'settings' && (
               <div className="max-w-lg space-y-5">
                 <h2 className="text-lg font-bold text-ink mb-4">Налаштування послуги</h2>
 
@@ -687,7 +692,7 @@ export function ServiceEditPage() {
           {/* Right panel — live preview (desktop only). Form preview normally;
               the document-draft preview when the template tab is active. */}
           <div className="hidden xl:flex w-96 flex-shrink-0 border-l border-line flex-col">
-            {tab === 'template' ? (
+            {visibleTab === 'template' ? (
               <TemplateDraftPreview
                 template={docDraft || docPublished}
                 slug={config.service_id || null}

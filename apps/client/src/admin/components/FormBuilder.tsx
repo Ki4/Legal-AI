@@ -322,7 +322,7 @@ function FieldEditor({ field, allFields, tabs, onSave, onCancel }: FieldEditorPr
           <div className="mt-2 space-y-2">
             <div>
               <label className="block text-xs font-semibold text-inkMute mb-1">
-                ID поля <span className="font-normal text-inkMute">— використовується в show_if та AI-промпті</span>
+                ID поля <span className="font-normal text-inkMute">— використовується в show_if та шаблоні документа</span>
               </label>
               <input
                 value={f.id}

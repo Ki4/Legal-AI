@@ -8,6 +8,15 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
+**🟢 SESSION 71 (2026-07-04) — FIX: створення нової послуги в адмінці було ПОВНІСТЮ зламане (2 баги) → ЗМЕРЖЕНО в main і ЗАПУШЕНО (merge `e5ff0b5`), гілку `fix/new-service-generation-mode` видалено. tsc/eslint clean.**
+- **Баг #1 — `services.id` sequence відставав від MAX(id):** таблиця старша за `migrations/` (serial через дашборд); рядки 1-5 сіялися з явними id без руху owned-послідовності → `nextval` усередині зайнятого діапазону → КОЖЕН `INSERT` без id (admin «Нова послуга») падав `duplicate key services_pkey`. Юрист не міг створити ЖОДНОЇ послуги. Фікс: **міграція 032** `setval` до MAX(id) (недеструктивно) — **застосована на живій БД** (Сергій, SQL editor «Success»).
+- **Баг #2 — DB-дефолт `generation_mode='js'`** (міграція 014): нова послуга роутилась би в legacy js-білдер n8n (нема хардкод-функції) і кидала помилку. Фікс: `ServiceEditPage.handleSave` insert-гілка → `generation_mode:'template'` (тільки insert; update не чіпає 'hybrid'/'js').
+- **Live verify через REST** (той самий PostgREST-ендпоінт, що й браузерний `supabase.from('services').insert`): після міграції `INSERT` без id авто-присвоює id + `generation_mode='template'` персиститься; `status`-CHECK = `active|needs_review|disabled`; усі тест-рядки видалено (`DELETE 204`), БД чиста (наступний реальний id=9, розриви нешкідливі).
+- **✅ Замкнута петля доведена через РЕАЛЬНИЙ admin UI (:5174):** MCP-таб успадкував живу Supabase-сесію Сергія (login не потрібен) → «Нова послуга» → title+slug → «Зберегти» (справжній React `handleSave`) → редирект `/services` + **нова строка id=9** у БД з `generation_mode='template'` (не дефолт `js`), `lawyer_id`=UUID Сергія, без duplicate-key. React-обвʼязка (єдине, що лишалось непокритим) — доведена. Тест-строку + 2 smoke-cases (a8416d68/260cd583) + їх PDF у Storage прибрано (services назад до 5).
+- **Регресія n8n:** обидва live-smoke (scenario 1 divorce, scenario 2 children+alimony) → 200, витяг без дір. Unit-сюїта scripts+n8n **1145 ✅**.
+- **🧹 Хвіст:** 2 стратегічні звіти в `.claude/reports/` (mvp-synthesis + transition-roadmap) закомічено окремо.
+- **🪤 Гочас підтверджено знову:** IDE (WebStorm) перемкнув гілку на `main` посеред роботи — staged-файли поповзли на main; врятувало `git branch --show-current` перед комітом (звіряти ЗАВЖДИ).
+
 **🟢 SESSION 70 (2026-07-03) — S2 слайс D (issue #87) ЗМЕРЖЕНО в main і ЗАПУШЕНО (`6769e27`, Closes #87), гілку `feat/editor-slice-d-focus-mode` видалено. Фокус-режим редактора шаблону + іконкова рейка сайдбара. UI 503 ✅ (+14) · root 1145 ✅ · tsc/eslint clean · build:admin OK.**
 - **Що зроблено:** `Splitter.tsx` (новий, без бібліотек) — перетаскувана межа, ratio 0.2–0.8 персистить у
   localStorage (глобально), дабл-клік=50/50 · `AdminLayout` — іконкова рейка (224→56px, `md:`-only,
@@ -108,8 +117,8 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (71):** (1) точковий фідбек Сергія по A+B+C → точкові правки ·
-(2) демо-прогін слайсу D фізичними кліками (уже в main).
+**🔴 НАСТУПНА СЕСІЯ (72):** (0) **issue #88 — admin quick wins #1–#6** (Сергій обрав робити в новій сесії; гілка `fix/admin-quick-wins`, спека = `.claude/reports/2026-07-04-admin-critique.md`; найважливіше — #1 publish-safety: `confirm()` + гейт проти `________`) · (1) точковий фідбек Сергія по A+B+C → точкові правки · (2) демо-прогін слайсу D фізичними кліками (уже в main).
+(Клік-тест «Нова послуга» s71 — уже пройдено: замкнута петля через реальний UI доведена.)
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 

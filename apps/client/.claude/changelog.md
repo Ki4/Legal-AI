@@ -10,7 +10,19 @@
 
 ---
 
-### 2026-07-03 (session 70) — S2 слайс D: фокус-режим редактора шаблону + іконкова рейка сайдбара (issue #87)
+### 2026-07-04 (session 71) — fix: створення нової послуги в адмінці було повністю зламане (2 баги)
+**Status:** гілка `fix/new-service-generation-mode` · tsc/eslint clean · **міграцію 032 застосовано на живій БД** (Сергій, SQL editor — «Success») · **live-верифіковано через REST** (той самий PostgREST-ендпоінт, що й admin `supabase.from('services').insert`)
+**Why:** При спробі створити послугу через адмін-панель (`ServiceEditPage.handleSave`, гілка `isNew`) юрист упирався в ДВА незалежні баги, кожен блокуючий:
+1. **`services.id` sequence відставав від `MAX(id)`.** Таблиця `services` старша за `migrations/` (створена в дашборді → `id` = звичайний serial). Рядки divorce=1/alimony=2 + плейсхолдери military=3/business=4/court_search=5 сіялися з ЯВНИМИ id, не рухаючи owned-послідовність. `nextval` лишався всередині зайнятого діапазону → **кожен** `INSERT` без id падав з `duplicate key … services_pkey`. Юрист не міг створити ЖОДНОЇ послуги.
+2. **DB-дефолт `generation_mode='js'`** (міграція 014). Навіть після фіксу sequence нова послуга успадкувала б `js` → n8n form-submit роутив би slug у legacy js-білдер (хардкод-функція, якої для нової послуги нема) і кидав помилку. Послуга, створена в адмінці, — template-driven від народження (юрист пише `document_template`, не js).
+**What:**
+- **`supabase/migrations/032_fix_services_id_sequence.sql` (new):** `setval(pg_get_serial_sequence('public.services','id'), MAX(id), true)` — недеструктивно (0 рядків, лише лічильник), guarded якщо колонка не володіє послідовністю. Застосовано на живій БД.
+- **`ServiceEditPage.tsx` (handleSave, isNew-гілка):** `insert({ ...payload, generation_mode: 'template' })` — тільки на insert; update НЕ чіпає (щоб не затерти існуючий 'hybrid'/'js' режим).
+**Live verify (REST, service-role, той самий шлях що й браузерний клієнт):** до фіксу — `INSERT` без id падав `duplicate key` на id=6 (точка колізії з плейсхолдером). Після міграції — `INSERT` без id → авто-id присвоюється (6→7→8 по ходу проб), `generation_mode='template'` приймається й персиститься, `status`-CHECK = `active|needs_review|disabled` (не `draft`). Усі тест-рядки видалено (`DELETE → 204`; SQL/REST DELETE на `services` під service-role дозволений). БД у чистому стані (наступний реальний id = 9; розриви нешкідливі).
+**Files:** `supabase/migrations/032_fix_services_id_sequence.sql` (new) · `apps/client/src/admin/pages/ServiceEditPage.tsx`
+**Next:** фізичний клік-тест «Нова послуга» в адмінці (людина) як фінальне підтвердження React-обвʼязки · окремо закомічено 2 стратегічні звіти (`.claude/reports/` — mvp-synthesis + transition-roadmap).
+
+
 **Status:** гілка `feat/editor-slice-d-focus-mode` · UI **503 ✅** (+14) · root **1145 ✅** (unchanged) · tsc/eslint clean · build:admin OK · live-верифіковано (:5174, жива Supabase, divorce) · **НЕ змержено, БД не торкнуто**
 **Why:** Живий аргумент з s69 клік-чеклиста: у вікні 639px з розгорнутою «Історією змін» редактору лишалось ~19px видимої висоти. Повне інтервʼю s69 (7 рішень Сергія) → issue #87: фокус-режим вкладки «Шаблон» (сплит редактор+превʼю на весь екран) + іконкова рейка сайдбара для всієї адмінки.
 **What:**

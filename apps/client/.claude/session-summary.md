@@ -8,6 +8,14 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
+**🟢 SESSION 74 (2026-07-05) — UX-пакет TWA (план вихідних п.1): помітний opt-in доставки (2 картки) + ErrorBoundary + delivery-aware стани + a11y live-regions. Гілка `feat/twa-delivery-ux` (`8a821b3` фіча + `2bebcda` ревʼю-раунд 2), UI 550 ✅, tsc/eslint(changed)/build:client OK, live-verified (Playwright). ⚠️ НЕ ЗМЕРЖЕНО — merge = prod-деплой payment/delivery-флоу, чекає явне «змерж» Сергія. Issue #89.**
+- **A. 2-карткова розвилка доставки** (`PreviewPage.tsx`, `DeliveryChoice`): «🔒 Захищене посилання» (signed URL 24год, приватність-first, вибрана дефолтно → `deliverToBot=false`) vs «📩 Також у Telegram» (→ true; GDPR-розкриття тепер ІНЛАЙН у картці, не в схованому tooltip). Нативні `sr-only` radio (fieldset/legend/`name="delivery"` = a11y+клавіатура) + React-driven візуал; дефолт OFF збережено. Форму obrав Сергій (AskUserQuestion).
+- **B2. ErrorBoundary (новий, `role="alert"`)** навколо `<App/>` у `main.tsx` — TWA не мав ЖОДНОГО → render-throw = білий екран; тепер ⚠️ + укр. текст + «Оновити» + сирий діагностичний рядок + haptic.
+- **B1/B3.** paid-екран показує «Копію також надсилаємо у ваш чат» лише при opt-in; помилки розділено `preparing`/`technical` + guard на порожній webhook.
+- **Adversarial-ревью (5 лінз → верифікація кожної; 3 підтверджено):** «надіслано» флагнули **3 незалежні лінзи** → змінено на present-continuous «надсилаємо» (клієнт НЕ може підтвердити, що Telegram sendDocument дійшов — 403 якщо юзер не /start; хибна доставка = дефект для court-ready). +тест wire-контракту `deliver_to_bot` (`requestPreviewPay` НЕ pure — робив fetch, був не покритий). +`ring-primary-500` (був неіснуючий `-300`). **Deferred (n8n):** серверний сигнал `delivered_to_bot` у paid → точний факт замість present-continuous.
+- **Ревʼю-раунд 2 (`2bebcda`) — ПОВНА верифікація** (на вимогу Сергія «як полагатися на часткову роботу?»): 1-й прогін втратив 6/18 verify по session-limit → перезапустив свіже ревью по вже-виправленому коду (13 агентів, **0 упалих**) + аудит 4 фіксів = усі CORRECT. 5 нових low/medium підтверджено й застосовано: a11y live-regions (`role=alert/status`+`aria-live`, WCAG 4.1.3 на грошовій дії) · `autoFocus` первинної дії між фазами · ДО-оплатна копія «прийде»→«Надішлемо» (узгоджено з хеджем) · зайвий фінальний sleep у retry · прибрано false-green тест + мертвий guard.
+- **🪤 Гочаси:** (1) session-limit тарифу вбиває workflow-verify-агентів → «N confirmed» ≠ повна картина; правильна реакція = ПЕРЕзапуск повного ревью (ліміт скидається ~1:30 Amsterdam), + `unverified`-список у workflow, + `journal.jsonl`. (2) verify-агент лишав осиротілий тест-файл — чистити перед комітом (git status). (3) Resume-from-cache НЕ годиться після правок коду — старі находки про неіснуючий код; треба свіже ревью по новому HEAD.
+
 **🟢 SESSION 73 (2026-07-04) — #88 ЗАКРИТО: п.2–6 + adversarial-ревью → MERGE у main (`e28a37d`, Closes #88), гілку `fix/admin-quick-wins` видалено. UI 534 ✅ (+14) · tsc/build:admin OK · live-verify повний · Vercel-деплой тригернувся.**
 - **П.2–6 (коміт `5595bae`):** /design під AdminGuard · мертвий чек-лист якості видалено · вкладку
   «AI-промпт» сховано для template-driven режимів (предикат `templateDrivesGeneration`:
@@ -101,13 +109,13 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (74) — план вихідних (`.claude/reports/2026-07-04-weekend-plan-to-monday.md`), нова гілка:**
-1. **UX-пакет TWA:** **помітний opt-in «Надіслати документ у Telegram»** (`PreviewPage.tsx:151-162`,
-   зараз дрібний text-xs чекбокс — Сергій явно просив зробити явним) + стани завантаження/помилок TWA.
-2. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA.
-3. Бонус-кандидати: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D від
-   Сергія · «застаріло»-петля / медвертикаль з беклогу s64.
-**Модель для п.1:** Tier 1 механіка — Sonnet достатньо; Fable (дефолт Сергія) теж ок.
+**🔴 НАСТУПНА СЕСІЯ (75):**
+1. **Merge `feat/twa-delivery-ux` у main** (за «змерж» Сергія) → Closes #89, Vercel-деплой. UX-пакет TWA (план
+   вихідних п.1) готовий і чекає лише рішення (merge = prod-деплой payment/delivery-флоу, тому не автономно).
+2. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA (тепер з новим opt-in).
+3. Бонус: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D від Сергія · «застаріло»-петля /
+   медвертикаль з беклогу s64. **Deferred (#89):** серверний сигнал `delivered_to_bot` у paid-відповіді (n8n).
+**Модель:** merge+демо — легкі; серверний сигнал / медвертикаль — Tier 2 (Opus+).
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 

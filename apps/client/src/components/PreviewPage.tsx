@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Lock, FileCheck, Clock, Download, ShieldCheck, Loader2 } from 'lucide-react'
+import { Lock, FileCheck, Clock, Download, ShieldCheck, Loader2, Send, Check, AlertCircle } from 'lucide-react'
 import { derivePreviewPayUrl, requestPreviewPay } from '../lib/previewPay'
-import { hapticImpact, hapticSuccess, hapticError } from '../lib/telegram'
-import { Tooltip } from './form/Tooltip'
+import { hapticImpact, hapticSuccess, hapticError, hapticSelection } from '../lib/telegram'
 
 // preview-module G5 (#83). Shown after the form is submitted: the safe excerpt
 // (G2/G3, already in the form-submit response) styled as a document page with a
@@ -11,6 +10,9 @@ import { Tooltip } from './form/Tooltip'
 // calls the preview-pay workflow (G4) for the signed download URL.
 
 type Phase = 'preview' | 'paying' | 'paid' | 'error'
+// «preparing» = the async document tail never finished within the retry ceiling
+// (retryable, just slow); «technical» = a real failure (won't self-heal on retry).
+type ErrKind = 'preparing' | 'technical'
 
 // The async document tail (PDF export + Storage upload) finishes a little after
 // the early response. If the user pays before it's ready, preview-pay answers
@@ -27,6 +29,103 @@ function openDocument(url: string) {
   else window.open(url, '_blank', 'noopener')
 }
 
+/**
+ * GDPR delivery opt-in as an explicit, prominent choice (#88 weekend UX pack).
+ * Two mutually exclusive cards — privacy-first «secure link only» is preselected;
+ * «also send to Telegram» is the deliberate opt-in that persists a copy on
+ * Telegram's servers. `deliverToBot` maps 1:1 to the second card. Native radios
+ * (visually hidden) carry the a11y + keyboard semantics; the card visuals are
+ * React-driven off the same boolean.
+ */
+function DeliveryChoice({
+  deliverToBot,
+  onSelect,
+}: {
+  deliverToBot: boolean
+  onSelect: (v: boolean) => void
+}) {
+  function select(v: boolean) {
+    // Reached only from the radios' onChange, which fires exclusively on a real
+    // transition-to-checked (always v !== deliverToBot) — a native radio never
+    // re-fires change for the already-checked option — so no same-value guard.
+    hapticSelection()
+    onSelect(v)
+  }
+  const cardBase =
+    'relative h-full rounded-card border-2 p-3 transition-colors ' +
+    'peer-focus-visible:ring-2 peer-focus-visible:ring-primary-500'
+  const selectedCard = 'border-primary-600 bg-primary-50/50'
+  const idleCard = 'border-gray-200 bg-white'
+
+  return (
+    <fieldset className="mb-3 border-0 p-0 m-0">
+      <legend className="text-xs font-semibold text-gray-700 mb-2 px-0.5">
+        Як отримати готовий документ?
+      </legend>
+      <div className="grid grid-cols-2 gap-2">
+        {/* Card 1 — secure link only (privacy-first default) */}
+        <label className="block cursor-pointer select-none">
+          <input
+            type="radio"
+            name="delivery"
+            className="peer sr-only"
+            checked={!deliverToBot}
+            onChange={() => select(false)}
+          />
+          <div className={`${cardBase} ${!deliverToBot ? selectedCard : idleCard}`}>
+            <div className="flex items-start justify-between">
+              <Lock size={16} className="text-primary-600" />
+              <SelectedDot on={!deliverToBot} />
+            </div>
+            <p className="mt-1.5 text-[13px] font-semibold text-gray-900 leading-tight">
+              Захищене посилання
+            </p>
+            <p className="mt-0.5 text-[11px] text-gray-500 leading-snug">
+              Лише за лінком у застосунку · 24 год
+            </p>
+            <span className="mt-1.5 inline-block rounded-full bg-green-50 px-1.5 py-0.5 text-[9px] font-semibold text-green-700">
+              Рекомендовано
+            </span>
+          </div>
+        </label>
+
+        {/* Card 2 — also deliver into the Telegram chat (explicit opt-in) */}
+        <label className="block cursor-pointer select-none">
+          <input
+            type="radio"
+            name="delivery"
+            className="peer sr-only"
+            checked={deliverToBot}
+            onChange={() => select(true)}
+          />
+          <div className={`${cardBase} ${deliverToBot ? selectedCard : idleCard}`}>
+            <div className="flex items-start justify-between">
+              <Send size={16} className="text-primary-600" />
+              <SelectedDot on={deliverToBot} />
+            </div>
+            <p className="mt-1.5 text-[13px] font-semibold text-gray-900 leading-tight">
+              Також у Telegram
+            </p>
+            <p className="mt-0.5 text-[11px] text-gray-500 leading-snug">
+              Надішлемо файл у цей чат. Копія зберігається на серверах Telegram.
+            </p>
+          </div>
+        </label>
+      </div>
+    </fieldset>
+  )
+}
+
+function SelectedDot({ on }: { on: boolean }) {
+  return on ? (
+    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary-600 text-white">
+      <Check size={11} strokeWidth={3} />
+    </span>
+  ) : (
+    <span className="h-4 w-4 rounded-full border-2 border-gray-300" />
+  )
+}
+
 export function PreviewPage({
   serviceTitle,
   caseId,
@@ -39,6 +138,7 @@ export function PreviewPage({
   const [phase, setPhase] = useState<Phase>('preview')
   const [signedUrl, setSignedUrl] = useState('')
   const [errMsg, setErrMsg] = useState('')
+  const [errKind, setErrKind] = useState<ErrKind>('technical')
   const [waiting, setWaiting] = useState(false)
   // GDPR opt-in: off by default. When on, preview-pay also sends the PDF to the chat.
   const [deliverToBot, setDeliverToBot] = useState(false)
@@ -48,10 +148,24 @@ export function PreviewPage({
     import.meta.env.VITE_N8N_PREVIEW_PAY_URL || undefined,
   )
 
+  function fail(message: string, kind: ErrKind) {
+    setErrMsg(message)
+    setErrKind(kind)
+    setPhase('error')
+    hapticError()
+  }
+
   async function handlePay() {
     hapticImpact('medium')
     setPhase('paying')
     setWaiting(false)
+
+    // No webhook configured → retrying can never help; surface it as technical.
+    if (!payUrl) {
+      fail('Сервіс тимчасово недоступний. Спробуйте, будь ласка, пізніше.', 'technical')
+      return
+    }
+
     const initData = window.Telegram?.WebApp?.initData || ''
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
@@ -63,18 +177,16 @@ export function PreviewPage({
         return
       }
       if (outcome.kind === 'error') {
-        setErrMsg(outcome.message)
-        setPhase('error')
-        hapticError()
+        fail(outcome.message, 'technical')
         return
       }
       // not_ready → the document tail is still finishing; wait and retry.
+      // Skip the sleep after the final poll: nothing polls again, so it would
+      // only add dead time on the spinner before the «still preparing» screen.
       setWaiting(true)
-      await sleep(RETRY_DELAY_MS)
+      if (attempt < MAX_ATTEMPTS - 1) await sleep(RETRY_DELAY_MS)
     }
-    setErrMsg('Документ ще готується. Спробуйте, будь ласка, за хвилину.')
-    setPhase('error')
-    hapticError()
+    fail('Документ ще готується. Спробуйте, будь ласка, за хвилину.', 'preparing')
   }
 
   return (
@@ -148,18 +260,7 @@ export function PreviewPage({
       <div className="flex-shrink-0 bg-white border-t border-gray-100 px-5 py-4">
         {phase === 'preview' && (
           <>
-            <label className="flex items-start gap-2.5 mb-3 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={deliverToBot}
-                onChange={(e) => { hapticImpact('light'); setDeliverToBot(e.target.checked) }}
-                className="mt-0.5 w-4 h-4 accent-primary-600 flex-shrink-0"
-              />
-              <span className="text-xs text-gray-600 leading-snug">
-                Надіслати документ у Telegram
-                <Tooltip text="Якщо увімкнено, готовий документ надійде файлом у цей чат. Зверніть увагу: тоді копія документа зберігатиметься на серверах Telegram. За замовчуванням документ доступний лише за захищеним посиланням у застосунку (24 год)." />
-              </span>
-            </label>
+            <DeliveryChoice deliverToBot={deliverToBot} onSelect={setDeliverToBot} />
             <button
               type="button"
               onClick={handlePay}
@@ -174,15 +275,21 @@ export function PreviewPage({
           <button
             type="button"
             disabled
+            aria-live="polite"
             className="w-full py-3.5 rounded-btn bg-primary-600/70 text-white text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
           >
             <Loader2 size={16} className="animate-spin" />
-            {waiting ? 'Готуємо документ…' : 'Обробляємо…'}
+            {waiting
+              ? deliverToBot
+                ? 'Готуємо і надсилаємо документ…'
+                : 'Готуємо документ…'
+              : 'Обробляємо…'}
           </button>
         )}
 
         {phase === 'paid' && (
           <motion.div
+            role="status"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -191,8 +298,19 @@ export function PreviewPage({
               <ShieldCheck size={16} />
               <span className="text-xs font-semibold">Оплачено — документ готовий</span>
             </div>
+            {deliverToBot && (
+              <div className="flex items-center justify-center gap-1.5 mb-2.5 text-primary-600">
+                <Send size={14} />
+                {/* Present-continuous, not «надіслано»: the client only knows the
+                    opt-in was requested, never that Telegram sendDocument reached
+                    the user (a bot can't message someone who never pressed Start),
+                    so we don't assert a completed delivery we can't confirm. */}
+                <span className="text-[11px] font-medium">Копію також надсилаємо у ваш чат</span>
+              </div>
+            )}
             <button
               type="button"
+              autoFocus
               onClick={() => { hapticImpact('light'); openDocument(signedUrl) }}
               className="w-full py-3.5 rounded-btn bg-green-600 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-green-700 active:scale-95 transition-all duration-200"
             >
@@ -204,14 +322,18 @@ export function PreviewPage({
         )}
 
         {phase === 'error' && (
-          <div>
+          <div role="alert">
+            <div className="flex items-center justify-center gap-1.5 mb-2 text-gray-400">
+              {errKind === 'preparing' ? <Clock size={15} /> : <AlertCircle size={15} />}
+            </div>
             <p className="text-xs text-gray-500 text-center mb-2.5 leading-relaxed">{errMsg}</p>
             <button
               type="button"
+              autoFocus
               onClick={handlePay}
               className="w-full py-3.5 rounded-btn bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all duration-200"
             >
-              Спробувати ще раз
+              {errKind === 'preparing' ? 'Перевірити ще раз' : 'Спробувати ще раз'}
             </button>
           </div>
         )}

@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-07-05 (session 74) — UX-пакет TWA: помітний opt-in доставки (2 картки) + ErrorBoundary + delivery-aware стани (issue #89)
+**Status:** гілка `feat/twa-delivery-ux` · коміт `8a821b3` · UI **551 ✅** (+17) · tsc/eslint(changed)/build:client OK · live-verified (Playwright) · **НЕ змержено в main** (merge = prod-деплой payment/delivery — чекає явне «змерж» Сергія) · Refs #89
+**Why:** План вихідних (п.1): дрібний `text-xs` GDPR-чекбокс доставки (`PreviewPage.tsx:151-162`) Сергій просив зробити ЯВНИМ; плюс TWA не мав жодного ErrorBoundary (render-throw = білий екран) і не показував стани доставки. Explore-карта потоку виявила реальні прогалини; дизайн opt-in обрав Сергій (AskUserQuestion → «явний вибір із 2 карток»).
+**What:**
+- **A. Помітна 2-карткова розвилка доставки** (`PreviewPage.tsx`, підкомпонент `DeliveryChoice`): «🔒 Захищене посилання» (signed URL 24год — приватність-first, вибрана за замовчуванням → `deliverToBot=false`) vs «📩 Також у Telegram» (→ `true`, GDPR-розкриття «Копія зберігається на серверах Telegram» тепер ІНЛАЙН у картці, не в схованому tooltip). Нативні `sr-only` radio (a11y/клавіатура через `fieldset`/`legend`/`name="delivery"`) + React-driven візуал картки; дефолт OFF збережено. Tooltip з opt-in прибрано.
+- **B1. Delivery-aware стани:** paying-текст і paid-екран відображають вибір; рядок «Копію також надсилаємо у ваш чат» лише коли opt-in увімкнено.
+- **B2. ErrorBoundary (новий, `role="alert"`):** app-level фолбек навколо `<App/>` у `main.tsx` — ⚠️ + укр. текст + «Оновити» (reload) + сирий діагностичний рядок (моно, для скриншота) + haptic. Закрито білий екран на render-throw.
+- **B3. Диференціація помилок:** `errKind` `preparing` (документ ще готується, «Перевірити ще раз») vs `technical` («Спробувати ще раз») + guard на порожній webhook (не крутить retry-петлю).
+- **Adversarial-ревью (workflow, 5 лінз → верифікація кожної; 3 підтверджено, «надіслано» флагнули 3 незалежні лінзи):** (1) **honesty-фікс** — копію змінено з завершеної дії «надіслано» на present-continuous «надсилаємо»: клієнт структурно НЕ може підтвердити, що Telegram `sendDocument` дійшов (юзер міг не натиснути Start у бота → 403), а для court-ready продукту хибне твердження про доставку = дефект; (2) **тест wire-контракту** — `requestPreviewPay` НЕ pure (робить fetch) і був не покритий → додано пін `deliver_to_bot` false/true + `!!`-коерція (мок global fetch); (3) `ring-primary-500` (був неіснуючий `-300` → focus-ring падав у дефолтний синій); (4) ErrorBoundary-тест пінить маркер `[TWA ErrorBoundary]` (не React-лог).
+**Files:** `src/components/PreviewPage.tsx` · `src/components/ErrorBoundary.tsx` (new) · `src/main.tsx` · тести: `src/components/__tests__/{PreviewPage,ErrorBoundary}.test.tsx` (new) · `src/lib/__tests__/previewPay.test.ts` (+6 requestPreviewPay)
+**Next:** merge у main за «змерж» Сергія (Closes #89) → демо-тур для Олі (пн 06.07 вечір) → бонус: 8 eslint pre-existing на main (окрема мікрогілка). **Deferred (потребує n8n-зміни):** серверний сигнал `delivered_to_bot` у paid-відповіді → замінити present-continuous на точний факт доставки.
+
 ### 2026-07-04 (session 73) — #88 п.2–6: quick wins адмінки + фікси adversarial-ревью (12 знахідок)
 **Status:** гілка `fix/admin-quick-wins` · UI **534 ✅** (+14 нових: 4 AdminApp / 4 Dashboard / 6 ServiceEdit) · tsc/build:admin OK · Refs #88
 **Why:** Решта чекліста #88 (критик s71): мертві контроли і тихі збої підривають довіру Олі, /design був публічною dev-сторінкою на проді. Дифф прогнано через adversarial-ревью (workflow: 3 лінзи → верифікація кожної знахідки; 12 підтверджено, 1 відбито) — усе виправлено тут же.

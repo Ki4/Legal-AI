@@ -8,6 +8,13 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
+**🟢 SESSION 74 (2026-07-05) — UX-пакет TWA (план вихідних п.1): помітний opt-in доставки (2 картки) + ErrorBoundary + delivery-aware стани. Гілка `feat/twa-delivery-ux` (`8a821b3`), UI 551 ✅ (+17), tsc/eslint(changed)/build:client OK, live-verified (Playwright). ⚠️ НЕ ЗМЕРЖЕНО — merge = prod-деплой payment/delivery-флоу, чекає явне «змерж» Сергія. Issue #89.**
+- **A. 2-карткова розвилка доставки** (`PreviewPage.tsx`, `DeliveryChoice`): «🔒 Захищене посилання» (signed URL 24год, приватність-first, вибрана дефолтно → `deliverToBot=false`) vs «📩 Також у Telegram» (→ true; GDPR-розкриття тепер ІНЛАЙН у картці, не в схованому tooltip). Нативні `sr-only` radio (fieldset/legend/`name="delivery"` = a11y+клавіатура) + React-driven візуал; дефолт OFF збережено. Форму obrав Сергій (AskUserQuestion).
+- **B2. ErrorBoundary (новий, `role="alert"`)** навколо `<App/>` у `main.tsx` — TWA не мав ЖОДНОГО → render-throw = білий екран; тепер ⚠️ + укр. текст + «Оновити» + сирий діагностичний рядок + haptic.
+- **B1/B3.** paid-екран показує «Копію також надсилаємо у ваш чат» лише при opt-in; помилки розділено `preparing`/`technical` + guard на порожній webhook.
+- **Adversarial-ревью (5 лінз → верифікація кожної; 3 підтверджено):** «надіслано» флагнули **3 незалежні лінзи** → змінено на present-continuous «надсилаємо» (клієнт НЕ може підтвердити, що Telegram sendDocument дійшов — 403 якщо юзер не /start; хибна доставка = дефект для court-ready). +тест wire-контракту `deliver_to_bot` (`requestPreviewPay` НЕ pure — робив fetch, був не покритий). +`ring-primary-500` (був неіснуючий `-300`). **Deferred (n8n):** серверний сигнал `delivered_to_bot` у paid → точний факт замість present-continuous.
+- **🪤 Гочас підтверджено:** session-limit тарифу вбив 6/18 workflow-verify-агентів посеред прогону — 3 «confirmed» ≠ повна картина; ДИВИВСЯ raw findings у `journal.jsonl` (a11y-лінза мала 3-тю знахідку `role="alert"`, verify якої впав — застосував як самоочевидну). Verify-агент лишив осиротілий `_tmp_falsegreen_probe.test.tsx` — прибрано (але його інсайт про false-green console.error використано: тест тепер пінить маркер `[TWA ErrorBoundary]`).
+
 **🟢 SESSION 73 (2026-07-04) — #88 ЗАКРИТО: п.2–6 + adversarial-ревью → MERGE у main (`e28a37d`, Closes #88), гілку `fix/admin-quick-wins` видалено. UI 534 ✅ (+14) · tsc/build:admin OK · live-verify повний · Vercel-деплой тригернувся.**
 - **П.2–6 (коміт `5595bae`):** /design під AdminGuard · мертвий чек-лист якості видалено · вкладку
   «AI-промпт» сховано для template-driven режимів (предикат `templateDrivesGeneration`:
@@ -101,13 +108,13 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (74) — план вихідних (`.claude/reports/2026-07-04-weekend-plan-to-monday.md`), нова гілка:**
-1. **UX-пакет TWA:** **помітний opt-in «Надіслати документ у Telegram»** (`PreviewPage.tsx:151-162`,
-   зараз дрібний text-xs чекбокс — Сергій явно просив зробити явним) + стани завантаження/помилок TWA.
-2. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA.
-3. Бонус-кандидати: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D від
-   Сергія · «застаріло»-петля / медвертикаль з беклогу s64.
-**Модель для п.1:** Tier 1 механіка — Sonnet достатньо; Fable (дефолт Сергія) теж ок.
+**🔴 НАСТУПНА СЕСІЯ (75):**
+1. **Merge `feat/twa-delivery-ux` у main** (за «змерж» Сергія) → Closes #89, Vercel-деплой. UX-пакет TWA (план
+   вихідних п.1) готовий і чекає лише рішення (merge = prod-деплой payment/delivery-флоу, тому не автономно).
+2. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA (тепер з новим opt-in).
+3. Бонус: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D від Сергія · «застаріло»-петля /
+   медвертикаль з беклогу s64. **Deferred (#89):** серверний сигнал `delivered_to_bot` у paid-відповіді (n8n).
+**Модель:** merge+демо — легкі; серверний сигнал / медвертикаль — Tier 2 (Opus+).
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 

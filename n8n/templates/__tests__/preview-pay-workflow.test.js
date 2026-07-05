@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url'
 //      (never flip paid without a ready document — requirements §0/§5);
 //   6. every business rejection is a 4xx (Respond Error responseCode);
 //   7. bot delivery is opt-in (Send PDF gated on deliver_to_bot === true);
-//   8. idempotent re-mint: paid_at is written only on the first flip.
+//   8. idempotent re-mint: paid_at is written only on the first flip;
+//   9. honest delivered_to_bot: derived from the real Telegram send and echoed in the
+//      paid response (Finalize Delivery reads Send PDF; #89 deferred).
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, '../../..')
 const wfPath = resolve(repoRoot, 'n8n/workflows/current/preview-pay.json')
@@ -104,6 +106,29 @@ describe('preview-pay workflow', () => {
     expect(node('Verify initData').parameters.jsCode).toContain('deliver_to_bot === true')
     // The IF gates on that flag.
     expect(node('Send to bot?').parameters.conditions.boolean[0].value1).toContain('_deliver')
+  })
+
+  it('reports an HONEST delivered_to_bot from the real Telegram send (#89 deferred)', () => {
+    // The paid response echoes delivered_to_bot so the client states the delivery FACT
+    // rather than a present-continuous guess.
+    expect(node('Respond OK').parameters.responseBody).toContain('delivered_to_bot')
+
+    // It is derived from the ACTUAL send result, NOT the opt-in flag: Finalize Delivery
+    // reads Send PDF and requires a positive success signal (ok === true + message_id).
+    const finalize = node('Finalize Delivery')
+    expect(finalize).toBeTruthy()
+    expect(finalize.parameters.jsCode).toContain("$('Send PDF')")
+    expect(finalize.parameters.jsCode).toContain('ok === true')
+    expect(finalize.parameters.jsCode).toContain('message_id')
+
+    // Both "Send to bot?" outputs converge on Finalize Delivery → Respond OK, so the
+    // opt-out path yields delivered_to_bot=false too (Send PDF never ran there), and the
+    // opt-in path still gates Download/Send PDF (honesty must not weaken the opt-in gate).
+    const branch = wf.connections['Send to bot?'].main
+    expect((branch[0] || []).map((c) => c.node)).toContain('Download PDF')
+    expect((branch[1] || []).map((c) => c.node)).toContain('Finalize Delivery')
+    expect((wf.connections['Send PDF'].main[0] || []).map((c) => c.node)).toContain('Finalize Delivery')
+    expect((wf.connections['Finalize Delivery'].main[0] || []).map((c) => c.node)).toContain('Respond OK')
   })
 
   it('is idempotent — paid_at written only on the first flip', () => {

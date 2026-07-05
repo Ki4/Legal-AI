@@ -27,9 +27,24 @@ describe('derivePreviewPayUrl', () => {
 })
 
 describe('classifyPayResponse', () => {
-  it('maps 200 + signed_url to paid', () => {
+  it('maps 200 + signed_url to paid (delivered_to_bot omitted → false)', () => {
     const out = classifyPayResponse(200, { success: true, signed_url: 'https://s/doc.pdf', expires_at: '2026-07-01T00:00:00Z' })
-    expect(out).toEqual({ kind: 'paid', signedUrl: 'https://s/doc.pdf', expiresAt: '2026-07-01T00:00:00Z' })
+    expect(out).toEqual({ kind: 'paid', signedUrl: 'https://s/doc.pdf', expiresAt: '2026-07-01T00:00:00Z', deliveredToBot: false })
+  })
+
+  it('parses a confirmed bot delivery (delivered_to_bot:true → deliveredToBot:true)', () => {
+    const out = classifyPayResponse(200, { success: true, signed_url: 'https://s/doc.pdf', delivered_to_bot: true })
+    expect(out).toMatchObject({ kind: 'paid', deliveredToBot: true })
+  })
+
+  it('parses an unconfirmed bot delivery (delivered_to_bot:false → deliveredToBot:false)', () => {
+    const out = classifyPayResponse(200, { success: true, signed_url: 'https://s/doc.pdf', delivered_to_bot: false })
+    expect(out).toMatchObject({ kind: 'paid', deliveredToBot: false })
+  })
+
+  it('defaults deliveredToBot to false for a non-boolean value (older workflow / garbage)', () => {
+    const out = classifyPayResponse(200, { success: true, signed_url: 'https://s/doc.pdf', delivered_to_bot: 'yes' })
+    expect(out).toMatchObject({ kind: 'paid', deliveredToBot: false })
   })
 
   it('maps a not_ready rejection to not_ready (retryable)', () => {
@@ -92,7 +107,13 @@ describe('requestPreviewPay — GDPR wire contract (deliver_to_bot)', () => {
   it('classifies a paid 200 response into a paid outcome', async () => {
     stubFetch({ status: 200, body: paidBody })
     const out = await requestPreviewPay('https://n8n/webhook/preview-pay', { caseId: 'c1', initData: 's' })
-    expect(out).toEqual({ kind: 'paid', signedUrl: 'https://s/doc.pdf', expiresAt: '' })
+    expect(out).toEqual({ kind: 'paid', signedUrl: 'https://s/doc.pdf', expiresAt: '', deliveredToBot: false })
+  })
+
+  it('carries the server delivered_to_bot fact through to the paid outcome', async () => {
+    stubFetch({ status: 200, body: { ...paidBody, delivered_to_bot: true } })
+    const out = await requestPreviewPay('https://n8n/webhook/preview-pay', { caseId: 'c1', initData: 's', deliverToBot: true })
+    expect(out).toMatchObject({ kind: 'paid', deliveredToBot: true })
   })
 
   it('maps a network failure to a friendly error (never leaks)', async () => {

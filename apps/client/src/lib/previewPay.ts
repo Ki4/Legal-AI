@@ -20,7 +20,11 @@ export function derivePreviewPayUrl(formSubmitUrl: string, override?: string): s
 }
 
 export type PayOutcome =
-  | { kind: 'paid'; signedUrl: string; expiresAt: string }
+  // `deliveredToBot` is the server's HONEST delivery fact (#89 deferred): true only
+  // when the user opted in AND Telegram sendDocument was confirmed (ok + message_id);
+  // false on a swallowed 403 (never pressed Start) / timeout / opt-out / an older
+  // workflow that omits the field. Read it as «could not confirm», never «not sent».
+  | { kind: 'paid'; signedUrl: string; expiresAt: string; deliveredToBot: boolean }
   | { kind: 'not_ready' }
   | { kind: 'error'; message: string }
 
@@ -39,6 +43,9 @@ export function classifyPayResponse(status: number, body: unknown): PayOutcome {
       kind: 'paid',
       signedUrl: b.signed_url,
       expiresAt: typeof b.expires_at === 'string' ? b.expires_at : '',
+      // Missing / non-boolean (e.g. a not-yet-redeployed workflow) degrades to false —
+      // the UI then shows the honest «could not confirm» fallback, never a false claim.
+      deliveredToBot: typeof b.delivered_to_bot === 'boolean' ? b.delivered_to_bot : false,
     }
   }
   if (b.error === 'not_ready') return { kind: 'not_ready' }

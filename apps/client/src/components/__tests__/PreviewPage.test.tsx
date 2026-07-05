@@ -54,7 +54,7 @@ describe('PreviewPage — prominent 2-card delivery choice (#88 UX pack)', () =>
   })
 
   it('pays with deliver_to_bot=false by default and shows no chat-delivery line', async () => {
-    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '' })
+    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '', deliveredToBot: false })
     renderPage()
     fireEvent.click(screen.getByText('Сплатити'))
 
@@ -63,12 +63,15 @@ describe('PreviewPage — prominent 2-card delivery choice (#88 UX pack)', () =>
       'https://n8n.example/webhook/preview-pay',
       expect.objectContaining({ caseId: 'case-123', deliverToBot: false }),
     )
-    expect(screen.queryByText('Копію також надсилаємо у ваш чат')).toBeNull()
+    // Opt-out → neither the confirmed nor the fallback delivery line appears.
+    expect(screen.queryByText('Копію надіслано у ваш чат')).toBeNull()
+    expect(screen.queryByText(/Доставку копії в чат не підтверджено/)).toBeNull()
     expect(hapticSuccess).toHaveBeenCalled()
   })
 
-  it('selecting «Також у Telegram» buzzes, flips the opt-in, and pays with deliver_to_bot=true', async () => {
-    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '' })
+  it('selecting «Також у Telegram» buzzes, flips the opt-in, pays with deliver_to_bot=true, and states the CONFIRMED delivery fact', async () => {
+    // Server confirms the send (delivered_to_bot:true) → the paid screen states «надіслано».
+    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '', deliveredToBot: true })
     renderPage()
 
     fireEvent.click(radios()[1])
@@ -82,12 +85,29 @@ describe('PreviewPage — prominent 2-card delivery choice (#88 UX pack)', () =>
       expect.any(String),
       expect.objectContaining({ deliverToBot: true }),
     )
-    // opt-in on → the paid screen surfaces the (in-progress) chat delivery
-    expect(screen.getByText('Копію також надсилаємо у ваш чат')).toBeTruthy()
+    // opt-in + server-confirmed → past-tense FACT, not a present-continuous guess
+    expect(screen.getByText('Копію надіслано у ваш чат')).toBeTruthy()
+    expect(screen.queryByText(/Доставку копії в чат не підтверджено/)).toBeNull()
+  })
+
+  it('opted in but delivery UNconfirmed (delivered_to_bot:false) → honest fallback + «press Start» hint, never a false claim', async () => {
+    // Most common real failure: the user never pressed Start, so Telegram 403s and the
+    // server reports delivered_to_bot:false. We must NOT claim delivery; show the link.
+    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '', deliveredToBot: false })
+    renderPage()
+
+    fireEvent.click(radios()[1]) // opt into Telegram delivery
+    fireEvent.click(screen.getByText('Сплатити'))
+    await screen.findByText('Отримати документ')
+
+    expect(screen.getByText(/Доставку копії в чат не підтверджено/)).toBeTruthy()
+    expect(screen.getByText(/натисніть «Почати»/)).toBeTruthy()
+    // never asserts a delivery it could not confirm
+    expect(screen.queryByText('Копію надіслано у ваш чат')).toBeNull()
   })
 
   it('announces the paid outcome to assistive tech via a live region (role=status)', async () => {
-    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '' })
+    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '', deliveredToBot: false })
     renderPage()
     fireEvent.click(screen.getByText('Сплатити'))
     // WCAG 2.2 SC 4.1.3 — the success swap-in must be spoken, not silent.
@@ -106,7 +126,7 @@ describe('PreviewPage — error / retry states', () => {
     expect(screen.getByRole('alert')).toBeTruthy() // error is an assertive live region
     expect(hapticError).toHaveBeenCalled()
 
-    requestPreviewPay.mockResolvedValueOnce({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '' })
+    requestPreviewPay.mockResolvedValueOnce({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '', deliveredToBot: false })
     fireEvent.click(retry)
     await screen.findByText('Отримати документ')
     expect(requestPreviewPay).toHaveBeenCalledTimes(2)

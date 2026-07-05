@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-07-05 (session 76) — #90 задеплоєно в живий n8n + верифіковано наскрізь (happy `true` + blocked `false`) → MERGE у main (Closes #90)
+**Status:** гілка `feat/delivered-to-bot-signal` **ЗМЕРЖЕНО в main і ЗАПУШЕНО** (Closes #90). Деплой `preview-pay` у живий n8n (нода `Finalize Delivery` додана, 0 нод затерто, ключі Global Config відновлено, workflow active). **Обидві гілки delivered_to_bot верифіковано на живому n8n.**
+**Why:** Хвіст #90 із session-summary «НАСТУПНА СЕСІЯ 76»: (1) деплой у прод n8n (блокований класифікатором — Сергій дав явне «да»), (2) обовʼязковий живий прогін провалу доставки, бо форму фейлу `Send PDF` статично не пінингували.
+**What:**
+- **Деплой:** `node scripts/deploy-workflow.mjs preview-pay` — бекап живого WF (gitignored) → diff (`+Finalize Delivery`, `−0`) → PUT → activate. Живий WF звірено через API: 2 `respondToWebhook` (opt-in-гейт цілий), обидві гілки `Send to bot?`+`Send PDF` → `Finalize Delivery` → єдиний `Respond OK`; jsCode ключується на `ok===true`.
+- **Живий HAPPY (opt-in зі стартом):** `delivered_to_bot=true`; сира форма `Send PDF` = **flat** `{ok:true, result:{message_id:453,...}}` (НЕ під `.body`); реальний PDF доставлено в чат (Сергій підтвердив).
+- **Живий FAIL (opt-in при заблокованому боті):** `delivered_to_bot=false`, `signed_url` усе одно повернувся (документ доступний за лінком). **Запінено реальну форму 403:** n8n віддає **`{error:{message, name:"AxiosError", status:403}}`** — НЕ `{ok:false}` і НЕ під `.body` (рядок `ok:false` захований усередині `error.message`). `Finalize`: `raw.ok`=undefined → `raw.body||{}` → `{}` → `{}.ok===true`=**false** ✅. Робастність за побудовою підтверджена емпірично: жодна форма провалу (flat-error / .body / ok:false) не дає хибний `true`.
+- **Відновлення:** після розблокування бота happy-прогін знову `true` — бот повністю оговтався.
+**Побічні знахідки (fast-follow, окремі мікрозадачі, НЕ блокери):** (1) **form-submit `Notify User`** шле повідомлення в бот ДО оплати й НЕ має `onError=continue` → заблокований юзер валить увесь генераційний workflow (`Forbidden: bot was blocked`); (2) **копірайт #90** fallback «натисніть Почати» не в ціль — реальна причина `false`=заблокований бот, не «не стартував»; точніше «переконайтесь, що бота не заблоковано».
+**Files:** без правок коду (гілка вже готова з s75) · деплой live n8n `preview-pay` · тест-скрипти в scratchpad (не в репо).
+**Next:** fast-follow — `onError=continue` на `Notify User` + правка fallback-копії + `delivery_error` enum · чистка тест-кейсів у Supabase · демо-тур Олі (пн 06.07 вечір).
+
 ### 2026-07-05 (session 75) — #89 MERGED у main + deferred #90: чесний серверний сигнал `delivered_to_bot`
 **Status:** (1) #89 UX-пакет **ЗМЕРЖЕНО в main і ЗАПУШЕНО** (merge `67623de`, Closes #89, Vercel prod-деплой тригернувся, гілку видалено). (2) #90 `delivered_to_bot` — гілка `feat/delivered-to-bot-signal` (`12586a9` фіча + `a6969fe` ревʼю-раунд), **НЕ змержена, НЕ задеплоєна** (потребує deploy у живий n8n + живий 403-прогін — за Сергієм). tsc/eslint(changed) clean · UI **555 ✅** · scripts+n8n **1146 ✅**.
 **Why:** План п.1 (merge #89) + deferred-хвіст #89: paid-екран показував present-continuous «Копію також надсилаємо у ваш чат», бо клієнт не міг підтвердити доставку в Telegram. Understand-workflow (4 читачі + синтез, чистий прогін) виявив: n8n **вже** робить `sendDocument` синхронно (Send PDF, inline перед Respond OK), результат (`{ok:true}`/403) існує в процесі, але **скидається** (Respond OK читає лише Build Response; Send PDF має `onError=continue`). → правда доступна за нуль додаткової латентності, фікс локальний. Форму контракту (boolean + Start-aware fallback) обрав Сергій.

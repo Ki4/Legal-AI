@@ -8,7 +8,14 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
-**🟢 SESSION 75 (2026-07-05) — #89 ЗМЕРЖЕНО в main (Vercel-деплой) + deferred #90: чесний серверний сигнал `delivered_to_bot`. Гілка `feat/delivered-to-bot-signal` (`12586a9` фіча + `a6969fe` ревʼю), UI 555 ✅, scripts+n8n 1146 ✅, tsc/eslint(changed) clean. ⚠️ #90 НЕ ЗМЕРЖЕНО, НЕ ЗАДЕПЛОЄНО — чекає deploy у живий n8n + живий 403-прогін (за Сергієм).**
+**🟢 SESSION 76 (2026-07-05) — #90 ЗАДЕПЛОЄНО в живий n8n + ВЕРИФІКОВАНО НАСКРІЗЬ → ЗМЕРЖЕНО в main (Closes #90). Обидві гілки delivered_to_bot доведено на живому n8n.**
+- **Деплой:** `deploy-workflow.mjs preview-pay` — нода `Finalize Delivery` додана (0 нод затерто), ключі Global Config відновлено, workflow active. Живий WF звірено через API: 2 respondToWebhook (opt-in-гейт цілий), обидві гілки → Finalize → єдиний Respond OK.
+- **Живий HAPPY (opt-in зі стартом):** `delivered_to_bot=true`; форма `Send PDF` = **flat** `{ok:true, result:{message_id}}`; реальний PDF у чат (підтверджено).
+- **Живий FAIL (opt-in при ЗАБЛОКОВАНОМУ боті):** `delivered_to_bot=false`, `signed_url` повернувся (док за лінком). **Запінено реальну 403-форму:** n8n віддає **`{error:{status:403, name:AxiosError}}`** — НЕ `{ok:false}`, НЕ під `.body`. `Finalize` дефолтить у `false` (ключ на `ok===true`). **Робастність за побудовою підтверджена емпірично.**
+- **🪤 Гочас закрито:** форму провалу `Send PDF` тепер запінено вживу (`{error:{…}}`), а не тільки «робастно за побудовою».
+- **Fast-follow (окремі мікрозадачі):** (1) `Notify User` у form-submit шле в бот ДО оплати без `onError=continue` → заблокований юзер валить генерацію; (2) копірайт #90 fallback «натисніть Почати» → точніше «переконайтесь, що бота не заблоковано» (реальна причина `false`=блок); (3) чистка тест-кейсів у Supabase.
+
+**🟢 SESSION 75 (2026-07-05) — #89 ЗМЕРЖЕНО в main (Vercel-деплой) + deferred #90: чесний серверний сигнал `delivered_to_bot`. Гілка `feat/delivered-to-bot-signal` (`12586a9` фіча + `a6969fe` ревʼю), UI 555 ✅, scripts+n8n 1146 ✅, tsc/eslint(changed) clean. ✅ ЗМЕРЖЕНО в s76 (Closes #90) — задеплоєно + верифіковано наскрізь.**
 - **#89 merge:** `feat/twa-delivery-ux` → main (`67623de`, Closes #89, гілку видалено), Vercel prod-деплой тригернувся, коментар у #89. UX-пакет TWA тепер live у проді.
 - **#90 знахідка (understand-workflow, 4 читачі + синтез, чистий прогін):** n8n **вже** робить `sendDocument` синхронно (Send PDF inline перед Respond OK), результат (`{ok:true}`/403) є в процесі, але **скидається** (Respond OK читає лише Build Response; Send PDF `onError=continue`). → правда доступна за НУЛЬ додаткової латентності, «зробити синхронним = +латентність» = хибна розвилка. Фікс локальний у preview-pay.
 - **#90 дизайн (обрав Сергій):** boolean `delivered_to_bot` + Start-aware honest fallback. **n8n:** нова Code-нода `Finalize Delivery` (між Send PDF→Respond OK) читає `$('Send PDF')` → ключ на `Telegram ok===true` (message_id НЕ вимагаємо; defensive `.body`-unwrap), honest-by-default. Обидві гілки `Send to bot?` сходяться → **єдиний** Respond OK (2 respondToWebhook, opt-in-гейт цілий). **Клієнт:** parse `delivered_to_bot` (missing→false, backward-compat), стейт `deliveryConfirmed` (окремий від intent `deliverToBot`), paid-копія `true`→«Копію надіслано у ваш чат» / `false`→«Доставку копії в чат не підтверджено» + хінт «Почати» (future-enabling, не re-send).
@@ -120,18 +127,12 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (76):**
-1. **Задеплоїти #90 у живий n8n** (гілка `feat/delivered-to-bot-signal` готова, `12586a9`+`a6969fe`):
-   `node scripts/deploy-workflow.mjs preview-pay` — але класифікатор блокує авто-деплой прод payment-флоу, тому
-   потрібне явне «да» Сергія (як з merge #89). Скрипт відновлює реальні ключі Global Config автоматом.
-2. **Живий 403-прогін (ОБОВʼЯЗКОВО до shipping):** opt-in доставку без натискання Start у боті → підтвердити, що
-   `delivered_to_bot=false` і форма провалу Send PDF (`{ok:false…}` чи під `.body`) відповідає коду. Код робастний
-   за побудовою (ключ на `ok===true`), але живу форму статично не пінингували. Happy-path: opt-in зі Start → `true`.
-3. **Merge `feat/delivered-to-bot-signal`** → Closes #90 (після деплою+403-верифікації).
-4. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA.
-5. Бонус: `delivery_error` enum (`not_started`/`blocked`/`timeout`) для actionable-копії (fast-follow #90) · 8 eslint
-   pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D · «застаріло»-петля / медвертикаль з беклогу s64.
-**Модель:** deploy+403-верифікація — уважні, але механічні (Sonnet ок); `delivery_error` / медвертикаль — Tier 2 (Opus+).
+**🔴 НАСТУПНА СЕСІЯ (77):**
+1. **Fast-follow #90 (мікрогілка):** (a) `Notify User` у form-submit → `onError=continue` (заблокований юзер НЕ має валити генерацію — доведено вживу s76); (b) правка fallback-копії paid-екрану «натисніть Почати» → «переконайтесь, що бота не заблоковано» (реальна причина `false`=блок); (c) опційно `delivery_error` enum (`blocked`/`timeout`/`not_started`) для actionable-копії.
+2. **Чистка тест-кейсів у Supabase (s76):** `a98495f5`, `1f491bc5` (обидва paid, OWNER) + `0bfa096c` (smoke s67, тепер paid) — SQL DELETE під service-role + Storage API DELETE PDF. **Потребує явного «да» (delete прод-даних).**
+3. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA.
+4. Беклог: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D · «застаріло»-петля / медвертикаль з s64.
+**Модель:** fast-follow #90 + чистка — механічні (Sonnet/Fable ок); медвертикаль / `delivery_error` дизайн — Tier 2 (Opus+).
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 

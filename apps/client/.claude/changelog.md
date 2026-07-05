@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-07-05 (session 77) — docs: матеріали до зустрічі з Олею (демо-сценарій + презентація + NotebookLM + системна карта)
+**Status:** гілка `docs/olga-demo-2026-07-06` → ЗМЕРЖЕНО в main. Лише docs (без коду/деплою). Зустріч Оля — пн 06.07 вечір.
+**Why:** Сергій попросив підготувати демо-тур для Олі («що є + плани», прогрес→потенціал→масштабування), навчити її додавати послугу, зрозуміти її медпослуги; + дані для NotebookLM. Заземлено на ЖИВІЙ БД/коді через Explore-агент (не на застарілій березневій `presentation-for-lawyer.md`).
+**What:**
+- **`2026-07-06-olga-demo-script.md`** — 5-актний прогон (TWA wow → адмінка-редактор «послуга=дані» → дзеркало+закони HITL → плани+медвертикаль → sign-off), позначки 🖱️ де клікає Оля + guardrails (чернетка/«Скинути», не чіпати живі дані), чек-лист підготовки.
+- **`2026-07-06-olga-presentation.md` + `.html`** — 9-слайдовий дек (Artifact `3832782a-…` + офлайн-HTML). ⚠️ **Сергію не сподобалась — переробляє сам**; лишається як v1-референс.
+- **`2026-07-06-system-map-staged.md`** — конвеєр (7 етапів × хто відповідає × статус) + 6 «цеглин» відповідальності (TWA / n8n-диригент / doc-engine / Supabase / Groq-вузька-роль / адмінка). **Це те, що Сергій схвалив** — основа його презентації.
+- **`notebooklm/05_Current_State_2026-07.md`** — прозовий snapshot поточного стану для NotebookLM (2 live template-послуги, оплата-заглушка, hybrid/RAG built-not-live, медвертикаль=гіпотеза під GDPR-блокер+sign-off). Заміняє старіші цифри там, де конфлікт.
+- **Live-докази (звірка перед матеріалами):** `SELECT services` → divorce+alimony active/template, 3 disabled-плейсхолдери js, категорія лише family (нема медичної → #103).
+**Files:** `docs/strategy/2026-07-06-{olga-demo-script,olga-presentation}.md` · `docs/strategy/2026-07-06-olga-presentation.html` · `docs/strategy/2026-07-06-system-map-staged.md` · `docs/strategy/notebooklm/05_Current_State_2026-07.md`
+**Next:** Сергій переробляє презентацію сам (з системної карти) · зустріч Оля пн 06.07 → зібрати медпозиції + sign-off · далі GDPR-дослідження медданих (go/no-go по медвертикалі).
+
 ### 2026-07-05 (session 77) — chore: усунено 9 pre-existing eslint-помилок на main (react-hooks плагін-дрейф)
 **Status:** гілка `fix/eslint-react-hooks` **ЗМЕРЖЕНО в main** (merge `--no-ff`) · **eslint `.` = 0 помилок** · tsc clean · UI **555 ✅**.
 **Why:** Бамп `eslint-plugin-react-hooks` розширив `flat.recommended` двома новими правилами (`set-state-in-effect`, `refs`) → 9 помилок на main (session-summary «8 eslint pre-existing», фактично 9 після дрейфу). Усі — легітимні патерни (завантаження на mount / guard / дзеркало prop / тест-мок), не ті derived-state-каскади, на які правила націлені. Лінт-гейт CI був червоний на main незалежно від фіч.

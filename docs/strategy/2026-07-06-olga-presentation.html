@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Legal-AI — демо для Олі</title>
+<style>
+  :root {
+    --accent: #2563EB;
+    --accent-strong: #1D4ED8;
+    --navy: #17233A;
+    --ink: #1E2836;
+    --muted: #5A6675;
+    --ground: #F6F8FB;
+    --ground-2: #EDF1F7;
+    --panel: #FFFFFF;
+    --line: #E1E7EF;
+    --good: #15803D;
+    --good-bg: #E7F4EC;
+    --warn: #B45309;
+    --warn-bg: #FBF0E1;
+    --shadow: 0 1px 2px rgba(20,30,50,.05), 0 10px 30px rgba(20,30,50,.07);
+    --serif: Georgia, "Times New Roman", "PT Serif", serif;
+    --sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --maxw: 62rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #5B8DEF;
+      --accent-strong: #7BA5F5;
+      --navy: #E9EEF6;
+      --ink: #CFD8E4;
+      --muted: #92A0B4;
+      --ground: #0D1424;
+      --ground-2: #131C2E;
+      --panel: #16203457;
+      --panel: #172134;
+      --line: #26324A;
+      --good: #4ADE80;
+      --good-bg: rgba(34,197,94,.13);
+      --warn: #FBBF24;
+      --warn-bg: rgba(217,119,6,.16);
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"] {
+    --accent: #2563EB; --accent-strong: #1D4ED8; --navy: #17233A; --ink: #1E2836;
+    --muted: #5A6675; --ground: #F6F8FB; --ground-2: #EDF1F7; --panel: #FFFFFF;
+    --line: #E1E7EF; --good: #15803D; --good-bg: #E7F4EC; --warn: #B45309;
+    --warn-bg: #FBF0E1; --shadow: 0 1px 2px rgba(20,30,50,.05), 0 10px 30px rgba(20,30,50,.07);
+  }
+  :root[data-theme="dark"] {
+    --accent: #5B8DEF; --accent-strong: #7BA5F5; --navy: #E9EEF6; --ink: #CFD8E4;
+    --muted: #92A0B4; --ground: #0D1424; --ground-2: #131C2E; --panel: #172134;
+    --line: #26324A; --good: #4ADE80; --good-bg: rgba(34,197,94,.13); --warn: #FBBF24;
+    --warn-bg: rgba(217,119,6,.16); --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+
+  .deck {
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: 0;
+  }
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 5rem) clamp(1.25rem, 5vw, 3rem);
+    position: relative;
+    border-bottom: 1px solid var(--line);
+  }
+  .slide > .inner { width: 100%; max-width: var(--maxw); margin: 0 auto; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: .55rem;
+    font-size: .72rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.4rem;
+  }
+  .eyebrow .num {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  .eyebrow::before {
+    content: ""; width: 1.6rem; height: 2px; background: var(--accent); border-radius: 2px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: clamp(2.6rem, 7vw, 4.6rem);
+    line-height: 1.03;
+    letter-spacing: -.015em;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+  }
+  h2 {
+    font-family: var(--serif);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: clamp(1.7rem, 4vw, 2.7rem);
+    line-height: 1.1;
+    letter-spacing: -.01em;
+    margin: 0 0 1.4rem;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: clamp(1.05rem, 2.1vw, 1.4rem);
+    color: var(--ink);
+    max-width: 46ch;
+    margin: 0 0 1rem;
+  }
+  .sub { color: var(--muted); font-size: 1rem; max-width: 52ch; }
+  p { margin: 0 0 .6rem; }
+  strong { color: var(--navy); font-weight: 700; }
+
+  .scroll-hint {
+    position: absolute; bottom: 1.6rem; left: 50%; transform: translateX(-50%);
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: .35rem;
+  }
+  .scroll-hint .chev { width: 9px; height: 9px; border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted); transform: rotate(45deg); animation: bob 1.8s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ transform: rotate(45deg) translateY(0);} 50%{ transform: rotate(45deg) translateY(3px);} }
+  @media (prefers-reduced-motion: reduce) { .chev { animation: none; } }
+
+  ul.points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .85rem; }
+  ul.points li { position: relative; padding-left: 1.6rem; font-size: 1.08rem; max-width: 58ch; }
+  ul.points li::before {
+    content: ""; position: absolute; left: 0; top: .62em;
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  }
+
+  .grid { display: grid; gap: 1rem; }
+  .grid.two { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 640px) { .grid.two { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { margin: 0 0 .35rem; font-family: var(--sans); font-size: 1.02rem; color: var(--navy); font-weight: 700; }
+  .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .82rem; font-weight: 600; padding: .28rem .7rem; border-radius: 999px;
+    line-height: 1.2;
+  }
+  .pill.good { background: var(--good-bg); color: var(--good); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .7rem; }
+  .checklist li { display: flex; align-items: flex-start; gap: .7rem; font-size: 1.05rem; max-width: 60ch; }
+  .checklist .tick {
+    flex: none; margin-top: .12rem; width: 1.15rem; height: 1.15rem; border-radius: 50%;
+    background: var(--good-bg); color: var(--good);
+    display: grid; place-items: center; font-size: .72rem; font-weight: 900;
+  }
+
+  .note {
+    margin-top: 1.6rem; border-left: 3px solid var(--warn); background: var(--warn-bg);
+    padding: .85rem 1.1rem; border-radius: 0 10px 10px 0; font-size: .95rem; color: var(--ink);
+    max-width: 60ch;
+  }
+  .note strong { color: var(--warn); }
+
+  .quote {
+    font-family: var(--serif); font-size: clamp(1.3rem, 3vw, 2rem); color: var(--navy);
+    line-height: 1.28; max-width: 24ch; margin: 1.6rem 0 0; text-wrap: balance;
+  }
+  .quote .accent { color: var(--accent); }
+
+  .emph {
+    margin-top: 1.5rem; font-size: 1.1rem; color: var(--ink); max-width: 56ch;
+    padding-top: 1.1rem; border-top: 1px solid var(--line);
+  }
+  .emph strong { color: var(--accent); }
+
+  table.phases { width: 100%; border-collapse: collapse; font-size: 1rem; }
+  table.phases th, table.phases td { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.phases th { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  table.phases td:first-child { font-weight: 700; color: var(--navy); white-space: nowrap; }
+  table.phases tr.here td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  table.phases tr.here td:first-child { color: var(--accent); }
+  .here-tag { display: inline-block; margin-left: .5rem; font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+    text-transform: uppercase; color: #fff; background: var(--accent); padding: .12rem .45rem; border-radius: 5px; vertical-align: middle; }
+
+  .asks { list-style: none; margin: 1rem 0 0; padding: 0; counter-reset: ask; display: flex; flex-direction: column; gap: .9rem; }
+  .asks li { display: flex; gap: .9rem; align-items: flex-start; font-size: 1.06rem; max-width: 60ch; }
+  .asks li::before {
+    counter-increment: ask; content: counter(ask);
+    flex: none; width: 1.7rem; height: 1.7rem; border-radius: 50%;
+    background: var(--accent); color: #fff; font-weight: 800; font-size: .9rem;
+    display: grid; place-items: center; font-variant-numeric: tabular-nums;
+  }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: .4rem; }
+  @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+  .split .band { border-radius: 12px; padding: 1rem 1.15rem; border: 1px solid var(--line); background: var(--panel); }
+  .split .band .k { font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; margin-bottom: .35rem; }
+  .split .band.simple .k { color: var(--good); }
+  .split .band.hard .k { color: var(--warn); }
+  .split .band p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+  .precond { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.2rem; }
+  .precond .pill { background: var(--ground-2); color: var(--ink); border: 1px solid var(--line); }
+
+  .team { font-size: 1.02rem; color: var(--ink); max-width: 62ch; margin-bottom: 1.4rem; }
+  .team strong { color: var(--navy); }
+
+  .goal {
+    margin-top: 1.6rem; background: var(--navy); color: #fff; border-radius: 14px;
+    padding: 1.1rem 1.3rem; font-family: var(--serif); font-size: 1.25rem; line-height: 1.3; max-width: 46ch;
+  }
+  :root[data-theme="dark"] .goal, :root:not([data-theme]) .goal { }
+  @media (prefers-color-scheme: dark) { .goal { background: #0A1120; border: 1px solid var(--line); } }
+  :root[data-theme="dark"] .goal { background: #0A1120; border: 1px solid var(--line); }
+  :root[data-theme="light"] .goal { background: var(--navy); border: none; }
+  .goal .accent { color: var(--accent-strong); }
+  @media (prefers-color-scheme: dark) { .goal .accent { color: var(--accent); } }
+
+  /* progress dots */
+  .dots { position: fixed; right: clamp(.7rem, 2vw, 1.4rem); top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: .6rem; z-index: 20; }
+  .dots button { width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
+    background: var(--line); transition: background .2s, transform .2s; }
+  .dots button:hover { background: var(--muted); }
+  .dots button[aria-current="true"] { background: var(--accent); transform: scale(1.35); }
+  .dots button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (max-width: 720px) { .dots { display: none; } }
+
+  .brandbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 25;
+    background: linear-gradient(90deg, var(--accent) var(--prog,0%), transparent 0); }
+
+  .kicker { font-family: var(--serif); font-weight: 700; color: var(--accent); font-size: 1.05rem; letter-spacing: .02em; }
+</style>
+
+<div class="brandbar" id="brandbar"></div>
+
+<nav class="dots" id="dots" aria-label="Слайди"></nav>
+
+<div class="deck" id="deck">
+
+  <!-- 1 -->
+  <section class="slide" id="s1">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">01</span> · Демо для Олі · 06.07.2026</span>
+      <h1>Legal&#8209;AI</h1>
+      <p class="lead">Платформа, що генерує <strong>court&#8209;ready</strong> документи там, де це безпечно — і <strong>чесно передає юристу</strong> там, де є ризик.</p>
+      <p class="sub">Не «ІІ&#8209;юрист». Інструмент, що підсилює юриста.</p>
+    </div>
+    <div class="scroll-hint">Гортай <span class="chev"></span></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="slide" id="s2">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">02</span> · Проблема</span>
+      <h2>Типовий документ — це години ручної, повторюваної роботи</h2>
+      <ul class="points">
+        <li>Юрист пише стандартні позови руками — багато однакового щоразу.</li>
+        <li>Клієнт не знає, з чого почати, і платить за те, що можна стандартизувати.</li>
+        <li>Помилка у формулюванні чи проґавлена зміна закону = реальний ризик.</li>
+      </ul>
+      <p class="quote">Що, якщо 95% типового документа згенерувати за <span class="accent">3 хвилини</span> — а юрист зосередиться на складному й на контролі якості?</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="slide" id="s3">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">03</span> · Прогрес</span>
+      <h2>Що вже реально працює</h2>
+      <ul class="checklist">
+        <li><span class="tick">&#10003;</span><span><strong>2 живі послуги</strong> — розлучення та аліменти, court&#8209;ready позови.</span></li>
+        <li><span class="tick">&#10003;</span><span><strong>Наскрізний потік:</strong> Telegram Mini App → форма → витяг&#8209;превʼю → оплата → PDF.</span></li>
+        <li><span class="tick">&#10003;</span><span><strong>95% шаблон + ІІ лише на відмінках ПІБ</strong> → нуль галюцинацій у даних.</span></li>
+        <li><span class="tick">&#10003;</span><span><strong>Агент «зміни законів»:</strong> авто&#8209;детект зміни статті → чернетка впливу → рецензія юриста.</span></li>
+        <li><span class="tick">&#10003;</span><span><strong>Адмін&#8209;панель:</strong> конструктор форми + редактор шаблону + історія версій + health.</span></li>
+      </ul>
+      <div class="note"><strong>Чесно:</strong> оплата поки заглушка; ще 3 послуги — вимкнені плейсхолдери. Це <strong>PoC, що працює наскрізь</strong>, а не готовий магазин.</div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="slide" id="s4">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">04</span> · Ключова ідея</span>
+      <h2>Послуга — це <span class="kicker">дані</span>, а не код</h2>
+      <ul class="points">
+        <li>Один рушій рендерингу — спільний для всіх послуг.</li>
+        <li>«Послуга» = рядок даних: <strong>форма + шаблон + режим + цитати законів + чек&#8209;лист</strong>.</li>
+        <li>Тому додати послугу = <strong>описати її дані</strong>, а не «програмувати».</li>
+        <li>Масштаб — не в найманні розробників, а в тому, щоб <strong>юрист описував послуги сам</strong>.</li>
+      </ul>
+      <p class="emph">Саме тому наступний великий крок — не «ще одна послуга руками», а <strong>Service Builder</strong>.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="slide" id="s5">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">05</span> · Довіра = продукт</span>
+      <h2>Людський контроль — це фіча, а не обмеження</h2>
+      <div class="grid two">
+        <div class="card"><h3>Publish&#8209;gate</h3><p>Система не дасть опублікувати документ зі структурною дірою «________».</p></div>
+        <div class="card"><h3>Дзеркало послуги</h3><p>Видно, чи форма й шаблон вирівняні — health 🟢 / 🟡 / 🔴.</p></div>
+        <div class="card"><h3>Рецензія змін законів</h3><p>Зміна статті → чернетка «що змінилось» → <strong>юрист підтверджує</strong>.</p></div>
+        <div class="card"><h3>Kill&#8209;switch</h3><p>Послуга стартує «вимкнено». Вмикає її <strong>юрист</strong>.</p></div>
+      </div>
+      <p class="emph">Жоден документ не публікується без твого підтвердження. У праві <strong>довіра і є продукт</strong>.</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="slide" id="s6">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">06</span> · Масштабування</span>
+      <h2>Траєкторія: від PoC руками до білдера для спеціалістів</h2>
+      <table class="phases">
+        <thead><tr><th>Фаза</th><th>Що це</th></tr></thead>
+        <tbody>
+          <tr class="here"><td>Phase&nbsp;0 <span class="here-tag">ми тут · 2/5</span></td><td>Захардкоджений PoC: 5 послуг руками + sign&#8209;off Олі.</td></tr>
+          <tr><td>Phase&nbsp;1</td><td>Юр&#8209;бета: 3–5 юристів Олі платять і користуються.</td></tr>
+          <tr><td>Phase&nbsp;2</td><td>Маркетинг через юристів&#8209;інфлюенсерів.</td></tr>
+          <tr><td>Phase&nbsp;3</td><td>Напівавтоматичне створення послуги (інтейк → послуга за 1–2 дні).</td></tr>
+          <tr><td>Phase&nbsp;4</td><td>Повний Service Builder: спеціалісти додають послуги самі — модель App&nbsp;Store (% з доходу послуги).</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="slide" id="s7">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">07</span> · Медвертикаль</span>
+      <h2>Де потрібна саме ти</h2>
+      <p class="sub" style="margin-bottom:1rem">Прогонимо твої медпозиції через шкалу складності 1–10:</p>
+      <div class="split">
+        <div class="band simple"><div class="k">1–4 · просте / детерміноване</div><p>Запит медкартки, типові скарги → кандидати в каталог (як divorce).</p></div>
+        <div class="band hard"><div class="k">5–10 · складне</div><p>Оскарження МСЕК / ЕКОПФО, інвалідність → hand&#8209;off / преміум до живого юриста.</p></div>
+      </div>
+      <div class="precond">
+        <span class="pill">🔒 Меддані = спецкатегорія → GDPR&#8209;дослідження ПЕРЕД кодом</span>
+        <span class="pill">✍️ Список медпозицій = твій підпис</span>
+        <span class="pill">🧱 Адмінці треба категорії послуг</span>
+      </div>
+      <p class="emph"><strong>Сьогодні від тебе:</strong> розкажи свої медсправи — що повторюване, а що унікальне.</p>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section class="slide" id="s8">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">08</span> · Команда і прохання</span>
+      <h2>Що ми просимо в Олі</h2>
+      <p class="team"><strong>Команда:</strong> Сергій (продукт/білд) · <strong>Оля</strong> (юридична експертиза, перший користувач, джерело правди) · Дядя (техлід, активується після підтвердженого PoC) · юристи&#8209;контриб'ютори (додають послуги за % доходу).</p>
+      <ul class="asks">
+        <li><strong>Фідбек</strong>&nbsp;на живий документ — court&#8209;ready? що змінити?</li>
+        <li><strong>Sign&#8209;off</strong>&nbsp;«Список Олі»: ст.175 ч.7, divorce&#8209;wording, каркас позову.</li>
+        <li><strong>Медпозиції</strong>&nbsp;— перелік + складність, щоб спланувати вертикаль.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="slide" id="s9">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">09</span> · Наступні кроки</span>
+      <h2>Куди рухаємось після зустрічі</h2>
+      <ul class="points">
+        <li>Оля дивиться/підписує «Список Олі» → відкриваємо шлях до публікації нових послуг.</li>
+        <li>Сергій: GDPR&#8209;дослідження медданих (go / no&#8209;go по медвертикалі).</li>
+        <li>Закрити діру оплати (з PoC → у щось, що можна продавати).</li>
+        <li>Далі: 3-тя, 4-та, 5-та послуги + рух до Service Builder.</li>
+      </ul>
+      <p class="goal">Ціль зустрічі: ти бачиш <span class="accent">прогрес і потенціал</span> — і ми домовляємось, як завести твою першу медпослугу.</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  (function () {
+    var deck = document.getElementById('deck');
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var dotsWrap = document.getElementById('dots');
+    var brandbar = document.getElementById('brandbar');
+
+    // build dots
+    slides.forEach(function (s, i) {
+      var b = document.createElement('button');
+      b.setAttribute('aria-label', 'Слайд ' + (i + 1));
+      b.addEventListener('click', function () {
+        s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      dotsWrap.appendChild(b);
+    });
+    var dots = Array.prototype.slice.call(dotsWrap.children);
+
+    var current = 0;
+    function setActive(i) {
+      current = i;
+      dots.forEach(function (d, j) { d.setAttribute('aria-current', j === i ? 'true' : 'false'); });
+    }
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) setActive(slides.indexOf(e.target));
+        });
+      }, { root: deck, threshold: 0.55 });
+      slides.forEach(function (s) { io.observe(s); });
+    } else {
+      setActive(0);
+    }
+
+    // progress bar
+    function onScroll() {
+      var max = deck.scrollHeight - deck.clientHeight;
+      var p = max > 0 ? (deck.scrollTop / max) * 100 : 0;
+      brandbar.style.setProperty('--prog', p + '%');
+    }
+    deck.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // keyboard nav
+    function go(delta) {
+      var next = Math.min(slides.length - 1, Math.max(0, current + delta));
+      slides[next].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+      else if (e.key === 'Home') { e.preventDefault(); slides[0].scrollIntoView({ behavior: 'smooth' }); }
+      else if (e.key === 'End') { e.preventDefault(); slides[slides.length - 1].scrollIntoView({ behavior: 'smooth' }); }
+    });
+
+    setActive(0);
+  })();
+</script>
+
+</body>
+</html>

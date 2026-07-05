@@ -11,14 +11,24 @@
 ---
 
 ### 2026-07-05 (session 77) — chore: усунено 9 pre-existing eslint-помилок на main (react-hooks плагін-дрейф)
-**Status:** гілка `fix/eslint-react-hooks` (окрема від fast-follow #90) · **eslint `.` = 0 помилок** · tsc clean · UI **555 ✅** · **НЕ змержено**.
+**Status:** гілка `fix/eslint-react-hooks` **ЗМЕРЖЕНО в main** (merge `--no-ff`) · **eslint `.` = 0 помилок** · tsc clean · UI **555 ✅**.
 **Why:** Бамп `eslint-plugin-react-hooks` розширив `flat.recommended` двома новими правилами (`set-state-in-effect`, `refs`) → 9 помилок на main (session-summary «8 eslint pre-existing», фактично 9 після дрейфу). Усі — легітимні патерни (завантаження на mount / guard / дзеркало prop / тест-мок), не ті derived-state-каскади, на які правила націлені. Лінт-гейт CI був червоний на main незалежно від фіч.
 **What:**
 - **`react-refresh/only-export-components` (2, DatePickerField)** — *справжній* фікс: чисті date-хелпери (`parseYMD`/`formatDisplay`/`getDaysInMonth`/`getFirstDayOfWeek`/`maskDateInput`/`parseDisplay`) винесено з компонент-файлу в новий `dateInput.ts` (експорт не-компонентних значень поряд із компонентом ламав Fast Refresh — саме те, від чого правило). Компонент і тест імпортують з `./dateInput`.
 - **`react-hooks/set-state-in-effect` (6)** — точковий `eslint-disable-next-line` з обґрунтуванням на кожному: `App.tsx` (Telegram-SDK read on mount; cache-serve on mount/slug), `ServiceNotes`/`ServiceRequestsPage` (guard-и `setLoading(false)` без Supabase/user), `DashboardPage` (`setLoading(true)` перед рефетчем), `DatePickerField` (дзеркало `value`-prop). Правило лишається error для нового коду.
 - **`react-hooks/refs` (1, тест-мок TemplateEditorPanel)** — `eslint-disable-next-line`: мок форвардить ref у textarea + віддає imperative handle (стандартний тест-патерн).
 **Files:** `src/components/form/fields/dateInput.ts` (new) · `src/components/form/fields/DatePickerField.tsx` · `src/components/form/fields/__tests__/DatePickerField.test.ts` (import) · `src/App.tsx` · `src/admin/components/ServiceNotes.tsx` · `src/admin/pages/{DashboardPage,ServiceRequestsPage}.tsx` · `src/admin/components/__tests__/TemplateEditorPanel.test.tsx`
-**Next:** merge у main (Vercel-деплой; лише лінт-гігієна, поведінка не змінена) — за «змерж» Сергія.
+**Next:** merged (Vercel-деплой тригернувся; лише лінт-гігієна, поведінка не змінена).
+
+### 2026-07-05 (session 77) — Fast-follow #90: `Notify User` onError=continue + чесніша fallback-копія (заблокований бот)
+**Status:** гілка `fix/90-fast-follow` **ЗМЕРЖЕНО в main** (merge `--no-ff`) · UI-тести PreviewPage **8 ✅** · n8n workflow-тести (form-submit + preview-pay) **25 ✅** · form-submit.json валідний JSON · **n8n НЕ задеплоєно** (деплой form-submit у живий n8n лишається за Сергієм — «да» + `deploy-workflow.mjs form-submit`). Refs #90.
+**Why:** Два fast-follow-хвости з s76 (доведені вживу): (a) нода `Notify User` у form-submit шле «⏳ Готую…» у бот ДО оплати й НЕ мала `onError` → заблокований юзер (Telegram 403 `bot was blocked`) валив увесь генераційний workflow; (b) fallback-копія paid-екрану радила «натисніть Почати», але реальна причина `delivered_to_bot=false` на живому прогоні s76 = **заблокований бот**, не «не стартував».
+**What:**
+- **(a) n8n `Notify User` → `onError: continueRegularOutput`** (`form-submit.json`, нода `notify-user-001`): заблокований бот більше не роняє генерацію — нода прокидає вхідний item, `Notify User → Respond OK` доходить, TWA отримує відповідь. **Downstream безпечний за побудовою:** обидва споживачі `$('Notify User')...message_id` толерантні — `Send Doc Link` (`send-link-001`) `disabled:true` (поза живим шляхом), «Заявку прийнято» editMessageText уже має `onError:continueRegularOutput`.
+- **(b) Клієнт `PreviewPage.tsx`** fallback-хінт при `delivered_to_bot=false`: «…відкрийте бота та натисніть «Почати»» → «…**переконайтесь, що бота не заблоковано, і натисніть «Почати»**». Називає доведену причину (403=блок) першою, лишається future-enabling (не re-send уже оплаченого доку). Тест PreviewPage підсилено (`/бота не заблоковано/`).
+- **(c) `delivery_error` enum — ВІДКЛАДЕНО** (Tier-2 дизайн actionable-копії `blocked`/`timeout`/`not_started`, окрема сесія).
+**Files:** `n8n/workflows/current/form-submit.json` (нода `Notify User` +onError) · `apps/client/src/components/PreviewPage.tsx` (fallback-копія) · `apps/client/src/components/__tests__/PreviewPage.test.tsx` (+assert `не заблоковано`)
+**Next:** деплой form-submit у живий n8n (за «да» Сергія) + живий 403-прогін (заблокований бот → генерація завершується, юзер отримує документ у TWA) · чистка тест-кейсів Supabase.
 
 ### 2026-07-05 (session 76) — #90 задеплоєно в живий n8n + верифіковано наскрізь (happy `true` + blocked `false`) → MERGE у main (Closes #90)
 **Status:** гілка `feat/delivered-to-bot-signal` **ЗМЕРЖЕНО в main і ЗАПУШЕНО** (Closes #90). Деплой `preview-pay` у живий n8n (нода `Finalize Delivery` додана, 0 нод затерто, ключі Global Config відновлено, workflow active). **Обидві гілки delivered_to_bot верифіковано на живому n8n.**

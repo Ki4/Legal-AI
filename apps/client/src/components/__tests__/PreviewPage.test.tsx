@@ -90,9 +90,10 @@ describe('PreviewPage — prominent 2-card delivery choice (#88 UX pack)', () =>
     expect(screen.queryByText(/Доставку копії в чат не підтверджено/)).toBeNull()
   })
 
-  it('opted in but delivery UNconfirmed (delivered_to_bot:false) → honest fallback + «press Start» hint, never a false claim', async () => {
-    // Most common real failure: the user never pressed Start, so Telegram 403s and the
-    // server reports delivered_to_bot:false. We must NOT claim delivery; show the link.
+  it('opted in but delivery UNconfirmed (delivered_to_bot:false) → honest fallback naming the blocked-bot cause, never a false claim', async () => {
+    // Proven live cause (s76): a BLOCKED bot 403s, so the server reports
+    // delivered_to_bot:false. The hint must name unblocking first, then Start,
+    // and must NOT claim delivery; the link stays available.
     requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '', deliveredToBot: false })
     renderPage()
 
@@ -101,6 +102,7 @@ describe('PreviewPage — prominent 2-card delivery choice (#88 UX pack)', () =>
     await screen.findByText('Отримати документ')
 
     expect(screen.getByText(/Доставку копії в чат не підтверджено/)).toBeTruthy()
+    expect(screen.getByText(/бота не заблоковано/)).toBeTruthy()
     expect(screen.getByText(/натисніть «Почати»/)).toBeTruthy()
     // never asserts a delivery it could not confirm
     expect(screen.queryByText('Копію надіслано у ваш чат')).toBeNull()

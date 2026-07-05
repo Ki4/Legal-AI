@@ -320,12 +320,14 @@ export function PreviewPage({
                     <AlertCircle size={14} />
                     <span className="text-[11px] font-medium">Доставку копії в чат не підтверджено</span>
                   </div>
-                  {/* Honest recovery: the document is available NOW via the button below;
-                      pressing Start does NOT re-send this already-paid document (main-bot
-                      treats /start as a greeting), it only lets the bot deliver copies
-                      NEXT time — so we frame it as future-enabling, not a re-send here. */}
+                  {/* Honest recovery: the document is available NOW via the button below.
+                      The proven live cause of delivered_to_bot=false is a BLOCKED bot
+                      (Telegram 403), not merely "never Started" — so we name unblocking
+                      first, then Start. Neither re-sends this already-paid document
+                      (main-bot treats /start as a greeting); it only lets the bot deliver
+                      copies NEXT time — future-enabling, not a re-send here. */}
                   <p className="mt-1 text-[10px] text-gray-500 leading-snug px-2">
-                    Документ можна завантажити кнопкою нижче. Щоб копія приходила в чат наступного разу — відкрийте бота та натисніть «Почати».
+                    Документ можна завантажити кнопкою нижче. Щоб копія приходила в чат наступного разу — переконайтесь, що бота не заблоковано, і натисніть «Почати».
                   </p>
                 </div>
               )

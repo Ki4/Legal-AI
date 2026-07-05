@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-05 (session 77) — Fast-follow #90: `Notify User` onError=continue + чесніша fallback-копія (заблокований бот)
+**Status:** гілка `fix/90-fast-follow` · UI-тести PreviewPage **8 ✅** · n8n workflow-тести (form-submit + preview-pay) **25 ✅** · form-submit.json валідний JSON · **НЕ змержено, n8n НЕ задеплоєно** (деплой form-submit у живий n8n лишається за Сергієм — «да» + `deploy-workflow.mjs form-submit`). Refs #90.
+**Why:** Два fast-follow-хвости з s76 (доведені вживу): (a) нода `Notify User` у form-submit шле «⏳ Готую…» у бот ДО оплати й НЕ мала `onError` → заблокований юзер (Telegram 403 `bot was blocked`) валив увесь генераційний workflow; (b) fallback-копія paid-екрану радила «натисніть Почати», але реальна причина `delivered_to_bot=false` на живому прогоні s76 = **заблокований бот**, не «не стартував».
+**What:**
+- **(a) n8n `Notify User` → `onError: continueRegularOutput`** (`form-submit.json`, нода `notify-user-001`): заблокований бот більше не роняє генерацію — нода прокидає вхідний item, `Notify User → Respond OK` доходить, TWA отримує відповідь. **Downstream безпечний за побудовою:** обидва споживачі `$('Notify User')...message_id` толерантні — `Send Doc Link` (`send-link-001`) `disabled:true` (поза живим шляхом), «Заявку прийнято» editMessageText уже має `onError:continueRegularOutput`.
+- **(b) Клієнт `PreviewPage.tsx`** fallback-хінт при `delivered_to_bot=false`: «…відкрийте бота та натисніть «Почати»» → «…**переконайтесь, що бота не заблоковано, і натисніть «Почати»**». Називає доведену причину (403=блок) першою, лишається future-enabling (не re-send уже оплаченого доку). Тест PreviewPage підсилено (`/бота не заблоковано/`).
+- **(c) `delivery_error` enum — ВІДКЛАДЕНО** (Tier-2 дизайн actionable-копії `blocked`/`timeout`/`not_started`, окрема сесія).
+**Files:** `n8n/workflows/current/form-submit.json` (нода `Notify User` +onError) · `apps/client/src/components/PreviewPage.tsx` (fallback-копія) · `apps/client/src/components/__tests__/PreviewPage.test.tsx` (+assert `не заблоковано`)
+**Next:** деплой form-submit у живий n8n (за «да» Сергія) + живий 403-прогін (заблокований бот → генерація завершується, юзер отримує документ у TWA) · далі окрема гілка eslint (9 pre-existing) · чистка тест-кейсів Supabase.
+
 ### 2026-07-05 (session 76) — #90 задеплоєно в живий n8n + верифіковано наскрізь (happy `true` + blocked `false`) → MERGE у main (Closes #90)
 **Status:** гілка `feat/delivered-to-bot-signal` **ЗМЕРЖЕНО в main і ЗАПУШЕНО** (Closes #90). Деплой `preview-pay` у живий n8n (нода `Finalize Delivery` додана, 0 нод затерто, ключі Global Config відновлено, workflow active). **Обидві гілки delivered_to_bot верифіковано на живому n8n.**
 **Why:** Хвіст #90 із session-summary «НАСТУПНА СЕСІЯ 76»: (1) деплой у прод n8n (блокований класифікатором — Сергій дав явне «да»), (2) обовʼязковий живий прогін провалу доставки, бо форму фейлу `Send PDF` статично не пінингували.

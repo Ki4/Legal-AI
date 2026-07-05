@@ -308,6 +308,7 @@
       "notes": "JS шаблон — 95% документа детерміновано, 0% галюцинацій для даних. AI використовується тільки для відмінків."
     },
     {
+      "onError": "continueRegularOutput",
       "parameters": {
         "chatId": "={{ $('Validate').item.json._user_id }}",
         "text": "=⏳ Готую ваш документ…\n📋 {{ $('Get Service').item.json.title }}",

@@ -34,6 +34,7 @@ vi.mock('../TemplateCodeEditor', async () => {
         applyText: (text: string, caret: number) => applyTextSpy(text, caret),
         focus: () => taRef.current?.focus(),
       }))
+      // eslint-disable-next-line react-hooks/refs -- test mock: forwards its ref to the textarea while exposing an imperative handle
       return React.createElement('textarea', {
         ref: taRef,
         value: props.value,

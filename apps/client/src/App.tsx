@@ -237,6 +237,7 @@ export default function App() {
       tg.ready()
       tg.expand()
       const user = tg.initDataUnsafe?.user
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot read from the Telegram SDK on mount
       if (user) setUserName(user.first_name)
     }
   }, [])
@@ -244,6 +245,7 @@ export default function App() {
   useEffect(() => {
     // Serve from cache instantly, then refresh in background
     const cached = getCached(serviceSlug)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- serve cached config instantly on mount/slug change, then refresh below
     if (cached) setConfig(cached)
 
     if (!supabase) {

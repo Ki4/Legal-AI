@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-05 (session 77) — chore: усунено 9 pre-existing eslint-помилок на main (react-hooks плагін-дрейф)
+**Status:** гілка `fix/eslint-react-hooks` (окрема від fast-follow #90) · **eslint `.` = 0 помилок** · tsc clean · UI **555 ✅** · **НЕ змержено**.
+**Why:** Бамп `eslint-plugin-react-hooks` розширив `flat.recommended` двома новими правилами (`set-state-in-effect`, `refs`) → 9 помилок на main (session-summary «8 eslint pre-existing», фактично 9 після дрейфу). Усі — легітимні патерни (завантаження на mount / guard / дзеркало prop / тест-мок), не ті derived-state-каскади, на які правила націлені. Лінт-гейт CI був червоний на main незалежно від фіч.
+**What:**
+- **`react-refresh/only-export-components` (2, DatePickerField)** — *справжній* фікс: чисті date-хелпери (`parseYMD`/`formatDisplay`/`getDaysInMonth`/`getFirstDayOfWeek`/`maskDateInput`/`parseDisplay`) винесено з компонент-файлу в новий `dateInput.ts` (експорт не-компонентних значень поряд із компонентом ламав Fast Refresh — саме те, від чого правило). Компонент і тест імпортують з `./dateInput`.
+- **`react-hooks/set-state-in-effect` (6)** — точковий `eslint-disable-next-line` з обґрунтуванням на кожному: `App.tsx` (Telegram-SDK read on mount; cache-serve on mount/slug), `ServiceNotes`/`ServiceRequestsPage` (guard-и `setLoading(false)` без Supabase/user), `DashboardPage` (`setLoading(true)` перед рефетчем), `DatePickerField` (дзеркало `value`-prop). Правило лишається error для нового коду.
+- **`react-hooks/refs` (1, тест-мок TemplateEditorPanel)** — `eslint-disable-next-line`: мок форвардить ref у textarea + віддає imperative handle (стандартний тест-патерн).
+**Files:** `src/components/form/fields/dateInput.ts` (new) · `src/components/form/fields/DatePickerField.tsx` · `src/components/form/fields/__tests__/DatePickerField.test.ts` (import) · `src/App.tsx` · `src/admin/components/ServiceNotes.tsx` · `src/admin/pages/{DashboardPage,ServiceRequestsPage}.tsx` · `src/admin/components/__tests__/TemplateEditorPanel.test.tsx`
+**Next:** merge у main (Vercel-деплой; лише лінт-гігієна, поведінка не змінена) — за «змерж» Сергія.
+
 ### 2026-07-05 (session 76) — #90 задеплоєно в живий n8n + верифіковано наскрізь (happy `true` + blocked `false`) → MERGE у main (Closes #90)
 **Status:** гілка `feat/delivered-to-bot-signal` **ЗМЕРЖЕНО в main і ЗАПУШЕНО** (Closes #90). Деплой `preview-pay` у живий n8n (нода `Finalize Delivery` додана, 0 нод затерто, ключі Global Config відновлено, workflow active). **Обидві гілки delivered_to_bot верифіковано на живому n8n.**
 **Why:** Хвіст #90 із session-summary «НАСТУПНА СЕСІЯ 76»: (1) деплой у прод n8n (блокований класифікатором — Сергій дав явне «да»), (2) обовʼязковий живий прогін провалу доставки, бо форму фейлу `Send PDF` статично не пінингували.

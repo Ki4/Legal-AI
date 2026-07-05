@@ -8,6 +8,13 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
+**🟢 SESSION 77 (2026-07-05) — Fast-follow #90 (задеплоєно) + чистка Supabase + eslint-гігієна + матеріали до Олі. Усе код ЗМЕРЖЕНО+ЗАПУШЕНО в main.**
+- **Fast-follow #90 (гілка `fix/90-fast-follow` → merged + n8n ЗАДЕПЛОЄНО):** (a) `Notify User` у form-submit → `onError=continueRegularOutput` (заблокований бот більше не роняє генерацію); деплой `deploy-workflow.mjs form-submit` (52=52 ноди, креди×20 збережено) + **API-звірка живого WF: `Notify User.onError` присутній, `active:true`**. (b) fallback-копія paid-екрану «натисніть Почати» → «**переконайтесь, що бота не заблоковано**, і натисніть Почати». (c) `delivery_error` enum — відкладено (Tier-2). PreviewPage 8✅ · workflow-тести 25✅. **Живий 403-прогін (реальний блок бота через TWA) — опційно за Сергієм (config-рівень підтверджено).**
+- **Чистка Supabase (за явним «да»):** 3 тест-кейси (`a98495f5`,`1f491bc5`,`0bfa096c` — усі `service_id=1`, paid, ОДИН OWNER-профіль `60e7666d`) видалено (Storage DELETE PDF + SQL DELETE cases). Лишилось **4 cases** (було 7), 0 leftover.
+- **Eslint (гілка `fix/eslint-react-hooks` → merged):** 9 pre-existing помилок (react-hooks плагін-дрейф) усунено. `only-export-components`→винесено date-хелпери в новий `dateInput.ts`; `set-state-in-effect`×6 + `refs`×1 → justified `eslint-disable-next-line`. **`eslint .`=0**, UI **555✅**.
+- **Матеріали до Олі (гілка `docs/olga-demo-2026-07-06` → merged, лише docs):** демо-сценарій (5 актів) + **системна карта «поетапно + що за що відповідає»** (схвалено Сергієм — основа його презентації) + NotebookLM-snapshot `05_Current_State`. Слайд-дек (Artifact `3832782a-…`) — ⚠️ **Сергію не сподобався, переробляє сам**. Заземлено на живій БД (Explore-агент): 2 live template-послуги, оплата-заглушка, hybrid/RAG built-not-live, медвертикаль=гіпотеза під GDPR+sign-off.
+- **🪤 Гочас:** у Bash-тулі (POSIX sh) НЕ використовувати PowerShell here-string `@'...'@` для `git commit -m` — інжектить літеральний `@` у subject; heredoc `git commit -F - <<'EOF'`.
+
 **🟢 SESSION 76 (2026-07-05) — #90 ЗАДЕПЛОЄНО в живий n8n + ВЕРИФІКОВАНО НАСКРІЗЬ → ЗМЕРЖЕНО в main (Closes #90). Обидві гілки delivered_to_bot доведено на живому n8n.**
 - **Деплой:** `deploy-workflow.mjs preview-pay` — нода `Finalize Delivery` додана (0 нод затерто), ключі Global Config відновлено, workflow active. Живий WF звірено через API: 2 respondToWebhook (opt-in-гейт цілий), обидві гілки → Finalize → єдиний Respond OK.
 - **Живий HAPPY (opt-in зі стартом):** `delivered_to_bot=true`; форма `Send PDF` = **flat** `{ok:true, result:{message_id}}`; реальний PDF у чат (підтверджено).
@@ -112,8 +119,8 @@
 - Preview-module (#83): наскрізний потік TWA→витяг→PreviewPage→оплата(заглушка)→signed URL (sessions 54-57).
 - **UX-пакет доставки TWA (#89, s74→ЗМЕРЖЕНО s75 `67623de`):** 2-карткова розвилка доставки + ErrorBoundary +
   delivery-aware стани + a11y. Vercel prod-деплой тригернувся (⚠️ не верифіковано вживу цієї сесії).
-- **⏳ #90 `delivered_to_bot` — ГОТОВО в гілці, НЕ в проді:** сервер знатиме факт доставки в чат; deploy у живий
-  n8n (`deploy-workflow.mjs preview-pay`) + живий 403-прогін лишаються за Сергієм (див. «НАСТУПНА СЕСІЯ»).
+- **✅ #90 `delivered_to_bot` — LIVE (s76 deploy preview-pay + s77 fast-follow):** сервер віддає факт доставки в чат;
+  form-submit `Notify User onError=continue` задеплоєно (s77). Заблокований бот не роняє генерацію.
 
 **📦 Теплі факти — для роботи з preview-flow:**
 - `cases.user_id` = **profile UUID** (НЕ telegram id!). Telegram id → profile через `identities.external_id`
@@ -127,12 +134,12 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (77):**
-1. **Fast-follow #90 (мікрогілка):** (a) `Notify User` у form-submit → `onError=continue` (заблокований юзер НЕ має валити генерацію — доведено вживу s76); (b) правка fallback-копії paid-екрану «натисніть Почати» → «переконайтесь, що бота не заблоковано» (реальна причина `false`=блок); (c) опційно `delivery_error` enum (`blocked`/`timeout`/`not_started`) для actionable-копії.
-2. **Чистка тест-кейсів у Supabase (s76):** `a98495f5`, `1f491bc5` (обидва paid, OWNER) + `0bfa096c` (smoke s67, тепер paid) — SQL DELETE під service-role + Storage API DELETE PDF. **Потребує явного «да» (delete прод-даних).**
-3. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA.
-4. Беклог: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D · «застаріло»-петля / медвертикаль з s64.
-**Модель:** fast-follow #90 + чистка — механічні (Sonnet/Fable ок); медвертикаль / `delivery_error` дизайн — Tier 2 (Opus+).
+**🔴 НАСТУПНА СЕСІЯ (78):**
+1. **Зустріч з Олею (пн 06.07 вечір) — провести:** прогін по `docs/strategy/2026-07-06-olga-demo-script.md` (5 актів); Сергій переробляє презентацію сам із `2026-07-06-system-map-staged.md`. **Зібрати від Олі:** медпозиції + складність (для медвертикалі) + sign-off «Список Олі».
+2. **Пост-Оля:** обробити її фідбек на живий документ (→ задачі/wording), її медсписок (→ шкала templatability 1–10), sign-off ст.175 ч.7 + каркас позову.
+3. **GDPR-дослідження медданих** — go/no-go по медвертикалі (hard-блокер #BLOCKER-5) ПЕРЕД будь-яким медкодом. + адмінці категорії послуг (#103).
+4. **Fast-follow #90 хвіст:** опційно `delivery_error` enum (Tier-2) + живий 403-прогін через TWA. Беклог: точковий фідбек A+B+C+D · діра оплати (найбільша MVP-діра).
+**Модель:** зустріч/фідбек — розмовне; медвертикаль-дизайн + GDPR + `delivery_error` = Tier 2 (Opus+).
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 

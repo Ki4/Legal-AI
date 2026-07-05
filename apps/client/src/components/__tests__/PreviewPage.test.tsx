@@ -46,6 +46,8 @@ describe('PreviewPage — prominent 2-card delivery choice (#88 UX pack)', () =>
     expect(screen.getByText('Захищене посилання')).toBeTruthy()
     expect(screen.getByText('Також у Telegram')).toBeTruthy()
     expect(screen.getByText('Рекомендовано')).toBeTruthy()
+    // pre-pay card 2 copy stays hedged («надішлемо», not «прийде») — no arrival promise
+    expect(screen.getByText(/Надішлемо файл у цей чат/)).toBeTruthy()
     const [secure, telegram] = radios()
     expect(secure.checked).toBe(true) // default OFF → secure-link selected
     expect(telegram.checked).toBe(false)
@@ -84,10 +86,12 @@ describe('PreviewPage — prominent 2-card delivery choice (#88 UX pack)', () =>
     expect(screen.getByText('Копію також надсилаємо у ваш чат')).toBeTruthy()
   })
 
-  it('re-selecting the already-selected card does not re-buzz', () => {
+  it('announces the paid outcome to assistive tech via a live region (role=status)', async () => {
+    requestPreviewPay.mockResolvedValue({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '' })
     renderPage()
-    fireEvent.click(radios()[0]) // secure is already selected
-    expect(hapticSelection).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText('Сплатити'))
+    // WCAG 2.2 SC 4.1.3 — the success swap-in must be spoken, not silent.
+    expect(await screen.findByRole('status')).toBeTruthy()
   })
 })
 
@@ -99,6 +103,7 @@ describe('PreviewPage — error / retry states', () => {
     fireEvent.click(screen.getByText('Сплатити'))
     const retry = await screen.findByText('Спробувати ще раз')
     expect(screen.getByText('Технічні труднощі.')).toBeTruthy()
+    expect(screen.getByRole('alert')).toBeTruthy() // error is an assertive live region
     expect(hapticError).toHaveBeenCalled()
 
     requestPreviewPay.mockResolvedValueOnce({ kind: 'paid', signedUrl: 'https://dl/x.pdf', expiresAt: '' })

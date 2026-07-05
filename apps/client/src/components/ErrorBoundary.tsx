@@ -57,6 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
         </p>
         <button
           type="button"
+          autoFocus
           onClick={this.handleReload}
           className="w-full max-w-xs py-3 rounded-btn bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all duration-200"
         >

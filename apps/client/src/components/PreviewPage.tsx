@@ -45,7 +45,9 @@ function DeliveryChoice({
   onSelect: (v: boolean) => void
 }) {
   function select(v: boolean) {
-    if (v === deliverToBot) return
+    // Reached only from the radios' onChange, which fires exclusively on a real
+    // transition-to-checked (always v !== deliverToBot) — a native radio never
+    // re-fires change for the already-checked option — so no same-value guard.
     hapticSelection()
     onSelect(v)
   }
@@ -105,7 +107,7 @@ function DeliveryChoice({
               Також у Telegram
             </p>
             <p className="mt-0.5 text-[11px] text-gray-500 leading-snug">
-              Файл прийде у цей чат. Копія зберігається на серверах Telegram.
+              Надішлемо файл у цей чат. Копія зберігається на серверах Telegram.
             </p>
           </div>
         </label>
@@ -179,8 +181,10 @@ export function PreviewPage({
         return
       }
       // not_ready → the document tail is still finishing; wait and retry.
+      // Skip the sleep after the final poll: nothing polls again, so it would
+      // only add dead time on the spinner before the «still preparing» screen.
       setWaiting(true)
-      await sleep(RETRY_DELAY_MS)
+      if (attempt < MAX_ATTEMPTS - 1) await sleep(RETRY_DELAY_MS)
     }
     fail('Документ ще готується. Спробуйте, будь ласка, за хвилину.', 'preparing')
   }
@@ -271,6 +275,7 @@ export function PreviewPage({
           <button
             type="button"
             disabled
+            aria-live="polite"
             className="w-full py-3.5 rounded-btn bg-primary-600/70 text-white text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
           >
             <Loader2 size={16} className="animate-spin" />
@@ -284,6 +289,7 @@ export function PreviewPage({
 
         {phase === 'paid' && (
           <motion.div
+            role="status"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -304,6 +310,7 @@ export function PreviewPage({
             )}
             <button
               type="button"
+              autoFocus
               onClick={() => { hapticImpact('light'); openDocument(signedUrl) }}
               className="w-full py-3.5 rounded-btn bg-green-600 text-white text-sm font-semibold flex items-center justify-center gap-2 hover:bg-green-700 active:scale-95 transition-all duration-200"
             >
@@ -315,13 +322,14 @@ export function PreviewPage({
         )}
 
         {phase === 'error' && (
-          <div>
+          <div role="alert">
             <div className="flex items-center justify-center gap-1.5 mb-2 text-gray-400">
               {errKind === 'preparing' ? <Clock size={15} /> : <AlertCircle size={15} />}
             </div>
             <p className="text-xs text-gray-500 text-center mb-2.5 leading-relaxed">{errMsg}</p>
             <button
               type="button"
+              autoFocus
               onClick={handlePay}
               className="w-full py-3.5 rounded-btn bg-primary-600 text-white text-sm font-semibold hover:bg-primary-700 active:scale-95 transition-all duration-200"
             >

@@ -8,6 +8,12 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
+**🟢 SESSION 78 (2026-07-05, remote/Fable) — Аудит roadmap/issues/IMPROVEMENTS → план медвертикалі + критика GDPR/мед-даних. Лише docs, гілка `claude/healthcare-service-package-i7xl5p` (запушено, НЕ змержено — Сергій ревʼюїть і мержить).**
+- **Зафіксовано план:** `docs/architecture/med-vertical-plan-2026-07.md` — задачі T1–T6 (GDPR-ресёрч → категорії → шкала шаблонності → M1 → блоки → review-картка юриста) + §3 = ТЗ ресёрчу медданих.
+- **Відкрито issues:** **#91** (🔴 BLOCKER-5: GDPR/мед-дані go/no-go, Tier 2) · **#92** (категорії послуг = IMPROVEMENTS #103 + per-category політика доставки) · **#93** (хвиля 1: шкала шаблонності списку Олі → M1, blocked by #91+#92+пн-зустріч).
+- **Ключове з критики GDPR:** «основне GDPR зроблено» (#16) НЕ покриває special-category (ст.7/9 ЗУ №2297-VI: повідомлення Омбудсмана + відповідальна особа + однозначна згода-артефакт `consents`); M1 проектувати БЕЗ діагнозів (мінімізація by design); мед хвиля 1 = template-only (нуль LLM на медданих) + доставка = захищене посилання (не чат); **#64 (видалення за запитом) стає блокуючим** до першого мед-клієнта; гео-скоуп (юзери в ЄС → GDPR ст.3(2) + DPIA) вирішити явно в #91.
+- **Аудит борду:** відкритий лише #24 (n8n секрети → чекає VPS, ок). Roadmap v1.2 актуальний: M1=P1, M5 понижено (НСЗУ контестує), ЕКОПФО=hand-off.
+
 **🟢 SESSION 77 (2026-07-05) — Fast-follow #90 (задеплоєно) + чистка Supabase + eslint-гігієна + матеріали до Олі. Усе код ЗМЕРЖЕНО+ЗАПУШЕНО в main.**
 - **Fast-follow #90 (гілка `fix/90-fast-follow` → merged + n8n ЗАДЕПЛОЄНО):** (a) `Notify User` у form-submit → `onError=continueRegularOutput` (заблокований бот більше не роняє генерацію); деплой `deploy-workflow.mjs form-submit` (52=52 ноди, креди×20 збережено) + **API-звірка живого WF: `Notify User.onError` присутній, `active:true`**. (b) fallback-копія paid-екрану «натисніть Почати» → «**переконайтесь, що бота не заблоковано**, і натисніть Почати». (c) `delivery_error` enum — відкладено (Tier-2). PreviewPage 8✅ · workflow-тести 25✅. **Живий 403-прогін (реальний блок бота через TWA) — опційно за Сергієм (config-рівень підтверджено).**
 - **Чистка Supabase (за явним «да»):** 3 тест-кейси (`a98495f5`,`1f491bc5`,`0bfa096c` — усі `service_id=1`, paid, ОДИН OWNER-профіль `60e7666d`) видалено (Storage DELETE PDF + SQL DELETE cases). Лишилось **4 cases** (було 7), 0 leftover.
@@ -29,77 +35,7 @@
 - **#90 adversarial-ревью (4 лінзи → верифікація, чистий прогін 12 агентів, 5 підтверджено, 0 блокерів, усі застосовані):** behavioral-тест Finalize (компілює jsCode + стаб `$`, а не string-match) · fallback «press Start» over-promise → future-enabling · amber/green 11px WCAG AA fail → -700 · застарілі доки «ok+message_id» → «ok===true».
 - **🪤 Гочас:** live-форма провалу Send PDF (`{ok:true,message_id}` flat чи під `.body`?) статично НЕ пінингована — код робастний за побудовою (ключ на `ok===true`), але живий 403-прогін ОБОВʼЯЗКОВИЙ до shipping.
 
-**🟢 SESSION 74 (2026-07-05) — UX-пакет TWA (план вихідних п.1): помітний opt-in доставки (2 картки) + ErrorBoundary + delivery-aware стани + a11y live-regions. Гілка `feat/twa-delivery-ux` (`8a821b3` фіча + `2bebcda` ревʼю-раунд 2), UI 550 ✅, tsc/eslint(changed)/build:client OK, live-verified (Playwright). ✅ ЗМЕРЖЕНО в s75 (`67623de`, Closes #89). Issue #89 ЗАКРИТО.**
-- **A. 2-карткова розвилка доставки** (`PreviewPage.tsx`, `DeliveryChoice`): «🔒 Захищене посилання» (signed URL 24год, приватність-first, вибрана дефолтно → `deliverToBot=false`) vs «📩 Також у Telegram» (→ true; GDPR-розкриття тепер ІНЛАЙН у картці, не в схованому tooltip). Нативні `sr-only` radio (fieldset/legend/`name="delivery"` = a11y+клавіатура) + React-driven візуал; дефолт OFF збережено. Форму obrав Сергій (AskUserQuestion).
-- **B2. ErrorBoundary (новий, `role="alert"`)** навколо `<App/>` у `main.tsx` — TWA не мав ЖОДНОГО → render-throw = білий екран; тепер ⚠️ + укр. текст + «Оновити» + сирий діагностичний рядок + haptic.
-- **B1/B3.** paid-екран показує «Копію також надсилаємо у ваш чат» лише при opt-in; помилки розділено `preparing`/`technical` + guard на порожній webhook.
-- **Adversarial-ревью (5 лінз → верифікація кожної; 3 підтверджено):** «надіслано» флагнули **3 незалежні лінзи** → змінено на present-continuous «надсилаємо» (клієнт НЕ може підтвердити, що Telegram sendDocument дійшов — 403 якщо юзер не /start; хибна доставка = дефект для court-ready). +тест wire-контракту `deliver_to_bot` (`requestPreviewPay` НЕ pure — робив fetch, був не покритий). +`ring-primary-500` (був неіснуючий `-300`). **Deferred (n8n):** серверний сигнал `delivered_to_bot` у paid → точний факт замість present-continuous.
-- **Ревʼю-раунд 2 (`2bebcda`) — ПОВНА верифікація** (на вимогу Сергія «як полагатися на часткову роботу?»): 1-й прогін втратив 6/18 verify по session-limit → перезапустив свіже ревью по вже-виправленому коду (13 агентів, **0 упалих**) + аудит 4 фіксів = усі CORRECT. 5 нових low/medium підтверджено й застосовано: a11y live-regions (`role=alert/status`+`aria-live`, WCAG 4.1.3 на грошовій дії) · `autoFocus` первинної дії між фазами · ДО-оплатна копія «прийде»→«Надішлемо» (узгоджено з хеджем) · зайвий фінальний sleep у retry · прибрано false-green тест + мертвий guard.
-- **🪤 Гочаси:** (1) session-limit тарифу вбиває workflow-verify-агентів → «N confirmed» ≠ повна картина; правильна реакція = ПЕРЕзапуск повного ревью (ліміт скидається ~1:30 Amsterdam), + `unverified`-список у workflow, + `journal.jsonl`. (2) verify-агент лишав осиротілий тест-файл — чистити перед комітом (git status). (3) Resume-from-cache НЕ годиться після правок коду — старі находки про неіснуючий код; треба свіже ревью по новому HEAD.
-
-**🟢 SESSION 73 (2026-07-04) — #88 ЗАКРИТО: п.2–6 + adversarial-ревью → MERGE у main (`e28a37d`, Closes #88), гілку `fix/admin-quick-wins` видалено. UI 534 ✅ (+14) · tsc/build:admin OK · live-verify повний · Vercel-деплой тригернувся.**
-- **П.2–6 (коміт `5595bae`):** /design під AdminGuard · мертвий чек-лист якості видалено · вкладку
-  «AI-промпт» сховано для template-driven режимів (предикат `templateDrivesGeneration`:
-  template|hybrid|null; факт: `services.ai_prompt` не читає ЖОДЕН живий workflow — лише архівний v5,
-  hybrid-промпти живуть у `n8n/prompts/`; для legacy js — чесний банер «промпт не впливає») +
-  `visibleTab`-fallback · Dashboard: збій завантаження = укр. помилка + «Спробувати ще раз» (raw
-  message дрібним моно для діагностики), НЕ фейкове «Ще немає послуг» · «Abstention rate» →
-  «Складні справи (AI передав юристу)».
-- **Adversarial-ревью диффа (workflow: 3 лінзи → верифікація кожної знахідки): 12 підтверджено,
-  1 відбито, усі виправлені ДО merge.** Головні: (1) blocker у свіжому ж тесті — Proxy-заглушка
-  сторінок = thenable (`get`-trap віддає функцію і на `then`) → async vi.mock-фабрика ніколи не
-  резолвиться → vitest deadlock на collection (саме тому висіли прогони; переписано на плоскі
-  `{[exportName]: stub}`); (2) регресія Dashboard: deps `[user]`→`[userId]` (supabase емить свіжий
-  об'єкт user на кожен TOKEN_REFRESHED ≈ щогодини → каталог колапсував би в skeleton) +
-  `cancelled`-guard проти stale-відповідей; (3) застарілий копірайт ×3 (empty-state Dashboard,
-  FormBuilder «ID поля…», lead AI-вкладки) — юриста більше не шлють у сховану вкладку.
-- **Live-verify :5174 (жива Supabase, divorce):** AI-вкладки нема (Форма/Шаблон/Опції) · чекбоксів 0 ·
-  dead-ref банер `{{missing_field_xyz}}` блокує публікацію (кнопка disabled) · confirm публікації з
-  коректною копією для active (скасовано — БД ціла) · «У чернетку» + тост · **симетричний гейт форми
-  вживу заблокував save** після видалення поля `registered_address` (точний тост; після reload 15/15
-  полів на місці, БД ціла) · консоль 0 помилок · драфт фінально 14939 байт-у-байт.
-- **🪤 Гочас сесії:** session-limit тарифу вбиває workflow-агентів посеред прогону — «0 знахідок» від
-  упалого ревью ≠ чистий дифф (дивитись `failures`/`agents_error` в результаті!); осиротілі
-  vitest-процеси вбитих агентів висять — чистити перед новим прогоном.
-
-**🟡 SESSION 72 (2026-07-04) — #88 п.1 publish-gate ГОТОВО (змержено в main у s73 разом із п.2–6) + 2 стратегічні рішення. UI 520 ✅ (+17) · tsc/build:admin OK.**
-- **Publish-gate проти структурних «________» (п.1 #88), коміт `7e4eaff`:** дизайн на Fable → adversarial
-  red-team (3 лінзи, 3 blocker-и) → **контракт форма↔шаблон має 4 ребра, загейчено всі**: (a) публікація —
-  `collectDeadRefs()` 4 класи (unmatched / missing-sources / unknown-ai-path / unknown-answers-path;
-  виняток `GRACEFUL_DEFAULTS` — гендери/n_children рендерять дефолт, не діру) + confirm зі статус-залежною
-  копією (для disabled не брешемо «клієнти одразу отримають»); (b) «Відновити» — dead-ref backstop у
-  `gateSnapshotAndSet` (був parse-only!) + нова кнопка «У чернетку»; (c) збереження форми — симетричний
-  гейт (блокує лише ВНЕСЕНІ dead refs, baseline `savedConfig`); (d) флип js→template поза UI —
-  GOTCHAS-правило + IMPROVEMENTS **#104** (render-time hard-fail) / **#105** (lint опціональних полів).
-  Плюс: атомарний **«Зберегти і опублікувати»** при formDirty (ordering-діра закрита конструкцією, не
-  попередженням) · **formDirty ≠ draftDirty** (кейстрок шаблону ≠ «незбережені зміни») · **parity-тест
-  дзеркало↔рушій** (`buildContext({},{})` === `providedContextKeys()`, 15/15 — дрейф валить CI, не юриста).
-  Політика (red-teamed v2): `.claude/reports/2026-07-04-publish-gate-policy.md`.
-- **Рішення (DECISIONS.md): похідний реєстр змінних; збережуваний ВІДХИЛЕНО.** Correct-by-construction =
-  дисципліна поверх view (палітра вже обчислює union form_config + PROVIDED_CONTEXT); окрема таблиця =
-  другий источник істини про «поле існує» → drift-клас поверхом вище. Траєкторія без роботи двічі:
-  (1) гейти v2 ✅ → (2) registry-дисципліна (inline-підсвітка невідомих змінних у CM тим самим предикатом +
-  reference-guard/guided-rename у FormBuilder) → (3) preflight-панель (#10 vision) ПЕРЕД заливом
-  медвертикалі (**майбутнє = медицина**: M1–M11 ≈ 9 простих template-послуг; вікно = #BLOCKER-5 GDPR +
-  sign-off Олі M1–M18; M8–M18 = hand-off юристу, підтверджує стратегію ескалації).
-- **Fable-window аналіз** (`2026-07-04-fable-window-tasks.md`, 8 аналітиків): слам-данків нема — усе
-  reasoning-важке або вже заспечено (GraphRAG-онтологія в `GRAPHRAG-GUIDE.md`!), або gated на Олю/інфру.
-  Вибір Сергія = publish-gate через Fable — зроблено цієї ж сесії.
-- **Плани вихідних** (`2026-07-04-weekend-plan-to-monday.md`): зустріч з Олею **пн 06.07 вечір** (покаже
-  «що є + плани», дедлайн НЕ жорсткий — рішення Сергія); п.1 плану (шов generation_mode) закрито ще в s71.
-- **⚠️ Знахідка:** 8 eslint-помилок **pre-existing на main** (дрейф react-hooks плагіна після s71;
-  `git diff main` тих рядків порожній; `npm run lint` = ті самі 8) — кандидат окремої мікрогілки.
-
-**🟢 SESSION 71 (2026-07-04) — FIX: створення нової послуги в адмінці було ПОВНІСТЮ зламане (2 баги) → ЗМЕРЖЕНО в main і ЗАПУШЕНО (merge `e5ff0b5`), гілку `fix/new-service-generation-mode` видалено. tsc/eslint clean.**
-- **Баг #1 — `services.id` sequence відставав від MAX(id):** таблиця старша за `migrations/` (serial через дашборд); рядки 1-5 сіялися з явними id без руху owned-послідовності → `nextval` усередині зайнятого діапазону → КОЖЕН `INSERT` без id (admin «Нова послуга») падав `duplicate key services_pkey`. Юрист не міг створити ЖОДНОЇ послуги. Фікс: **міграція 032** `setval` до MAX(id) (недеструктивно) — **застосована на живій БД** (Сергій, SQL editor «Success»).
-- **Баг #2 — DB-дефолт `generation_mode='js'`** (міграція 014): нова послуга роутилась би в legacy js-білдер n8n (нема хардкод-функції) і кидала помилку. Фікс: `ServiceEditPage.handleSave` insert-гілка → `generation_mode:'template'` (тільки insert; update не чіпає 'hybrid'/'js').
-- **Live verify через REST** (той самий PostgREST-ендпоінт, що й браузерний `supabase.from('services').insert`): після міграції `INSERT` без id авто-присвоює id + `generation_mode='template'` персиститься; `status`-CHECK = `active|needs_review|disabled`; усі тест-рядки видалено (`DELETE 204`), БД чиста (наступний реальний id=9, розриви нешкідливі).
-- **✅ Замкнута петля доведена через РЕАЛЬНИЙ admin UI (:5174):** MCP-таб успадкував живу Supabase-сесію Сергія (login не потрібен) → «Нова послуга» → title+slug → «Зберегти» (справжній React `handleSave`) → редирект `/services` + **нова строка id=9** у БД з `generation_mode='template'` (не дефолт `js`), `lawyer_id`=UUID Сергія, без duplicate-key. React-обвʼязка (єдине, що лишалось непокритим) — доведена. Тест-строку + 2 smoke-cases (a8416d68/260cd583) + їх PDF у Storage прибрано (services назад до 5).
-- **Регресія n8n:** обидва live-smoke (scenario 1 divorce, scenario 2 children+alimony) → 200, витяг без дір. Unit-сюїта scripts+n8n **1145 ✅**.
-- **🧹 Хвіст:** 2 стратегічні звіти в `.claude/reports/` (mvp-synthesis + transition-roadmap) закомічено окремо.
-- **🪤 Гочас підтверджено знову:** IDE (WebStorm) перемкнув гілку на `main` посеред роботи — staged-файли поповзли на main; врятувало `git branch --show-current` перед комітом (звіряти ЗАВЖДИ).
-
-**🟢 SESSIONS 64–70 — перенесено в `archive/session-log-2026-H1.md`** (s64: #86 — 16 дір «________» у
+**🟢 SESSIONS 64–74 — перенесено в `archive/session-log-2026-H1.md`** (s71: фікс створення послуги + міграція 032; s72: publish-gate; s73: #88 закрито; s74: UX-пакет доставки #89; s64: #86 — 16 дір «________» у
 проді, дата-фікс + `upload-form-config.mjs`; s66: template-editor конвеєр #51; s67: S2 слайси A+B,
 методика клік-тестів `reference_browser_automation_cm`; s68: слайс C; s70: слайс D — фокус-режим +
 іконкова рейка, #87). Живі хвости з них — у «Списку Олі» та «ПОРЯДКУ СЕСІЙ» нижче.
@@ -134,12 +70,13 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (78):**
-1. **Зустріч з Олею (пн 06.07 вечір) — провести:** прогін по `docs/strategy/2026-07-06-olga-demo-script.md` (5 актів); Сергій переробляє презентацію сам із `2026-07-06-system-map-staged.md`. **Зібрати від Олі:** медпозиції + складність (для медвертикалі) + sign-off «Список Олі».
-2. **Пост-Оля:** обробити її фідбек на живий документ (→ задачі/wording), її медсписок (→ шкала templatability 1–10), sign-off ст.175 ч.7 + каркас позову.
-3. **GDPR-дослідження медданих** — go/no-go по медвертикалі (hard-блокер #BLOCKER-5) ПЕРЕД будь-яким медкодом. + адмінці категорії послуг (#103).
-4. **Fast-follow #90 хвіст:** опційно `delivery_error` enum (Tier-2) + живий 403-прогін через TWA. Беклог: точковий фідбек A+B+C+D · діра оплати (найбільша MVP-діра).
-**Модель:** зустріч/фідбек — розмовне; медвертикаль-дизайн + GDPR + `delivery_error` = Tier 2 (Opus+).
+**🔴 НАСТУПНА СЕСІЯ (79) — інструкції для Opus (детально, писав Fable s78):**
+0. **Спершу:** прочитати `docs/architecture/med-vertical-plan-2026-07.md` ЦІЛКОМ (план T1–T6 + §3 = ТЗ) — це головний контекст сесії. Гілка s78 `claude/healthcare-service-package-i7xl5p` — якщо ще не змержена, нагадати Сергію змержити (docs-only, безпечно).
+1. **Головна задача = issue #91 (BLOCKER-5, Tier 2): GDPR/мед-дані ресёрч → go/no-go.** Порядок G1→G5 в issue. Правила: (а) web-research з першоджерелами (закон №2297-VI ст.7/9/24, порядок Омбудсмана про «дані особливого ризику», статус проєкту 8153, GDPR ст.3(2)/9/35) — НЕ з памʼяті, кожне твердження з цитатою/лінком; (б) невідоме = «не знайшов», не вигадувати; (в) результат = doc у `docs/research/med-data-legal-requirements.md` + рішення go/no-go у `DECISIONS.md` + коментар в #91; (г) технічні наслідки звіряти з реальним стеком (Supabase-регіон перевірити ФАКТИЧНО, n8n execution-retention подивитись у конфігу, Groq DPA/retention — з їх актуальних terms).
+2. **Паралельно/після (Tier 1, можна Sonnet): issue #92** — категорії послуг (міграція 030 вже є, довести до UI адмінки + фільтр TWA + per-category політика доставки).
+3. **Після зустрічі з Олею (пн 06.07):** її медсписок → G1 issue #93 (шкала шаблонності 1–10); фідбек на живий документ → задачі/wording; sign-off «Список Олі» (пп.1–5 вище).
+4. **НЕ чіпати:** жодного мед-коду до go/no-go з #91; оплатна діра і `delivery_error` enum — окремі сесії.
+**Модель:** #91 = Opus/Tier 2 (легально-критичний ресёрч). #92 = Sonnet достатньо. Зустріч/фідбек — розмовне.
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 

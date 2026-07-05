@@ -142,6 +142,10 @@ export function PreviewPage({
   const [waiting, setWaiting] = useState(false)
   // GDPR opt-in: off by default. When on, preview-pay also sends the PDF to the chat.
   const [deliverToBot, setDeliverToBot] = useState(false)
+  // Server's HONEST delivery fact (distinct from the opt-in INTENT above), set from the
+  // paid response's delivered_to_bot. Drives whether the paid screen states «надіслано»
+  // (confirmed) or the «could not confirm — use the link» fallback.
+  const [deliveryConfirmed, setDeliveryConfirmed] = useState(false)
 
   const payUrl = derivePreviewPayUrl(
     import.meta.env.VITE_N8N_WEBHOOK_URL || '',
@@ -172,6 +176,7 @@ export function PreviewPage({
       const outcome = await requestPreviewPay(payUrl, { caseId, initData, deliverToBot })
       if (outcome.kind === 'paid') {
         setSignedUrl(outcome.signedUrl)
+        setDeliveryConfirmed(outcome.deliveredToBot)
         setPhase('paid')
         hapticSuccess()
         return
@@ -298,15 +303,32 @@ export function PreviewPage({
               <ShieldCheck size={16} />
               <span className="text-xs font-semibold">Оплачено — документ готовий</span>
             </div>
+            {/* Delivery outcome — only when the user opted into chat delivery. The
+                server's delivered_to_bot (#89 deferred) lets us state the FACT:
+                confirmed → «надіслано»; unconfirmed (403/never-Started/timeout/older
+                workflow) → an honest «could not confirm» + the actionable «press Start»
+                hint. Never asserts a delivery we can't confirm (court-ready product). */}
             {deliverToBot && (
-              <div className="flex items-center justify-center gap-1.5 mb-2.5 text-primary-600">
-                <Send size={14} />
-                {/* Present-continuous, not «надіслано»: the client only knows the
-                    opt-in was requested, never that Telegram sendDocument reached
-                    the user (a bot can't message someone who never pressed Start),
-                    so we don't assert a completed delivery we can't confirm. */}
-                <span className="text-[11px] font-medium">Копію також надсилаємо у ваш чат</span>
-              </div>
+              deliveryConfirmed ? (
+                <div className="flex items-center justify-center gap-1.5 mb-2.5 text-green-700">
+                  <Check size={14} strokeWidth={3} />
+                  <span className="text-[11px] font-medium">Копію надіслано у ваш чат</span>
+                </div>
+              ) : (
+                <div className="mb-2.5 text-center">
+                  <div className="flex items-center justify-center gap-1.5 text-amber-700">
+                    <AlertCircle size={14} />
+                    <span className="text-[11px] font-medium">Доставку копії в чат не підтверджено</span>
+                  </div>
+                  {/* Honest recovery: the document is available NOW via the button below;
+                      pressing Start does NOT re-send this already-paid document (main-bot
+                      treats /start as a greeting), it only lets the bot deliver copies
+                      NEXT time — so we frame it as future-enabling, not a re-send here. */}
+                  <p className="mt-1 text-[10px] text-gray-500 leading-snug px-2">
+                    Документ можна завантажити кнопкою нижче. Щоб копія приходила в чат наступного разу — відкрийте бота та натисніть «Почати».
+                  </p>
+                </div>
+              )
             )}
             <button
               type="button"

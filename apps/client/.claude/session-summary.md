@@ -8,7 +8,21 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
-**🟢 SESSION 74 (2026-07-05) — UX-пакет TWA (план вихідних п.1): помітний opt-in доставки (2 картки) + ErrorBoundary + delivery-aware стани + a11y live-regions. Гілка `feat/twa-delivery-ux` (`8a821b3` фіча + `2bebcda` ревʼю-раунд 2), UI 550 ✅, tsc/eslint(changed)/build:client OK, live-verified (Playwright). ⚠️ НЕ ЗМЕРЖЕНО — merge = prod-деплой payment/delivery-флоу, чекає явне «змерж» Сергія. Issue #89.**
+**🟢 SESSION 76 (2026-07-05) — #90 ЗАДЕПЛОЄНО в живий n8n + ВЕРИФІКОВАНО НАСКРІЗЬ → ЗМЕРЖЕНО в main (Closes #90). Обидві гілки delivered_to_bot доведено на живому n8n.**
+- **Деплой:** `deploy-workflow.mjs preview-pay` — нода `Finalize Delivery` додана (0 нод затерто), ключі Global Config відновлено, workflow active. Живий WF звірено через API: 2 respondToWebhook (opt-in-гейт цілий), обидві гілки → Finalize → єдиний Respond OK.
+- **Живий HAPPY (opt-in зі стартом):** `delivered_to_bot=true`; форма `Send PDF` = **flat** `{ok:true, result:{message_id}}`; реальний PDF у чат (підтверджено).
+- **Живий FAIL (opt-in при ЗАБЛОКОВАНОМУ боті):** `delivered_to_bot=false`, `signed_url` повернувся (док за лінком). **Запінено реальну 403-форму:** n8n віддає **`{error:{status:403, name:AxiosError}}`** — НЕ `{ok:false}`, НЕ під `.body`. `Finalize` дефолтить у `false` (ключ на `ok===true`). **Робастність за побудовою підтверджена емпірично.**
+- **🪤 Гочас закрито:** форму провалу `Send PDF` тепер запінено вживу (`{error:{…}}`), а не тільки «робастно за побудовою».
+- **Fast-follow (окремі мікрозадачі):** (1) `Notify User` у form-submit шле в бот ДО оплати без `onError=continue` → заблокований юзер валить генерацію; (2) копірайт #90 fallback «натисніть Почати» → точніше «переконайтесь, що бота не заблоковано» (реальна причина `false`=блок); (3) чистка тест-кейсів у Supabase.
+
+**🟢 SESSION 75 (2026-07-05) — #89 ЗМЕРЖЕНО в main (Vercel-деплой) + deferred #90: чесний серверний сигнал `delivered_to_bot`. Гілка `feat/delivered-to-bot-signal` (`12586a9` фіча + `a6969fe` ревʼю), UI 555 ✅, scripts+n8n 1146 ✅, tsc/eslint(changed) clean. ✅ ЗМЕРЖЕНО в s76 (Closes #90) — задеплоєно + верифіковано наскрізь.**
+- **#89 merge:** `feat/twa-delivery-ux` → main (`67623de`, Closes #89, гілку видалено), Vercel prod-деплой тригернувся, коментар у #89. UX-пакет TWA тепер live у проді.
+- **#90 знахідка (understand-workflow, 4 читачі + синтез, чистий прогін):** n8n **вже** робить `sendDocument` синхронно (Send PDF inline перед Respond OK), результат (`{ok:true}`/403) є в процесі, але **скидається** (Respond OK читає лише Build Response; Send PDF `onError=continue`). → правда доступна за НУЛЬ додаткової латентності, «зробити синхронним = +латентність» = хибна розвилка. Фікс локальний у preview-pay.
+- **#90 дизайн (обрав Сергій):** boolean `delivered_to_bot` + Start-aware honest fallback. **n8n:** нова Code-нода `Finalize Delivery` (між Send PDF→Respond OK) читає `$('Send PDF')` → ключ на `Telegram ok===true` (message_id НЕ вимагаємо; defensive `.body`-unwrap), honest-by-default. Обидві гілки `Send to bot?` сходяться → **єдиний** Respond OK (2 respondToWebhook, opt-in-гейт цілий). **Клієнт:** parse `delivered_to_bot` (missing→false, backward-compat), стейт `deliveryConfirmed` (окремий від intent `deliverToBot`), paid-копія `true`→«Копію надіслано у ваш чат» / `false`→«Доставку копії в чат не підтверджено» + хінт «Почати» (future-enabling, не re-send).
+- **#90 adversarial-ревью (4 лінзи → верифікація, чистий прогін 12 агентів, 5 підтверджено, 0 блокерів, усі застосовані):** behavioral-тест Finalize (компілює jsCode + стаб `$`, а не string-match) · fallback «press Start» over-promise → future-enabling · amber/green 11px WCAG AA fail → -700 · застарілі доки «ok+message_id» → «ok===true».
+- **🪤 Гочас:** live-форма провалу Send PDF (`{ok:true,message_id}` flat чи під `.body`?) статично НЕ пінингована — код робастний за побудовою (ключ на `ok===true`), але живий 403-прогін ОБОВʼЯЗКОВИЙ до shipping.
+
+**🟢 SESSION 74 (2026-07-05) — UX-пакет TWA (план вихідних п.1): помітний opt-in доставки (2 картки) + ErrorBoundary + delivery-aware стани + a11y live-regions. Гілка `feat/twa-delivery-ux` (`8a821b3` фіча + `2bebcda` ревʼю-раунд 2), UI 550 ✅, tsc/eslint(changed)/build:client OK, live-verified (Playwright). ✅ ЗМЕРЖЕНО в s75 (`67623de`, Closes #89). Issue #89 ЗАКРИТО.**
 - **A. 2-карткова розвилка доставки** (`PreviewPage.tsx`, `DeliveryChoice`): «🔒 Захищене посилання» (signed URL 24год, приватність-first, вибрана дефолтно → `deliverToBot=false`) vs «📩 Також у Telegram» (→ true; GDPR-розкриття тепер ІНЛАЙН у картці, не в схованому tooltip). Нативні `sr-only` radio (fieldset/legend/`name="delivery"` = a11y+клавіатура) + React-driven візуал; дефолт OFF збережено. Форму obrав Сергій (AskUserQuestion).
 - **B2. ErrorBoundary (новий, `role="alert"`)** навколо `<App/>` у `main.tsx` — TWA не мав ЖОДНОГО → render-throw = білий екран; тепер ⚠️ + укр. текст + «Оновити» + сирий діагностичний рядок + haptic.
 - **B1/B3.** paid-екран показує «Копію також надсилаємо у ваш чат» лише при opt-in; помилки розділено `preparing`/`technical` + guard на порожній webhook.
@@ -96,6 +110,10 @@
   rate-limit 20/24год. Склонення ПІБ = Groq + stem-guard. #67/#76 live.
 - **Агент «що змінилось» (law-change-impact)** — живий end-to-end (n8n `qTOIqllA4CQvBJs5`).
 - Preview-module (#83): наскрізний потік TWA→витяг→PreviewPage→оплата(заглушка)→signed URL (sessions 54-57).
+- **UX-пакет доставки TWA (#89, s74→ЗМЕРЖЕНО s75 `67623de`):** 2-карткова розвилка доставки + ErrorBoundary +
+  delivery-aware стани + a11y. Vercel prod-деплой тригернувся (⚠️ не верифіковано вживу цієї сесії).
+- **⏳ #90 `delivered_to_bot` — ГОТОВО в гілці, НЕ в проді:** сервер знатиме факт доставки в чат; deploy у живий
+  n8n (`deploy-workflow.mjs preview-pay`) + живий 403-прогін лишаються за Сергієм (див. «НАСТУПНА СЕСІЯ»).
 
 **📦 Теплі факти — для роботи з preview-flow:**
 - `cases.user_id` = **profile UUID** (НЕ telegram id!). Telegram id → profile через `identities.external_id`
@@ -109,13 +127,12 @@
 - **🪤 IDE перемикає гілку:** WebStorm робив `checkout main` посеред роботи. Звіряти
   `git branch --show-current` ПЕРЕД кожним комітом.
 
-**🔴 НАСТУПНА СЕСІЯ (75):**
-1. **Merge `feat/twa-delivery-ux` у main** (за «змерж» Сергія) → Closes #89, Vercel-деплой. UX-пакет TWA (план
-   вихідних п.1) готовий і чекає лише рішення (merge = prod-деплой payment/delivery-флоу, тому не автономно).
-2. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA (тепер з новим opt-in).
-3. Бонус: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D від Сергія · «застаріло»-петля /
-   медвертикаль з беклогу s64. **Deferred (#89):** серверний сигнал `delivered_to_bot` у paid-відповіді (n8n).
-**Модель:** merge+демо — легкі; серверний сигнал / медвертикаль — Tier 2 (Opus+).
+**🔴 НАСТУПНА СЕСІЯ (77):**
+1. **Fast-follow #90 (мікрогілка):** (a) `Notify User` у form-submit → `onError=continue` (заблокований юзер НЕ має валити генерацію — доведено вживу s76); (b) правка fallback-копії paid-екрану «натисніть Почати» → «переконайтесь, що бота не заблоковано» (реальна причина `false`=блок); (c) опційно `delivery_error` enum (`blocked`/`timeout`/`not_started`) для actionable-копії.
+2. **Чистка тест-кейсів у Supabase (s76):** `a98495f5`, `1f491bc5` (обидва paid, OWNER) + `0bfa096c` (smoke s67, тепер paid) — SQL DELETE під service-role + Storage API DELETE PDF. **Потребує явного «да» (delete прод-даних).**
+3. **Демо-тур для Олі** (зустріч пн 06.07 вечір): прогін «що є + плани» по живій адмінці/TWA.
+4. Беклог: 8 eslint pre-existing на main (окрема мікрогілка) · точковий фідбек A+B+C+D · «застаріло»-петля / медвертикаль з s64.
+**Модель:** fast-follow #90 + чистка — механічні (Sonnet/Fable ок); медвертикаль / `delivery_error` дизайн — Tier 2 (Opus+).
 
 **Модель:** з 02.07 Сергій переключив default на **Fable 5** (червневий мемо «Opus + ultra-code» закрито).
 

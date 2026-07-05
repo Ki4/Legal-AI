@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url'
 //      (never flip paid without a ready document — requirements §0/§5);
 //   6. every business rejection is a 4xx (Respond Error responseCode);
 //   7. bot delivery is opt-in (Send PDF gated on deliver_to_bot === true);
-//   8. idempotent re-mint: paid_at is written only on the first flip.
+//   8. idempotent re-mint: paid_at is written only on the first flip;
+//   9. honest delivered_to_bot: derived from the real Telegram send and echoed in the
+//      paid response (Finalize Delivery reads Send PDF; #89 deferred).
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(__dirname, '../../..')
 const wfPath = resolve(repoRoot, 'n8n/workflows/current/preview-pay.json')
@@ -104,6 +106,54 @@ describe('preview-pay workflow', () => {
     expect(node('Verify initData').parameters.jsCode).toContain('deliver_to_bot === true')
     // The IF gates on that flag.
     expect(node('Send to bot?').parameters.conditions.boolean[0].value1).toContain('_deliver')
+  })
+
+  it('reports an HONEST delivered_to_bot from the real Telegram send (#89 deferred)', () => {
+    // The paid response echoes delivered_to_bot so the client states the delivery FACT
+    // rather than a present-continuous guess.
+    expect(node('Respond OK').parameters.responseBody).toContain('delivered_to_bot')
+
+    // It is derived from the ACTUAL send result, NOT the opt-in flag. This is the
+    // honesty-critical logic, so EXECUTE it (don't string-match): compile the Code body
+    // and drive it with a stubbed n8n $(). Contract: keys on Telegram ok===true — a
+    // failed sendDocument never returns ok:true — with message_id NOT required (the live
+    // happy-path was observed as { ok:true, message_id }); robust to a .body nesting.
+    const finalize = node('Finalize Delivery')
+    expect(finalize).toBeTruthy()
+    expect(finalize.parameters.jsCode).toContain("$('Send PDF')") // reads the right node
+    const THROWS = Symbol('unexecuted')
+    const runFinalize = (sendPdfJson) => {
+      const fn = new Function('$', finalize.parameters.jsCode)
+      const $ =
+        sendPdfJson === THROWS
+          ? () => {
+              throw new Error('Referenced node "Send PDF" is unexecuted')
+            }
+          : () => ({ first: () => ({ json: sendPdfJson }) })
+      return fn($)[0].json._delivered_to_bot
+    }
+    // Confirmed send → true (bare {ok:true} and the real {ok:true,result:{message_id}}).
+    expect(runFinalize({ ok: true })).toBe(true)
+    expect(runFinalize({ ok: true, result: { message_id: 443 } })).toBe(true)
+    // n8n may nest the httpRequest body under .body — unwrap it.
+    expect(runFinalize({ body: { ok: true } })).toBe(true)
+    // Swallowed 403 (user never pressed Start) → false, never a false «надіслано».
+    expect(runFinalize({ ok: false, error_code: 403, description: "can't initiate conversation" })).toBe(false)
+    expect(runFinalize({ body: { ok: false } })).toBe(false)
+    // Opt-out branch: Send PDF never ran, $('Send PDF') throws → false (no confirmed send).
+    expect(runFinalize(THROWS)).toBe(false)
+    // Garbage / missing ok → conservative false (never claim an unconfirmed delivery).
+    expect(runFinalize({})).toBe(false)
+    expect(runFinalize({ ok: 'true' })).toBe(false)
+
+    // Both "Send to bot?" outputs converge on Finalize Delivery → Respond OK, so the
+    // opt-out path yields delivered_to_bot=false too (Send PDF never ran there), and the
+    // opt-in path still gates Download/Send PDF (honesty must not weaken the opt-in gate).
+    const branch = wf.connections['Send to bot?'].main
+    expect((branch[0] || []).map((c) => c.node)).toContain('Download PDF')
+    expect((branch[1] || []).map((c) => c.node)).toContain('Finalize Delivery')
+    expect((wf.connections['Send PDF'].main[0] || []).map((c) => c.node)).toContain('Finalize Delivery')
+    expect((wf.connections['Finalize Delivery'].main[0] || []).map((c) => c.node)).toContain('Respond OK')
   })
 
   it('is idempotent — paid_at written only on the first flip', () => {

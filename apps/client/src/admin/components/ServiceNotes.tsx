@@ -29,6 +29,7 @@ export function ServiceNotes({ serviceSlug, authorEmail }: { serviceSlug: string
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard when Supabase is unconfigured; ends the initial loading state
     if (!supabase) { setLoading(false); return }
     supabase
       .from('service_notes')

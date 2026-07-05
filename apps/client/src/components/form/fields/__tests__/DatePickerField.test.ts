@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { maskDateInput, parseDisplay } from '../DatePickerField'
+import { maskDateInput, parseDisplay } from '../dateInput'
 
 const MAX_YEAR = 2027 // fixed bound so tests don't drift with "today"
 

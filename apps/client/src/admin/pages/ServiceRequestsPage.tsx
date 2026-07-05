@@ -94,6 +94,7 @@ export function ServiceRequestsPage() {
   const fileInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- guard when Supabase/user is unavailable; ends the initial loading state
     if (!supabase || !user) { setLoading(false); return }
     supabase
       .from('service_requests')

@@ -72,6 +72,7 @@ export function DashboardPage() {
     // replacing a freshly rendered catalog).
     let cancelled = false
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset to the loading state before (re)fetching the catalog
     setLoading(true)
     setLoadError(null)
     supabase

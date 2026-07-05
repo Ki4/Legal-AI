@@ -113,13 +113,38 @@ describe('preview-pay workflow', () => {
     // rather than a present-continuous guess.
     expect(node('Respond OK').parameters.responseBody).toContain('delivered_to_bot')
 
-    // It is derived from the ACTUAL send result, NOT the opt-in flag: Finalize Delivery
-    // reads Send PDF and requires a positive success signal (ok === true + message_id).
+    // It is derived from the ACTUAL send result, NOT the opt-in flag. This is the
+    // honesty-critical logic, so EXECUTE it (don't string-match): compile the Code body
+    // and drive it with a stubbed n8n $(). Contract: keys on Telegram ok===true — a
+    // failed sendDocument never returns ok:true — with message_id NOT required (the live
+    // happy-path was observed as { ok:true, message_id }); robust to a .body nesting.
     const finalize = node('Finalize Delivery')
     expect(finalize).toBeTruthy()
-    expect(finalize.parameters.jsCode).toContain("$('Send PDF')")
-    expect(finalize.parameters.jsCode).toContain('ok === true')
-    expect(finalize.parameters.jsCode).toContain('message_id')
+    expect(finalize.parameters.jsCode).toContain("$('Send PDF')") // reads the right node
+    const THROWS = Symbol('unexecuted')
+    const runFinalize = (sendPdfJson) => {
+      const fn = new Function('$', finalize.parameters.jsCode)
+      const $ =
+        sendPdfJson === THROWS
+          ? () => {
+              throw new Error('Referenced node "Send PDF" is unexecuted')
+            }
+          : () => ({ first: () => ({ json: sendPdfJson }) })
+      return fn($)[0].json._delivered_to_bot
+    }
+    // Confirmed send → true (bare {ok:true} and the real {ok:true,result:{message_id}}).
+    expect(runFinalize({ ok: true })).toBe(true)
+    expect(runFinalize({ ok: true, result: { message_id: 443 } })).toBe(true)
+    // n8n may nest the httpRequest body under .body — unwrap it.
+    expect(runFinalize({ body: { ok: true } })).toBe(true)
+    // Swallowed 403 (user never pressed Start) → false, never a false «надіслано».
+    expect(runFinalize({ ok: false, error_code: 403, description: "can't initiate conversation" })).toBe(false)
+    expect(runFinalize({ body: { ok: false } })).toBe(false)
+    // Opt-out branch: Send PDF never ran, $('Send PDF') throws → false (no confirmed send).
+    expect(runFinalize(THROWS)).toBe(false)
+    // Garbage / missing ok → conservative false (never claim an unconfirmed delivery).
+    expect(runFinalize({})).toBe(false)
+    expect(runFinalize({ ok: 'true' })).toBe(false)
 
     // Both "Send to bot?" outputs converge on Finalize Delivery → Respond OK, so the
     // opt-out path yields delivered_to_bot=false too (Send PDF never ran there), and the

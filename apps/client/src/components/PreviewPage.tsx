@@ -310,18 +310,22 @@ export function PreviewPage({
                 hint. Never asserts a delivery we can't confirm (court-ready product). */}
             {deliverToBot && (
               deliveryConfirmed ? (
-                <div className="flex items-center justify-center gap-1.5 mb-2.5 text-green-600">
+                <div className="flex items-center justify-center gap-1.5 mb-2.5 text-green-700">
                   <Check size={14} strokeWidth={3} />
                   <span className="text-[11px] font-medium">Копію надіслано у ваш чат</span>
                 </div>
               ) : (
                 <div className="mb-2.5 text-center">
-                  <div className="flex items-center justify-center gap-1.5 text-amber-600">
+                  <div className="flex items-center justify-center gap-1.5 text-amber-700">
                     <AlertCircle size={14} />
                     <span className="text-[11px] font-medium">Доставку копії в чат не підтверджено</span>
                   </div>
+                  {/* Honest recovery: the document is available NOW via the button below;
+                      pressing Start does NOT re-send this already-paid document (main-bot
+                      treats /start as a greeting), it only lets the bot deliver copies
+                      NEXT time — so we frame it as future-enabling, not a re-send here. */}
                   <p className="mt-1 text-[10px] text-gray-500 leading-snug px-2">
-                    Документ доступний за кнопкою нижче. Щоб отримати копію і в чат — відкрийте бота та натисніть «Почати».
+                    Документ можна завантажити кнопкою нижче. Щоб копія приходила в чат наступного разу — відкрийте бота та натисніть «Почати».
                   </p>
                 </div>
               )

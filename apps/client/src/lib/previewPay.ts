@@ -20,8 +20,8 @@ export function derivePreviewPayUrl(formSubmitUrl: string, override?: string): s
 }
 
 export type PayOutcome =
-  // `deliveredToBot` is the server's HONEST delivery fact (#89 deferred): true only
-  // when the user opted in AND Telegram sendDocument was confirmed (ok + message_id);
+  // `deliveredToBot` is the server's HONEST delivery fact (#89/#90 deferred): true only
+  // when the user opted in AND Telegram sendDocument was confirmed (Telegram ok===true);
   // false on a swallowed 403 (never pressed Start) / timeout / opt-out / an older
   // workflow that omits the field. Read it as «could not confirm», never «not sent».
   | { kind: 'paid'; signedUrl: string; expiresAt: string; deliveredToBot: boolean }

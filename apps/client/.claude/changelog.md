@@ -10,6 +10,15 @@
 
 ---
 
+### 2026-07-07 (session 79) — ops + verification (no product/code change): Docker Desktop recovery + law-monitor CRON verified end-to-end
+**Status:** гілка `docs/session-79-ops` → merged в main. Лише session-log (без коду/деплою). n8n знову Up (:5678), закон-крон підтверджено штатним.
+**Why:** (1) Docker Desktop 4.41.2 не стартував → контейнер `n8n` здавався зниклим, треба відновити локальне середовище. (2) Алерт «Зміна закону виявлена» прийшов, поки ноут+ngrok були вимкнені ~33 год — Сергій просив ПІДТВЕРДИТИ фактами, що це штатний CRON, а не випадковість.
+**What (findings — no source code touched):**
+- **Docker:** корінь — сервіс `com.docker.build` падав (`exit status 1`, відомий баг Docker Desktop 4.41.2, фікс у 4.44) і ронив рушій. Дані цілі (`docker_data.vhdx` 6.24 GB). Data-safe recovery: повний kill усіх docker-процесів вкл. `com.docker.build` → рестарт → `docker start n8n`. НЕ тиснути «Reset to factory defaults».
+- **Law-monitor:** крон живе у GitHub Actions (`.github/workflows/law-monitor.yml`), не в n8n → спрацював при вимкненому ноуті. Run `28783188467` (schedule/success/6.07 09:55 UTC) задетектив Сімейний кодекс `2026-03-04→2026-05-25`; звірено НЕЗАЛЕЖНО з `law_change_log #8` (`detected_by=cron`) + `services.status=needs_review` для divorce/alimony. «Не раніше» = розклад був вимкнений до 29.06 (re-enable s52) + червневі прогони = ручні `--dry-run`.
+**Files:** `apps/client/.claude/session-summary.md`, `apps/client/.claude/changelog.md` (+ Claude memory `gotcha_docker_build_service_crash.md`, поза репо)
+**Next:** Оля ревʼю Сімейного кодексу (ред. 25.05.2026) в адмінці → реактивувати divorce/alimony. Опційно: апгрейд Docker ≥4.44 після бекапу vhdx.
+
 ### 2026-07-07 (session 78) — fix(admin): картки послуг — футер дій/іконок виходив за межі картки (#94)
 **Status:** гілка `fix/services-card-footer-overflow` (від `origin/main`) · tsc clean · HMR-live на :5174. Візуальний авто-скрін заблоковано (сторінка `/services` не досягає `document_idle` через відкритий Supabase/HMR-конект) — перевірка через HMR у живому вікні.
 **Why:** На «Мої послуги» у картці зі статусом `needs_review` футер = статус-пилюля + 2 кнопки дій (Підтвердити/Вимкнути) + 3 іконки. Ряд `flex items-center` **без `flex-wrap`**, а розпірка `flex-1` виштовхувала групу іконок за правий край картки (видно на скріні Сергія — іконки висять праворуч поза картками); пилюля стискалась і «Потребує ревʼю» ламалось на 2 рядки.

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 // Stable user reference — DashboardPage's fetch effect depends on [user]; a
@@ -11,6 +11,7 @@ const { USER, dbState } = vi.hoisted(() => {
     services: { data: [] as unknown[], error: null as { message: string } | null },
     cases: { data: null as unknown[] | null, error: null as { message: string } | null },
     servicesCalls: 0,
+    lastServicesUpdate: null as Record<string, unknown> | null,
   }
   return { USER, dbState }
 })
@@ -30,11 +31,12 @@ vi.mock('../../hooks/useAuth', () => ({
 vi.mock('../../../lib/supabase', () => {
   // Chainable thenable: every builder method returns itself; awaiting resolves
   // to the table's CURRENT dbState (so a retry can see different data).
-  function thenable(getResult: () => unknown) {
+  function thenable(getResult: () => unknown, onUpdate?: (payload: unknown) => void) {
     const b: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'order', 'not', 'gte', 'update', 'delete', 'single']) {
       b[m] = () => b
     }
+    if (onUpdate) b.update = (payload: unknown) => { onUpdate(payload); return b }
     b.then = (onFulfilled: (v: unknown) => unknown) =>
       Promise.resolve().then(() => onFulfilled(getResult()))
     return b
@@ -44,7 +46,10 @@ vi.mock('../../../lib/supabase', () => {
       from: (table: string) => {
         if (table === 'services') {
           dbState.servicesCalls += 1
-          return thenable(() => dbState.services)
+          return thenable(
+            () => dbState.services,
+            (payload) => { dbState.lastServicesUpdate = payload as Record<string, unknown> },
+          )
         }
         return thenable(() => dbState.cases)
       },
@@ -60,6 +65,7 @@ beforeEach(() => {
   dbState.services = { data: [], error: null }
   dbState.cases = { data: null, error: null }
   dbState.servicesCalls = 0
+  dbState.lastServicesUpdate = null
 })
 afterEach(cleanup)
 
@@ -116,6 +122,28 @@ describe('DashboardPage — load failure is an error, not an empty catalog (#88 
     renderPage()
     expect(await screen.findByText('Ще немає послуг')).toBeTruthy()
     expect(screen.queryByText('Не вдалося завантажити послуги')).toBeNull()
+  })
+})
+
+describe('DashboardPage — approving a needs_review service clears needs_law_review', () => {
+  // Regression: the UI flip wrote only { status, is_published } and left the
+  // needs_law_review flag stale, diverging from service-lifecycle.mjs which
+  // keeps it coherent (active → false). A lawyer approving via «Підтвердити»
+  // must fully resolve the pending-law-review state, not just the served status.
+  it('writes status=active AND needs_law_review=false on «Підтвердити»', async () => {
+    dbState.services = {
+      data: [{ ...SERVICE_ROW, status: 'needs_review', needs_law_review: true }],
+      error: null,
+    }
+    renderPage()
+    const confirmBtn = await screen.findByRole('button', { name: 'Підтвердити' })
+    fireEvent.click(confirmBtn)
+
+    await waitFor(() => expect(dbState.lastServicesUpdate).not.toBeNull())
+    expect(dbState.lastServicesUpdate).toMatchObject({
+      status: 'active',
+      needs_law_review: false,
+    })
   })
 })
 

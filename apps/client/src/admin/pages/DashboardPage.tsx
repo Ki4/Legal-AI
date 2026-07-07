@@ -137,9 +137,16 @@ export function DashboardPage() {
       if (!ok) return
     }
     // status is authoritative; keep deprecated is_published coherent (migration 012)
+    // and needs_law_review coherent with the transition (mirrors service-lifecycle.mjs:
+    // active/disabled clear the pending-law-review flag, needs_review sets it) — otherwise
+    // a lawyer approving via UI leaves the flag stale (the CLI path already reset it).
     await supabase
       .from('services')
-      .update({ status: next, is_published: isPublishedFor(next) })
+      .update({
+        status: next,
+        is_published: isPublishedFor(next),
+        needs_law_review: next === 'needs_review',
+      })
       .eq('id', svc.id)
     setServices((prev) => prev.map((s) => s.id === svc.id ? { ...s, status: next } : s))
   }

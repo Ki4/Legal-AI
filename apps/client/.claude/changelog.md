@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-07-07 (session 80) — Olga-meeting prep: GDPR brief (#91) + alimony reactivation + demo plan (parallel thread to 78/79)
+**Status:** session-log на гілці `docs/session-80-olga-prep` → merge в main. GDPR-бриф — окремо на `research/gdpr-med-brief` (`6044595`, merge deferred до пост-демо). Прод-TWA + БД верифіковано наживо.
+**Why:** Зустріч з Олею сьогодні 14:00. Сесія почалась як #92, але G1 виявився зробленим (у #85) → перенаправлено на GDPR-ресёрч (#91, BLOCKER-5) + підготовку демо. По ходу знайдено, що обидві живі послуги флипнуто в needs_review (CRON law-monitor 6.07 — те саме, що незалежно задокументувала s79) → потрібна реактивація для ACT 1.
+**What:**
+- **#92:** G1 (адмінка категорій) вже зроблено в #85 → тікнуто; G2/G3 відкладено до медвертикалі (коментар + зв'язок #93).
+- **GDPR-бриф (#91):** `docs/research/gdpr-med-data-brief-2026-07.md` — факти верифіковані (ст.7 2297-VI · Наказ Омбудсмана №1/02-14 · ст.39 Основ 2801-XII · проєкт 8153 · GDPR Art.3). Вердикт: **CONDITIONAL GO для M1** за 5 умов + 7 питань для Олі. Прогрес у #91. ⚠️ `med-vertical-plan-2026-07.md` (реф у #91/#92/#93) не існує.
+- **alimony→active:** крос-звірка — СК 4824-IX (ст.65, продаж майна) НЕ чіпає цитат alimony(141,150,180-184)/divorce(105,110,112,157). Сергій апрувнув alimony через адмінку; divorce лишено needs_review для ACT 3. Прод верифіковано: alimony рендерить форму (10 полів), пряма no-store звірка БД `nexkairsedqtczievxpa`.
+- **План демо:** `Desktop/Olga-meeting-plan-2026-07-07.md` (поза репо) — 5 актів + усі питання (B1–B4) + law-change історія + нюанси (real-Telegram submit, стейл-кеш).
+- **🪤 Гочаси:** (1) Chrome-MCP скрін/кліки/find/read_page блокуються `document_idle` під HMR/realtime websockets — лише JS-інʼєкція працює; (2) IDE знову перемкнув гілку посеред роботи.
+**Files:** `apps/client/.claude/session-summary.md`, `apps/client/.claude/changelog.md` (+ GDPR-бриф на окремій гілці; план демо на Desktop поза репо)
+**Next:** прогін плану презентації (нова сесія) · пост-Оля: 7 GDPR-відповідей→go/no-go DECISIONS.md, медсписок→шкала, sign-off→реактивувати divorce · merge `research/gdpr-med-brief`.
+
 ### 2026-07-07 (session 79) — ops + verification (no product/code change): Docker Desktop recovery + law-monitor CRON verified end-to-end
 **Status:** гілка `docs/session-79-ops` → merged в main. Лише session-log (без коду/деплою). n8n знову Up (:5678), закон-крон підтверджено штатним.
 **Why:** (1) Docker Desktop 4.41.2 не стартував → контейнер `n8n` здавався зниклим, треба відновити локальне середовище. (2) Алерт «Зміна закону виявлена» прийшов, поки ноут+ngrok були вимкнені ~33 год — Сергій просив ПІДТВЕРДИТИ фактами, що це штатний CRON, а не випадковість.

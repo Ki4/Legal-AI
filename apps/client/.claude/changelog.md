@@ -10,6 +10,15 @@
 
 ---
 
+### 2026-07-07 (session 80) — research + strategy (no product/code change): medical vertical sizing + tech-lead pitch deck
+**Status:** гілка `claude/excel-registry-analysis-plan-jx64xc` (docs/research + docs/strategy + scripts, НЕ merged у main). Дека live-верифікована в Chromium.
+**Why:** (1) Сергій дав вигрузку реєстру ліцензій МОЗ (130k рядків) — треба відсортувати придатних ФОП/ТОВ і оцінити ринок медвертикалі. (2) Техлід готовий підключитись, якщо ніша стояща, але його головне питання — «чи готові платити». Треба зібрати пітч, що чесно кладе це питання на стіл із планом валідації.
+**What:**
+- **Медвертикаль (`scripts/lr-registry/` + 2 research-доки + Excel):** детермінований пайплайн дедупу/типізації/сегментації реєстру. 45 315 активних ліцензіатів (звірка Опендатабот +3,1%), 37 613 ICP, 55% стоматологія; TAM≈74/SAM≈71 млн грн (📋 на допущеннях). Продуктова матриця 36 SKU з чек-листа МОЗ. Сирий xlsx у репо не комітиться (публічні дані). Фікс pandas-3.0 NaN-through-astype(str) → reconciliation сходиться точно (assert у скрипті).
+- **Пітч-дек (`docs/strategy/2026-07-07-techlead-pitch.{html,md}`):** клон каркаса olga-presentation.html, 10 слайдів, нарратив «рушій: сімейка → медицина». Слайд 7 чесно називає WTP відкритим (custdev 0/8–12, оплата=заглушка); слайд 8 — план валідації з go/no-go; слайд 9 — прохання до техліда (co-own WTP + payment-loop).
+**Files:** `scripts/lr-registry/*`, `docs/research/medical-license-market-analysis-2026.md`, `docs/research/medical-license-product-matrix-2026.md`, `docs/strategy/2026-07-07-techlead-pitch.html`, `docs/strategy/2026-07-07-techlead-pitch.md`, `apps/client/.claude/session-summary.md`, `apps/client/.claude/changelog.md`
+**Next:** запустити 8–12 CustDev через Олю (крок A валідації WTP); показати дек техліду; за go — лендинг + Telegram Payments + €300–500 smoke-тест.
+
 ### 2026-07-07 (session 79) — ops + verification (no product/code change): Docker Desktop recovery + law-monitor CRON verified end-to-end
 **Status:** гілка `docs/session-79-ops` → merged в main. Лише session-log (без коду/деплою). n8n знову Up (:5678), закон-крон підтверджено штатним.
 **Why:** (1) Docker Desktop 4.41.2 не стартував → контейнер `n8n` здавався зниклим, треба відновити локальне середовище. (2) Алерт «Зміна закону виявлена» прийшов, поки ноут+ngrok були вимкнені ~33 год — Сергій просив ПІДТВЕРДИТИ фактами, що це штатний CRON, а не випадковість.

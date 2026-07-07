@@ -52,9 +52,11 @@ export function ServiceCard(p: ServiceCardProps) {
         {p.price > 0 && <span>{p.price} ₴</span>}
       </div>
 
-      {/* footer: status pill + lifecycle actions + icon buttons */}
-      <div className="flex items-center gap-2 pt-4 border-t border-line">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12.5px] font-semibold ${meta.badge}`}>
+      {/* footer: status pill + lifecycle actions + icon buttons.
+          flex-wrap so a crowded row (e.g. needs_review = pill + 2 actions + 3 icons)
+          drops the icon group to a new line instead of overflowing the card edge. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-2 pt-4 border-t border-line">
+        <span className={`inline-flex flex-shrink-0 items-center gap-1.5 px-2.5 py-1 rounded-full text-[12.5px] font-semibold whitespace-nowrap ${meta.badge}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
           {meta.label}
         </span>
@@ -63,16 +65,14 @@ export function ServiceCard(p: ServiceCardProps) {
           <button
             key={a.to}
             onClick={() => p.onStatus(a.to)}
-            className={`px-2.5 py-1 rounded-lg text-[12.5px] font-medium transition-colors
+            className={`px-2.5 py-1 rounded-lg text-[12.5px] font-medium whitespace-nowrap flex-shrink-0 transition-colors
               ${a.variant === 'primary' ? 'bg-brand/10 text-brand hover:bg-brand/20' : 'text-inkSoft hover:bg-paperAlt'}`}
           >
             {a.label}
           </button>
         ))}
 
-        <div className="flex-1" />
-
-        <div className="flex items-center gap-1 text-inkMute">
+        <div className="flex items-center gap-1 text-inkMute ml-auto">
           <a href={p.formHref} target="_blank" rel="noreferrer" title="Переглянути форму"
              className="w-8 h-8 inline-flex items-center justify-center rounded-lg hover:bg-paperAlt hover:text-ink transition-colors">
             <Eye size={16} strokeWidth={1.7} />

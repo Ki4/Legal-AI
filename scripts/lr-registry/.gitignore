@@ -1,0 +1,6 @@
+# raw registry export (public data, re-downloadable, not versioned)
+*.xlsx
+# large derived lead list + run outputs
+output/
+venv/
+__pycache__/

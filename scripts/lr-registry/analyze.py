@@ -106,17 +106,32 @@ def main() -> None:
 
     df = load_rows(args.xlsx)
     recon["rows_total"] = len(df)
+
+    # Drop orphan rows: no name AND no ЄДРПОУ AND no decision -> a subject
+    # cannot be identified. These are branch fragments with no parent record
+    # in the export (~2.3k licence_ids, no named counterpart anywhere).
+    name_empty = df["name"].astype("string").fillna("").str.strip().eq("")
+    edr_empty = (df["edrpou"].astype("string").fillna("").str.strip("-")
+                 .str.strip().eq(""))
+    orphan = name_empty & edr_empty & df["decision"].isna()
+    recon["rows_dropped_orphan"] = int(orphan.sum())
+    df = df[~orphan].copy()
+    recon["rows_usable"] = len(df)
     recon["decision_records_total"] = int(df["licence_id"].nunique())
 
     # --- Subject key ---------------------------------------------------------
     df["name_norm"] = (
-        df["name"].astype(str)
+        df["name"].astype("string").fillna("")
         .str.replace(rf"\s*\({PARTIAL_MARKER}\)\s*", "", regex=True)
         .str.replace(r"\s+", " ", regex=True).str.strip()
     )
     df["name_upper"] = df["name_norm"].str.upper()
-    edr = df["edrpou"].astype(str).str.strip()
-    df["has_edrpou"] = edr.str.strip("-").str.strip().ne("") & edr.ne("None")
+    # NB: pandas 3.0 keeps NA through .astype(str); fillna("") first so that a
+    # genuinely empty ЄДРПОУ cell (natural persons, ~2.7k rows) is treated as
+    # "no code" (ФОП), not silently dropped via a NaN subject key.
+    edr = df["edrpou"].astype("string").fillna("").str.strip()
+    df["has_edrpou"] = (edr.str.strip("-").str.strip().ne("")
+                        & ~edr.str.lower().isin(["none", "nan"]))
     df["subject"] = np.where(df["has_edrpou"], "EDR::" + edr,
                              "FOP::" + df["name_upper"])
     recon["subjects_total"] = int(df["subject"].nunique())

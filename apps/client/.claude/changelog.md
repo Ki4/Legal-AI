@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-08 (session 81) — strategy (no product/code change): re-center pitch on Medical License Assistant (subscription)
+**Status:** гілка `claude/excel-registry-analysis-plan-jx64xc` (docs/strategy + market addendum, НЕ merged). Дека live-верифікована в Chromium.
+**Why:** Оля (профільний юрист) прислала готову концепцію продукту `Medical License Assistant` — підписковий B2B-комплаєнс-асистент для медліцензіатів — + поправку ринку (живих ~17,7 тис. через eHealth, а не 37,6 тис. з реєстру). Сергій вирішив перецентрувати пітч на MLA (headline) з монетизацією через підписку; семейне право = доказ, що рушій працює.
+**What:**
+- **Концепт-документ (`docs/strategy/2026-07-08-medical-license-assistant-concept.md`):** 10 розділів Олі розмічені Now/Next/Later (3 розділи — генератор/пацієнти/куточок — рушій закриває зараз); підписка 2–3 тис./міс + механізм щомісячних оновлень (реюз live law-monitor); ров (експертиза Олі + HITL); маппінг «що вже є → MLA»; чесний ринок 17,7к живих; план пілоту WTP на клініках Олі.
+- **Перецентрована дека (`docs/strategy/2026-07-08-techlead-pitch.{html,md}`):** 10 слайдів, MLA headline, підписка, економіка (📋 гіпотези), слайд 9 чесно про дірку (білінг/кабінет/платящих нема, GDPR-блокер). Клон каркаса olga-presentation.html.
+- **Аддендум ринку:** поправка 17,7к живих (eHealth) ↔ 37,6к реєстр на початку `medical-license-market-analysis-2026.md`; підписочна економіка замінює разову.
+**Files:** `docs/strategy/2026-07-08-medical-license-assistant-concept.md`, `docs/strategy/2026-07-08-techlead-pitch.{html,md}`, `docs/research/medical-license-market-analysis-2026.md`, `apps/client/.claude/session-summary.md`, `apps/client/.claude/changelog.md`
+**Next:** MVP MLA (розділи 2/3/9 + sign-off Олі + білінг підписки + кабінет) → пілот на клініках Олі; GDPR go/no-go по медданих.
+
 ### 2026-07-07 (session 80) — research + strategy (no product/code change): medical vertical sizing + tech-lead pitch deck
 **Status:** гілка `claude/excel-registry-analysis-plan-jx64xc` (docs/research + docs/strategy + scripts, НЕ merged у main). Дека live-верифікована в Chromium.
 **Why:** (1) Сергій дав вигрузку реєстру ліцензій МОЗ (130k рядків) — треба відсортувати придатних ФОП/ТОВ і оцінити ринок медвертикалі. (2) Техлід готовий підключитись, якщо ніша стояща, але його головне питання — «чи готові платити». Треба зібрати пітч, що чесно кладе це питання на стіл із планом валідації.

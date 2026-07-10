@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playbook вариаций — как это используется</title>
+<style>
+  :root{
+    --bg:#f7f6f2; --card:#fff; --text:#23221f; --muted:#6c6a63; --line:#e6e4dc;
+    --accent:#5b53c9; --accent-bg:#eeedfe; --accent-tx:#3c3489;
+    --ok:#3b6d11; --ok-bg:#eaf3de; --warn:#854f0b; --warn-bg:#faeeda; --no:#a32d2d; --no-bg:#fcebeb;
+    --code:#2c2c2a; --code-bg:#f1efe8;
+    --mono:ui-monospace,"Cascadia Code",Consolas,monospace; --sans:system-ui,"Segoe UI",Roboto,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#1a1a19; --card:#242423; --text:#e9e8e3; --muted:#a2a09a; --line:#37362f;
+    --accent:#afa9ec; --accent-bg:#2c2765; --accent-tx:#cecbf6;
+    --ok:#97c459; --ok-bg:#25370f; --warn:#ef9f27; --warn-bg:#3a2a0a; --no:#f09595; --no-bg:#3a1414;
+    --code:#e9e8e3; --code-bg:#2c2c2a;
+  }}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;font-size:16px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:40px 22px 72px}
+  h1{font-size:28px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em}
+  h2{font-size:20px;font-weight:600;margin:38px 0 14px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 26px}
+  p{margin:0 0 10px}
+  code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);color:var(--code);padding:1px 6px;border-radius:5px}
+  pre{font-family:var(--mono);font-size:13px;background:var(--code-bg);color:var(--code);padding:11px 13px;border-radius:9px;overflow-x:auto;margin:8px 0;line-height:1.5}
+  .tldr{background:var(--accent-bg);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin:0 0 26px;color:var(--accent-tx)}
+  .flow{font-family:var(--mono);font-size:12.5px;white-space:pre;overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin:0 0 14px;break-inside:avoid}
+  .chead{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .num{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--accent-bg);color:var(--accent-tx);align-items:center;justify-content:center;font-weight:600;font-size:14px;flex:none}
+  .ctitle{font-size:17px;font-weight:600}
+  .pill{font-size:11.5px;padding:2px 10px;border-radius:20px;font-weight:500;white-space:nowrap}
+  .pill.ok{background:var(--ok-bg);color:var(--ok)} .pill.warn{background:var(--warn-bg);color:var(--warn)} .pill.no{background:var(--no-bg);color:var(--no)}
+  .row{display:grid;grid-template-columns:130px 1fr;gap:4px 14px;font-size:14.5px;margin:3px 0}
+  .row .k{color:var(--muted);font-size:13px;padding-top:1px}
+  @media (max-width:620px){.row{grid-template-columns:1fr}.row .k{padding-top:8px}}
+  .warnbox{border-left:3px solid var(--no);background:var(--no-bg);border-radius:0 8px 8px 0;padding:8px 12px;margin:8px 0;font-size:14px;color:var(--text)}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
+  th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:500;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  ul,ol{margin:6px 0 12px;padding-left:22px} li{margin:4px 0}
+  .foot{color:var(--muted);font-size:13px;margin-top:36px;border-top:1px solid var(--line);padding-top:14px}
+  @media print{body{background:#fff}.card,.tldr,.flow{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Playbook вариаций документа</h1>
+  <p class="sub">Как реально используются 9 типов вариаций · стек: docx-источник + docxtpl + правила + форма · 10.07.2026</p>
+
+  <div class="tldr">
+    <b>Модель.</b> <code>.docx</code> — источник правды (вёрстка живёт в нём). Переменные и лёгкие условия — инлайн в docx (<code>docxtpl</code>). Тяжёлые правила/ветвления — в <code>variations.json</code>. Форма даёт сырые ответы → <code>buildContext</code> достраивает вычисляемое → docxtpl заполняет. Это гибрид <b>Contract Express</b> (разметка в Word) × <b>docassemble</b> (правила отдельно).
+  </div>
+
+  <div class="flow">Форма (сырые ответы) → buildContext (ПІБ, рід, дати, дроби) → docxtpl заповнює → .docx / PDF / HTML
+      │                    │                                          │
+ variations.json      computed layer                         вёрстка з самого docx
+ (правила «що коли»)                                          (відступи, стилі збережені)</div>
+
+  <h2>9 типов вариаций — детально</h2>
+
+  <div class="card">
+    <div class="chead"><span class="num">1</span><span class="ctitle">Подстановка</span><span class="pill ok">✓ у тебя есть</span></div>
+    <div class="row"><span class="k">Что</span><span>вставить значение в место</span></div>
+    <div class="row"><span class="k">Когда</span><span>ПІБ, адреса, сума, дата, номер</span></div>
+    <div class="row"><span class="k">Синтаксис</span><span><code>{{ plaintiff_name }}</code>, <code>{{ total_amount }} {{ currency }}</code></span></div>
+    <div class="row"><span class="k">Пример</span><span><code>Позивач: {{ plaintiff_name }}</code></span></div>
+    <div class="row"><span class="k">Хранить</span><span>прямо в docx</span></div>
+    <div class="row"><span class="k">Грабли</span><span>текст в Word бьётся на <i>runs</i> — при замене склеивай их; имя бывает во <b>втором</b> абзаце ячейки</span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">2</span><span class="ctitle">Условное включение</span><span class="pill ok">✓ у тебя есть</span></div>
+    <div class="row"><span class="k">Что</span><span>блок появляется, только если условие истинно</span></div>
+    <div class="row"><span class="k">Когда</span><span>email, фактична адреса, аванс, додатки «за наявності»</span></div>
+    <div class="row"><span class="k">Синтаксис</span><span><code>{% if plaintiff_email %}…{{ plaintiff_email }}{% endif %}</code></span></div>
+    <div class="row"><span class="k">Пример</span><span>блок аванса <code>{% if template_has_advance %}…{% endif %}</code></span></div>
+    <div class="row"><span class="k">Хранить</span><span>простое — инлайн в docx; сложное — правило в <code>variations.json</code>, в docx флаг</span></div>
+    <div class="row"><span class="k">Грабли</span><span>пустое поле рендерится пустотой (не падает), но останется «висячий» разделитель — оборачивай весь фрагмент с меткой</span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">3</span><span class="ctitle">Взаимоисключающие альтернативы</span><span class="pill ok">✓ у тебя есть</span></div>
+    <div class="row"><span class="k">Что</span><span>ровно один из N вариантов текста</span></div>
+    <div class="row"><span class="k">Когда</span><span>выбор по полю формы — <code>marital_status</code>, спосіб аліментів</span></div>
+    <div class="row"><span class="k">Синтаксис</span><span></span></div>
+    <pre>{% if marital_status == 'never_married' %}Від наших стосунків у нас{% else %}У шлюбі у нас{% endif %} народилася дитина…</pre>
+    <div class="row"><span class="k">Пример</span><span>ветка <code>alimony_type</code> (частка / тверда сума)</span></div>
+    <div class="row"><span class="k">Хранить</span><span>правило — <code>variations.json</code> (kind: variant), текст вариантов — в docx</span></div>
+    <div class="row"><span class="k">Грабли</span><span>порядок важен (первый истинный побеждает); всегда клади <code>{% else %}</code> как дефолт</span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">4</span><span class="ctitle">Повторение / циклы</span><span class="pill ok">✓ у тебя есть</span></div>
+    <div class="row"><span class="k">Что</span><span>динамическое число строк/абзацев по списку</span></div>
+    <div class="row"><span class="k">Когда</span><span>етапи робіт, кілька дітей, оснащення, перелік додатків</span></div>
+    <div class="row"><span class="k">Синтаксис</span><span>три строки-контроллера в таблице:</span></div>
+    <pre>рядок 1:  {%tr for s in stages %}
+рядок 2:  {{ s.num }} | {{ s.title }} | {{ s.deadline }}
+рядок 3:  {%tr endfor %}</pre>
+    <div class="warnbox"><b>⚠️ Главная грабля (проверено):</b> <code>{%tr%}</code> заменяет <b>всю строку</b>; жадный regex хватает последний тег → <b>нельзя</b> класть <code>for</code> и <code>endfor</code> в одну строку. Держи их в отдельных строках-контроллерах вокруг контентной.</div>
+    <div class="row"><span class="k">Связь</span><span>при N&gt;1 нужно согласование «дитина проживає» → «діти проживають» (см. #7)</span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">5</span><span class="ctitle">Вычисляемые / derived</span><span class="pill ok">✓ у тебя есть</span></div>
+    <div class="row"><span class="k">Что</span><span>значение НЕ вводится, а вычисляется из полей формы</span></div>
+    <div class="row"><span class="k">Когда</span><span>склейка ПІБ, дріб від кількості дітей, укр. дати, ініціали</span></div>
+    <div class="row"><span class="k">Синтаксис</span><span>не в docx, а в <code>buildContext</code> → готовый ключ, docx просто <code>{{ plaintiff_name }}</code></span></div>
+    <div class="row"><span class="k">Пример</span><span><code>alimony_context.py</code>: <code>plaintiff_name</code>, <code>marriage_verb</code>, <code>alimony_fraction</code></span></div>
+    <div class="row"><span class="k">Best practice</span><span><b>DRY:</b> повторяющееся условие → одна именованная derived-переменная, не копия теста в 10 местах <i>(LSC HotDocs)</i></span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">6</span><span class="ctitle">Кросс-ссылки и авто-нумерация</span><span class="pill no">✕ долг</span></div>
+    <div class="row"><span class="k">Что</span><span>ссылка на пункт/додаток, автонумерация</span></div>
+    <div class="row"><span class="k">Когда</span><span>«згідно п. 3.2», «Додаток № N», нумерация, что «едет» при скрытых блоках</span></div>
+    <div class="row"><span class="k">Как делать</span><span>нумерацию — <b>стилями Word</b> (нумерованный список), не руками; ссылки — Word REF-поля или derived-номер из <code>buildContext</code></span></div>
+    <div class="row"><span class="k">Статус</span><span>у тебя пока ручная нумерация — технический долг</span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">7</span><span class="ctitle">Граммсогласование: рід / число / падеж</span><span class="pill warn">⚠ частично · главный gap</span></div>
+    <div class="row"><span class="k">Что</span><span>правильная форма слова по роду/числу/падежу</span></div>
+    <div class="row"><span class="k">Когда</span><span>«уклав/уклала», «батько/мати», «дитина/діти», падежи ПІБ («Івановим Іваном»)</span></div>
+    <div class="row"><span class="k">Рід/число</span><span>как <b>именованная derived</b> (best practice HotDocs): <code>marriage_verb='уклала'</code>. В docx — <code>{{ marriage_verb }}</code></span></div>
+    <div class="warnbox"><b>Падежи — главный gap:</b> ни один open-source движок (docxtpl/Jinja) не умеет их нативно. Варианты: (а) AI-склонение с fallback в називний (ваш <code>ai.*</code> слой); (б) морфология <code>pymorphy3</code> как Jinja-фильтр; (в) заранее просить форму у клиента.</div>
+    <div class="row"><span class="k">Best practice</span><span>род/число — <b>явные именованные примитивы</b>, не инлайн-<code>{% if gender %}</code> в каждом предложении</span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">8</span><span class="ctitle">Clause library / переиспользуемые блоки</span><span class="pill warn">⚠ частично</span></div>
+    <div class="row"><span class="k">Что</span><span>библиотека готовых клауз, вставляемых по условию, общих между шаблонами</span></div>
+    <div class="row"><span class="k">Когда</span><span>типовые пункты (ЦПК ст.175 реквізити) — одинаковы в разных заявах</span></div>
+    <div class="row"><span class="k">Как делать</span><span>вынести блоки в отдельные <code>.docx</code>-фрагменты/реестр; вставка <code>{% include %}</code>-подобно или <code>INSERT IF</code> из <code>variations.json</code></span></div>
+    <div class="row"><span class="k">Best practice</span><span>клауза = мини-шаблон со своими переменными; вставка всегда / по условию / выбор юзером <i>(HotDocs)</i></span></div>
+    <div class="row"><span class="k">Статус</span><span>блоки внутри шаблона есть; общей библиотеки между услугами — нет</span></div>
+  </div>
+
+  <div class="card">
+    <div class="chead"><span class="num">9</span><span class="ctitle">Guided-interview ↔ разметка</span><span class="pill warn">⚠ частично</span></div>
+    <div class="row"><span class="k">Что</span><span>что и когда спрашивать (форма) и как связано с шаблоном</span></div>
+    <div class="row"><span class="k">Две школы</span><span><b>Contract Express:</b> опросник авто-генерится из разметки (один источник). <b>docassemble:</b> правила отдельно, движок сам решает что спросить.</span></div>
+    <div class="row"><span class="k">У тебя</span><span>форма и шаблон раздельно; связка намечена через <code>anatomy_from_form.py</code> + инвариант «zero unmatched». Цель — один источник: поле формы ↔ слот шаблона</span></div>
+  </div>
+
+  <h2>Где хранить правило</h2>
+  <div class="card" style="padding-top:6px">
+    <table>
+      <tr><th>Тип логики</th><th>Куда</th><th>Почему</th></tr>
+      <tr><td>Подстановка, простое <code>{% if поле %}</code></td><td><b>инлайн в docx</b></td><td>«на виду», просто</td></tr>
+      <tr><td>Вариант по одному полю</td><td>правило в <b>variations.json</b>, текст в docx</td><td>правило редактируемо, документ чистый</td></tr>
+      <tr><td>Сложное условие (много полей, И/ИЛИ)</td><td><b>variations.json</b></td><td>не мусорить docx нечитаемой логикой</td></tr>
+      <tr><td>Derived (склейка/рід/дроби)</td><td><b>buildContext</b></td><td>вычисление, не текст</td></tr>
+      <tr><td>Каскад (одно поле → много мест)</td><td><b>одна derived-переменная</b>, ссылка везде</td><td>DRY, single-point-of-change</td></tr>
+    </table>
+    <p style="margin:8px 0 0;font-size:14px"><b>Эвристика:</b> лёгкое и локальное → в docx; тяжёлое, повторяемое или межшаблонное → в отдельный слой.</p>
+  </div>
+
+  <h2>Тестирование шаблона</h2>
+  <div class="card">
+    <ol style="margin:0">
+      <li><b>Нет висячих тегов</b> после заповнення (<code>{{</code>/<code>{%</code>) — есть в <code>docpipe.lint</code></li>
+      <li><b>Обязательные поля</b> присутствуют (schema/anatomy) — есть</li>
+      <li><b>Каждая ветка рендерится</b> — прогон всех значений <code>marital_status</code>/<code>alimony_type</code> (как <code>demo_variations.py</code>)</li>
+      <li><b>Целостность вёрстки</b> — блок підпису не рвётся (<code>verify_signature.py</code>), відступи збережені</li>
+      <li><b>Golden/parity</b> — эталон на фикстуре, red не мёрджится</li>
+    </ol>
+  </div>
+
+  <h2>Чек-лист «как автору описать вариацию»</h2>
+  <div class="card">
+    <ol style="margin:0">
+      <li>Определи <b>тип</b> (1–9 выше).</li>
+      <li>Реши <b>где хранить</b> (docx / variations.json / buildContext).</li>
+      <li>Если derived — заведи <b>именованную переменную</b> (DRY).</li>
+      <li>Если род/число/падеж — <b>явный примитив</b>, не инлайн в каждом предложении.</li>
+      <li>Добавь <b>тест ветки</b> (прогон значений поля).</li>
+    </ol>
+  </div>
+
+  <p class="foot">Playbook вариаций · на основе глубокого исследования (HotDocs · Contract Express · docassemble · Word) + нашей реализации. Полное исследование с источниками — research_variations.md.</p>
+
+</div>
+</body>
+</html>

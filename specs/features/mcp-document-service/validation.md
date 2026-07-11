@@ -15,7 +15,7 @@ Issue: #96 · Требования: [requirements.md](requirements.md) · Пла
 | `registry.test.ts` — фильтры каталога (query), нейминг `-`→`_`, контракты list/validate, live re-fetch статуса побеждает startup-снапшот, сетевые сбои → internal_error | FR-2, FR-4 | ✅ 9 тестов |
 | `smoke.test.ts` — cwd-независимые пути | — | ✅ 2 теста |
 | `npm run typecheck` (tsc strict, NodeNext) | — | ✅ чисто |
-| CI job `mcp-server` зелёная | NFR-4 | ⏳ (T8) |
+| CI job `mcp-server` зелёная | NFR-4 | ✅ PR #97: mcp-server 17s + test 46s pass (run 29135843457) |
 
 **Итого: 76 тестов, 6 файлов — все зелёные, офлайн (без сети/секретов).**
 
@@ -41,7 +41,7 @@ Issue: #96 · Требования: [requirements.md](requirements.md) · Пла
 
 - [x] Автотесты + typecheck зелёные локально (76 тестов)
 - [x] Ручной stdio E2E задокументирован выше (все биты ✅, включая Groq-fallback)
-- [ ] CI зелёная (T8)
+- [x] CI зелёная (PR #97, обе джобы + Vercel-превью)
 - [ ] Живое демо у Сергея пройдено (новая сессия с .mcp.json)
 - [ ] Юр. контент скилов — на ревью Olga (блокер user-facing использования, НЕ блокер merge PoC)
 

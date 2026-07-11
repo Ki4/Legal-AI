@@ -8,7 +8,7 @@
 
 ## 📌 Стан зараз (оновлювати щосесії — це і є контекст, що читається на старті)
 
-**🟢 SESSION 82 (2026-07-10→11) — MCP document service PoC (#96): архітектура дяді реалізована й наскрізь верифікована. Гілка `feat/mcp-document-service`, PR відкрито, merge після живого демо.**
+**🟢 SESSION 82 (2026-07-10→11) — MCP document service PoC (#96): архітектура дяді реалізована, наскрізь верифікована, демо пройдено → PR #97 ЗМЕРЖЕНО в main (Closes #96). Follow-up: знахідки A/B з демо (див. нижче).**
 - **Що це:** дядя (вхідний Tech Lead) запропонував «LLM-інтервʼюер + детермінована фабрика»: MCP-сервер з tool-ом на документ, валідація кожного параметра («структурний 400» → LLM перепитує), скіли з деревом рішень. Розбір його меседжа + затверджений план = `specs/features/mcp-document-service/plan.md`. Виконано в цій же сесії (Fable-оркестратор + субагенти T3/T4/T5/skills).
 - **Що працює (доведено):** `apps/mcp-server` — 4 tools з живого каталогу Supabase (list_services · validate_params · generate_alimony_document · generate_divorce_document). **76 офлайн-тестів** зелені (байтовий render-parity з `render-document.js`, parity копій валідаторів проти клієнтських оригіналів, kill-switch, fail-closed чеклист). **Живий stdio-E2E ALL PASS** (`npx tsx e2e/stdio-e2e.mts`): битий ІПН → структурна помилка → self-correct; валідні SAMPLE_ANSWERS → чернетка з водяним знаком у `out/` (жива Groq-деклензія); divorce(needs_review) → відмова service_unavailable; прогін з битим GROQ-ключем → nominative fallback, генерація НЕ блокується.
 - **Скіли (драфт до sign-off Олі):** `.claude/skills/{legal-intake,alimony-claim,divorce-claim}` — юрконтент тільки з файлів репо; вже підхоплені харнесом. `.mcp.json` у корені підключає сервер до Claude Code.

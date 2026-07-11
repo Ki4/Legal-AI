@@ -10,6 +10,15 @@
 
 ---
 
+### 2026-07-11 (session 82) — docs: D7 демо-прогін mcp-document-service — знахідки A+B (feedback-only, код НЕ змінено)
+**Status:** гілка `feat/mcp-document-service`. Лише документ знахідок + session/changelog. Продуктовий код і шаблони не чіпав (за прямим проханням Сергія: «тільки фідбек, можна пушити»).
+**Why:** Прогнав живе D7-демо alimony (повний інтейк→generate) для приймання PoC. Каркас надійності спрацював, але порівняння з двома ранковими прогонами тих самих даних виявило 2 дефекти якості документа — задокументовано, фікси відкладено на окреме рішення.
+**What:**
+- **A (середній):** `alimony.document.txt` (:65,136,139) вставляє `defendant_birth_date` без `{{#if}}`-гарду → прочерк `________ року народження` на порожньому полі, у т.ч. в ПРОШУ СУД. Пропущений гард (решта опц-полів загарджені).
+- **B (високий):** AI-відмінювання ПІБ (Groq, `declension.ts` → `generate.ts:124`) недетерміноване; збій → тихий nominative fallback без маркера в `.txt`. `used_ai` глобальний, не per-field. Емпірично 1/3 реальних файлів впав. Загроза «byte-parity»+«court-ready».
+**Files:** `specs/features/mcp-document-service/DEMO-FINDINGS-2026-07-11.md` (новий) · `apps/client/.claude/session-summary.md` · `apps/client/.claude/changelog.md`
+**Next:** фікси A (шаблонний гард) + B (маркер фолбеку → локальний відмінювач) — коли Сергій вирішить; можливо в GOTCHAS/issue.
+
 ### 2026-07-10→11 (session 82) — feat: MCP document service PoC (`apps/mcp-server`) + продуктові скіли — архітектура дяді на живих послугах (#96)
 **Status:** гілка `feat/mcp-document-service`, план→реалізація в одній сесії (Fable, оркестрація субагентами: T3/T4/skills паралельно, T5 окремо). **76 тестів зелені** (parity/schema/validate/generate/registry) · tsc strict clean · **живий stdio-E2E ALL PASS** (включно з Groq-401→nominative fallback). PR відкрито; **merge після живого демо** в новій Claude Code сесії.
 **Why:** Дядя (вхідний Tech Lead) запропонував архітектуру «LLM-інтервʼюер + детермінована фабрика документів» (MCP tool на документ, валідація кожного параметра, скіли з деревом рішень). PoC доводить її на alimony/divorce БЕЗ переписування ядра: `render-document.js` перевикористано as-is, LLM не пише жодного слова юридичного тексту — тільки збирає параметри.

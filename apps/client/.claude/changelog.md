@@ -10,6 +10,18 @@
 
 ---
 
+### 2026-07-10→11 (session 82) — feat: MCP document service PoC (`apps/mcp-server`) + продуктові скіли — архітектура дяді на живих послугах (#96)
+**Status:** гілка `feat/mcp-document-service`, план→реалізація в одній сесії (Fable, оркестрація субагентами: T3/T4/skills паралельно, T5 окремо). **76 тестів зелені** (parity/schema/validate/generate/registry) · tsc strict clean · **живий stdio-E2E ALL PASS** (включно з Groq-401→nominative fallback). PR відкрито; **merge після живого демо** в новій Claude Code сесії.
+**Why:** Дядя (вхідний Tech Lead) запропонував архітектуру «LLM-інтервʼюер + детермінована фабрика документів» (MCP tool на документ, валідація кожного параметра, скіли з деревом рішень). PoC доводить її на alimony/divorce БЕЗ переписування ядра: `render-document.js` перевикористано as-is, LLM не пише жодного слова юридичного тексту — тільки збирає параметри.
+**What:**
+- **`apps/mcp-server`** (новий пакет: TS strict, MCP SDK 1.29, tsx, vitest): low-level `Server` (raw JSON Schema з form_config; SDK-валідацію свідомо обійдено — наш движок відповідає структурними українськими помилками → LLM перепитує користувача, «протокол 400»). Kill-switch: status re-fetch на КОЖЕН generate (флип в адмінці діє без рестарту; divorce=needs_review → структурна відмова). Чеклист fail-closed (текст не видається). Водяний знак «ЧЕРНЕТКА» зверху+знизу. Groq-деклензія ПІБ (промпт дослівно з n8n-ноди) з фолбеком у називний — генерація ніколи не блокується на AI.
+- **Конвертер form_config→JSON Schema** (8 типів; описи полів = label+hint+explanation+варіанти+формат+«Питати ЛИШЕ якщо: show_if») + **validate strict/partial** (дослівні копії клієнтських validators/conditions + parity-тести проти оригіналів; required-тільки-видимих, чексуми ІПН/IBAN, enum, unknown_field з typo-підказками).
+- **3 продуктові скіли** `.claude/skills/{legal-intake,alimony-claim,divorce-claim}` — юрконтент ТІЛЬКИ з файлів репо (templates/citations/checklists/hints), draft-банери до sign-off Олі; обовʼязкове зведення-підтвердження перед generate.
+- **`.mcp.json`** (корінь) + `e2e/stdio-e2e.mts` (повторюваний живий прогін) + CI-джоба `mcp-server` у test.yml.
+- **🪤 Знахідка:** `sampleAnswers.ts` містить ІПН з битою контрольною сумою (`defendant_tax_number`) — фонова задача заведена.
+**Files:** `apps/mcp-server/**` (новий) · `.claude/skills/{legal-intake,alimony-claim,divorce-claim}/SKILL.md` · `.mcp.json` · `scripts/lib/supabase-rest.d.mts` · `specs/features/mcp-document-service/{plan,requirements,validation}.md` · `.github/workflows/test.yml` · коміти be9d46c…(T0–T8, по чекпойнту на задачу)
+**Next:** нова сесія Claude Code (MCP підіймається на старті) → живе демо D7 = приймання → merge `Closes #96` · виправити sampleAnswers ІПН · T9 (веб-чат `apps/chat`) — окремим рішенням після sign-off демо.
+
 ### 2026-07-07 (session 80) — Olga-meeting prep: GDPR brief (#91) + alimony reactivation + demo plan (parallel thread to 78/79)
 **Status:** session-log на гілці `docs/session-80-olga-prep` → merge в main. GDPR-бриф — окремо на `research/gdpr-med-brief` (`6044595`, merge deferred до пост-демо). Прод-TWA + БД верифіковано наживо.
 **Why:** Зустріч з Олею сьогодні 14:00. Сесія почалась як #92, але G1 виявився зробленим (у #85) → перенаправлено на GDPR-ресёрч (#91, BLOCKER-5) + підготовку демо. По ходу знайдено, що обидві живі послуги флипнуто в needs_review (CRON law-monitor 6.07 — те саме, що незалежно задокументувала s79) → потрібна реактивація для ACT 1.

@@ -43,3 +43,25 @@ jobs:
         run: npm test
       - name: Root tests (scripts + n8n)
         run: npx vitest run --root ../.. scripts n8n
+
+  # MCP document server (apps/mcp-server) — own package, own lockfile. Tests are
+  # offline (no Supabase/Groq secrets); cross-folder imports from apps/client are
+  # relative/type-only, so no client npm ci is needed here.
+  mcp-server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mcp-server
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/mcp-server/package-lock.json
+      - name: Install deps
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Tests
+        run: npm test

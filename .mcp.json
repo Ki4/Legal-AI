@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "legal-docs": {
+      "command": "node",
+      "args": [
+        "apps/mcp-server/node_modules/tsx/dist/cli.mjs",
+        "apps/mcp-server/src/index.ts"
+      ]
+    }
+  }
+}

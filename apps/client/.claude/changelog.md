@@ -10,6 +10,39 @@
 
 ---
 
+### 2026-07-11 (session 82) — docs: D7 демо-прогін mcp-document-service — знахідки A+B (feedback-only, код НЕ змінено)
+**Status:** гілка `feat/mcp-document-service`. Лише документ знахідок + session/changelog. Продуктовий код і шаблони не чіпав (за прямим проханням Сергія: «тільки фідбек, можна пушити»).
+**Why:** Прогнав живе D7-демо alimony (повний інтейк→generate) для приймання PoC. Каркас надійності спрацював, але порівняння з двома ранковими прогонами тих самих даних виявило 2 дефекти якості документа — задокументовано, фікси відкладено на окреме рішення.
+**What:**
+- **A (середній):** `alimony.document.txt` (:65,136,139) вставляє `defendant_birth_date` без `{{#if}}`-гарду → прочерк `________ року народження` на порожньому полі, у т.ч. в ПРОШУ СУД. Пропущений гард (решта опц-полів загарджені).
+- **B (високий):** AI-відмінювання ПІБ (Groq, `declension.ts` → `generate.ts:124`) недетерміноване; збій → тихий nominative fallback без маркера в `.txt`. `used_ai` глобальний, не per-field. Емпірично 1/3 реальних файлів впав. Загроза «byte-parity»+«court-ready».
+**Files:** `specs/features/mcp-document-service/DEMO-FINDINGS-2026-07-11.md` (новий) · `apps/client/.claude/session-summary.md` · `apps/client/.claude/changelog.md`
+**Next:** фікси A (шаблонний гард) + B (маркер фолбеку → локальний відмінювач) — коли Сергій вирішить; можливо в GOTCHAS/issue.
+
+### 2026-07-10→11 (session 82) — feat: MCP document service PoC (`apps/mcp-server`) + продуктові скіли — архітектура дяді на живих послугах (#96)
+**Status:** гілка `feat/mcp-document-service`, план→реалізація в одній сесії (Fable, оркестрація субагентами: T3/T4/skills паралельно, T5 окремо). **76 тестів зелені** (parity/schema/validate/generate/registry) · tsc strict clean · **живий stdio-E2E ALL PASS** (включно з Groq-401→nominative fallback). PR відкрито; **merge після живого демо** в новій Claude Code сесії.
+**Why:** Дядя (вхідний Tech Lead) запропонував архітектуру «LLM-інтервʼюер + детермінована фабрика документів» (MCP tool на документ, валідація кожного параметра, скіли з деревом рішень). PoC доводить її на alimony/divorce БЕЗ переписування ядра: `render-document.js` перевикористано as-is, LLM не пише жодного слова юридичного тексту — тільки збирає параметри.
+**What:**
+- **`apps/mcp-server`** (новий пакет: TS strict, MCP SDK 1.29, tsx, vitest): low-level `Server` (raw JSON Schema з form_config; SDK-валідацію свідомо обійдено — наш движок відповідає структурними українськими помилками → LLM перепитує користувача, «протокол 400»). Kill-switch: status re-fetch на КОЖЕН generate (флип в адмінці діє без рестарту; divorce=needs_review → структурна відмова). Чеклист fail-closed (текст не видається). Водяний знак «ЧЕРНЕТКА» зверху+знизу. Groq-деклензія ПІБ (промпт дослівно з n8n-ноди) з фолбеком у називний — генерація ніколи не блокується на AI.
+- **Конвертер form_config→JSON Schema** (8 типів; описи полів = label+hint+explanation+варіанти+формат+«Питати ЛИШЕ якщо: show_if») + **validate strict/partial** (дослівні копії клієнтських validators/conditions + parity-тести проти оригіналів; required-тільки-видимих, чексуми ІПН/IBAN, enum, unknown_field з typo-підказками).
+- **3 продуктові скіли** `.claude/skills/{legal-intake,alimony-claim,divorce-claim}` — юрконтент ТІЛЬКИ з файлів репо (templates/citations/checklists/hints), draft-банери до sign-off Олі; обовʼязкове зведення-підтвердження перед generate.
+- **`.mcp.json`** (корінь) + `e2e/stdio-e2e.mts` (повторюваний живий прогін) + CI-джоба `mcp-server` у test.yml.
+- **🪤 Знахідка:** `sampleAnswers.ts` містить ІПН з битою контрольною сумою (`defendant_tax_number`) — фонова задача заведена.
+**Files:** `apps/mcp-server/**` (новий) · `.claude/skills/{legal-intake,alimony-claim,divorce-claim}/SKILL.md` · `.mcp.json` · `scripts/lib/supabase-rest.d.mts` · `specs/features/mcp-document-service/{plan,requirements,validation}.md` · `.github/workflows/test.yml` · коміти be9d46c…(T0–T8, по чекпойнту на задачу)
+**Next:** нова сесія Claude Code (MCP підіймається на старті) → живе демо D7 = приймання → merge `Closes #96` · виправити sampleAnswers ІПН · T9 (веб-чат `apps/chat`) — окремим рішенням після sign-off демо.
+
+### 2026-07-07 (session 80) — Olga-meeting prep: GDPR brief (#91) + alimony reactivation + demo plan (parallel thread to 78/79)
+**Status:** session-log на гілці `docs/session-80-olga-prep` → merge в main. GDPR-бриф — окремо на `research/gdpr-med-brief` (`6044595`, merge deferred до пост-демо). Прод-TWA + БД верифіковано наживо.
+**Why:** Зустріч з Олею сьогодні 14:00. Сесія почалась як #92, але G1 виявився зробленим (у #85) → перенаправлено на GDPR-ресёрч (#91, BLOCKER-5) + підготовку демо. По ходу знайдено, що обидві живі послуги флипнуто в needs_review (CRON law-monitor 6.07 — те саме, що незалежно задокументувала s79) → потрібна реактивація для ACT 1.
+**What:**
+- **#92:** G1 (адмінка категорій) вже зроблено в #85 → тікнуто; G2/G3 відкладено до медвертикалі (коментар + зв'язок #93).
+- **GDPR-бриф (#91):** `docs/research/gdpr-med-data-brief-2026-07.md` — факти верифіковані (ст.7 2297-VI · Наказ Омбудсмана №1/02-14 · ст.39 Основ 2801-XII · проєкт 8153 · GDPR Art.3). Вердикт: **CONDITIONAL GO для M1** за 5 умов + 7 питань для Олі. Прогрес у #91. ⚠️ `med-vertical-plan-2026-07.md` (реф у #91/#92/#93) не існує.
+- **alimony→active:** крос-звірка — СК 4824-IX (ст.65, продаж майна) НЕ чіпає цитат alimony(141,150,180-184)/divorce(105,110,112,157). Сергій апрувнув alimony через адмінку; divorce лишено needs_review для ACT 3. Прод верифіковано: alimony рендерить форму (10 полів), пряма no-store звірка БД `nexkairsedqtczievxpa`.
+- **План демо:** `Desktop/Olga-meeting-plan-2026-07-07.md` (поза репо) — 5 актів + усі питання (B1–B4) + law-change історія + нюанси (real-Telegram submit, стейл-кеш).
+- **🪤 Гочаси:** (1) Chrome-MCP скрін/кліки/find/read_page блокуються `document_idle` під HMR/realtime websockets — лише JS-інʼєкція працює; (2) IDE знову перемкнув гілку посеред роботи.
+**Files:** `apps/client/.claude/session-summary.md`, `apps/client/.claude/changelog.md` (+ GDPR-бриф на окремій гілці; план демо на Desktop поза репо)
+**Next:** прогін плану презентації (нова сесія) · пост-Оля: 7 GDPR-відповідей→go/no-go DECISIONS.md, медсписок→шкала, sign-off→реактивувати divorce · merge `research/gdpr-med-brief`.
+
 ### 2026-07-07 (session 79) — ops + verification (no product/code change): Docker Desktop recovery + law-monitor CRON verified end-to-end
 **Status:** гілка `docs/session-79-ops` → merged в main. Лише session-log (без коду/деплою). n8n знову Up (:5678), закон-крон підтверджено штатним.
 **Why:** (1) Docker Desktop 4.41.2 не стартував → контейнер `n8n` здавався зниклим, треба відновити локальне середовище. (2) Алерт «Зміна закону виявлена» прийшов, поки ноут+ngrok були вимкнені ~33 год — Сергій просив ПІДТВЕРДИТИ фактами, що це штатний CRON, а не випадковість.

@@ -1,0 +1,255 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`real alimony config (alimonyConfig) > full schema matches snapshot (MCP tool inputSchema contract) 1`] = `
+{
+  "additionalProperties": false,
+  "properties": {
+    "abandonment_date": {
+      "description": "З якої дати відповідач не утримує дитину. Вкажіть приблизну дату, з якої відповідач перестав надавати фінансову допомогу. Формат: YYYY-MM-DD (користувач зазвичай називає ДД.ММ.РРРР — переконвертуйте).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string",
+    },
+    "actual_address": {
+      "description": "Фактична адреса проживання. Питати ЛИШЕ якщо: same_actual_address != true.",
+      "type": "string",
+    },
+    "alimony_fixed_amount": {
+      "description": "Сума аліментів (грн/місяць). Вкажіть бажану суму. Не менше 50% прожиткового мінімуму для дитини. Питати ЛИШЕ якщо: alimony_type == "fixed".",
+      "type": "string",
+    },
+    "alimony_start_date": {
+      "description": "Дата подачі позову (з якої стягувати). Зазвичай — сьогоднішня дата. Аліменти стягуються починаючи з дати подачі позову. Формат: YYYY-MM-DD (користувач зазвичай називає ДД.ММ.РРРР — переконвертуйте).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string",
+    },
+    "alimony_type": {
+      "description": "Форма стягнення аліментів. % від доходу — автоматично розраховується судом. Фіксована сума — зручна якщо дохід відповідача нерегулярний або невідомий. Варіанти: percent — Частка від заробітку (1/4, 1/3 або 1/2); fixed — Тверда грошова сума (фіксована).",
+      "enum": [
+        "percent",
+        "fixed",
+      ],
+      "type": "string",
+    },
+    "birth_date": {
+      "description": "Дата народження. Формат: YYYY-MM-DD (користувач зазвичай називає ДД.ММ.РРРР — переконвертуйте).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string",
+    },
+    "children_details": {
+      "description": "Дані про дітей. Кожна дитина — окремий рядок. Формат: ПІБ, дата народження, свідоцтво № ... від ...",
+      "type": "string",
+    },
+    "defendant_actual_address": {
+      "description": "Фактична адреса проживання відповідача. Питати ЛИШЕ якщо: defendant_actual_address_known == "different".",
+      "type": "string",
+    },
+    "defendant_actual_address_known": {
+      "description": "Фактична адреса відповідача. Варіанти: same — Збігається з адресою реєстрації; different — Інша адреса; unknown — Невідома.",
+      "enum": [
+        "same",
+        "different",
+        "unknown",
+      ],
+      "type": "string",
+    },
+    "defendant_birth_date": {
+      "description": "Дата народження. Вкажіть якщо відома — потрібна для ПРОШУ у позові. Формат: YYYY-MM-DD (користувач зазвичай називає ДД.ММ.РРРР — переконвертуйте).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string",
+    },
+    "defendant_email": {
+      "description": "Email відповідача. Формат: name@example.com.",
+      "type": "string",
+    },
+    "defendant_employed": {
+      "description": "Чи працевлаштований відповідач? Варіанти: yes — Так, офіційно працевлаштований; no — Ні, не працевлаштований; unknown — Невідомо.",
+      "enum": [
+        "yes",
+        "no",
+        "unknown",
+      ],
+      "type": "string",
+    },
+    "defendant_employer": {
+      "description": "Місце роботи відповідача. Питати ЛИШЕ якщо: defendant_employed == "yes".",
+      "type": "string",
+    },
+    "defendant_first_name": {
+      "description": "Ім'я. Лише кирилиця, апостроф, дефіс — без латиниці та цифр.",
+      "type": "string",
+    },
+    "defendant_has_no_ipn": {
+      "description": "Відповідач відмовився від ІПН.",
+      "type": "boolean",
+    },
+    "defendant_last_name": {
+      "description": "Прізвище. Лише кирилиця, апостроф, дефіс — без латиниці та цифр.",
+      "type": "string",
+    },
+    "defendant_middle_name": {
+      "description": "По батькові. Лише кирилиця, апостроф, дефіс — без латиниці та цифр.",
+      "type": "string",
+    },
+    "defendant_official_email": {
+      "description": "Офіційна електронна адреса відповідача. Варіанти: absent — Відсутня; present — Наявна в ЄСІТС; unknown — Невідома.",
+      "enum": [
+        "absent",
+        "present",
+        "unknown",
+      ],
+      "type": "string",
+    },
+    "defendant_other_income": {
+      "description": "Інші джерела доходу відповідача. Необов'язково. Якщо відомі інші доходи — вкажіть для суду.",
+      "type": "string",
+    },
+    "defendant_passport_series": {
+      "description": "Серія та номер паспорта відповідача. Формат: АА123456 (книжечка) або 9 цифр (ID-картка). Питати ЛИШЕ якщо: defendant_has_no_ipn == true.",
+      "type": "string",
+    },
+    "defendant_phone": {
+      "description": "Телефон відповідача. Формат: +380XXXXXXXXX або 0XXXXXXXXX.",
+      "type": "string",
+    },
+    "defendant_position": {
+      "description": "Посада відповідача. Вкажіть у родовому відмінку: «менеджера», «бухгалтера», «директора». Питати ЛИШЕ якщо: defendant_employed == "yes".",
+      "type": "string",
+    },
+    "defendant_registered_address": {
+      "description": "Адреса реєстрації відповідача.",
+      "type": "string",
+    },
+    "defendant_salary": {
+      "description": "Приблизна зарплата відповідача (грн). Питати ЛИШЕ якщо: defendant_employed == "yes".",
+      "type": "string",
+    },
+    "defendant_tax_number": {
+      "description": "ІПН відповідача. Вкажіть якщо відомий. Формат: 10 цифр РНОКПП (перевіряється контрольна цифра). Питати ЛИШЕ якщо: defendant_has_no_ipn != true.",
+      "type": "string",
+    },
+    "divorce_case_number": {
+      "description": "Номер справи про розірвання. Питати ЛИШЕ якщо: marital_status == "divorced".",
+      "type": "string",
+    },
+    "divorce_court": {
+      "description": "Суд, який розірвав шлюб. Питати ЛИШЕ якщо: marital_status == "divorced".",
+      "type": "string",
+    },
+    "divorce_date": {
+      "description": "Дата розірвання шлюбу. Формат: YYYY-MM-DD (користувач зазвичай називає ДД.ММ.РРРР — переконвертуйте). Питати ЛИШЕ якщо: marital_status == "divorced".",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string",
+    },
+    "family_cert_date": {
+      "description": "Дата довідки про склад сім'ї. Довідка підтверджує, що дитина проживає з вами. Формат: YYYY-MM-DD (користувач зазвичай називає ДД.ММ.РРРР — переконвертуйте).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string",
+    },
+    "first_name": {
+      "description": "Ім'я. Лише кирилиця, апостроф, дефіс — без латиниці та цифр.",
+      "type": "string",
+    },
+    "has_no_ipn": {
+      "description": "Відмовився(-лась) від ІПН. Відмітьте, якщо ви маєте паспорт з відміткою про відмову від ІПН.",
+      "type": "boolean",
+    },
+    "last_name": {
+      "description": "Прізвище. Лише кирилиця, апостроф, дефіс — без латиниці та цифр.",
+      "type": "string",
+    },
+    "marital_status": {
+      "description": "Сімейний стан. Від цього залежить формулювання у позові. Варіанти: married — У шлюбі (не розірвано); divorced — Шлюб розірвано; never_married — Офіційного шлюбу не було.",
+      "enum": [
+        "married",
+        "divorced",
+        "never_married",
+      ],
+      "type": "string",
+    },
+    "marriage_act_number": {
+      "description": "Номер актового запису. Питати ЛИШЕ якщо: marital_status != "never_married".",
+      "type": "string",
+    },
+    "marriage_date": {
+      "description": "Дата реєстрації шлюбу. Формат: YYYY-MM-DD (користувач зазвичай називає ДД.ММ.РРРР — переконвертуйте). Питати ЛИШЕ якщо: marital_status != "never_married".",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "type": "string",
+    },
+    "marriage_place": {
+      "description": "Де зареєстровано шлюб (назва відділу РАЦС). Повна назва відділу реєстрації актів цивільного стану. Питати ЛИШЕ якщо: marital_status != "never_married".",
+      "type": "string",
+    },
+    "middle_name": {
+      "description": "По батькові. Лише кирилиця, апостроф, дефіс — без латиниці та цифр.",
+      "type": "string",
+    },
+    "passport_series": {
+      "description": "Серія та номер паспорта. Формат: АА123456 (книжечка) або 9 цифр (ID-картка). Питати ЛИШЕ якщо: has_no_ipn == true.",
+      "type": "string",
+    },
+    "plaintiff_account_bank": {
+      "description": "Банк / надавач платіжних послуг. Питати ЛИШЕ якщо: plaintiff_has_account == true.",
+      "type": "string",
+    },
+    "plaintiff_account_iban": {
+      "description": "IBAN рахунку. Формат: UA + 27 цифр (перевіряється контрольна сума). Питати ЛИШЕ якщо: plaintiff_has_account == true.",
+      "type": "string",
+    },
+    "plaintiff_email": {
+      "description": "Email. Формат: name@example.com.",
+      "type": "string",
+    },
+    "plaintiff_has_account": {
+      "description": "Маю рахунок для зарахування присуджених коштів. IBAN у банку або небанківському надавачі платіжних послуг.",
+      "type": "boolean",
+    },
+    "plaintiff_official_email": {
+      "description": "Офіційна електронна адреса (ЄСІТС). Варіанти: absent — Відсутня; present — Наявна в ЄСІТС.",
+      "enum": [
+        "absent",
+        "present",
+      ],
+      "type": "string",
+    },
+    "plaintiff_payout_method": {
+      "description": "Бажаний спосіб отримання коштів. Якщо рахунку немає — вкажіть, як бажаєте отримати присуджені кошти. Питати ЛИШЕ якщо: plaintiff_has_account != true.",
+      "type": "string",
+    },
+    "plaintiff_phone": {
+      "description": "Телефон. Формат: +380XXXXXXXXX або 0XXXXXXXXX.",
+      "type": "string",
+    },
+    "registered_address": {
+      "description": "Адреса реєстрації. Адреса зазначена в паспорті як місце реєстрації.",
+      "type": "string",
+    },
+    "same_actual_address": {
+      "description": "Фактична адреса збігається з адресою реєстрації.",
+      "type": "boolean",
+    },
+    "tax_number": {
+      "description": "ІПН (РНОКПП). 10 цифр — реєстраційний номер облікової картки платника податків. Формат: 10 цифр РНОКПП (перевіряється контрольна цифра). Питати ЛИШЕ якщо: has_no_ipn != true.",
+      "type": "string",
+    },
+  },
+  "required": [
+    "last_name",
+    "first_name",
+    "middle_name",
+    "birth_date",
+    "registered_address",
+    "defendant_last_name",
+    "defendant_first_name",
+    "defendant_middle_name",
+    "defendant_registered_address",
+    "marital_status",
+    "children_details",
+    "family_cert_date",
+    "abandonment_date",
+    "alimony_type",
+    "alimony_start_date",
+    "defendant_employed",
+  ],
+  "type": "object",
+}
+`;

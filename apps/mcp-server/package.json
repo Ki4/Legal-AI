@@ -1,0 +1,26 @@
+{
+  "name": "legal-docs-mcp-server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Deterministic legal-document generation MCP server (PoC): LLM collects raw form answers, server validates every parameter and renders via the existing doc-engine. LLM never writes document text.",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "inspect": "npx @modelcontextprotocol/inspector tsx src/index.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.0",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

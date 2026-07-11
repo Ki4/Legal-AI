@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:,">
+<title>Кабінет мед-ФОП — концепт-макет «живих документів»</title>
+<style>
+  :root{
+    --primary:#2563EB; --primary-soft:#EFF6FF;
+    --ok:#16A34A; --ok-soft:#F0FDF4;
+    --warn:#D97706; --warn-soft:#FFFBEB;
+    --danger:#EA580C; --danger-soft:#FFF7ED;
+    --ink:#0F172A; --ink-soft:#475569; --ink-mute:#94A3B8;
+    --line:#E2E8F0; --canvas:#F1F5F9; --paper:#FFFFFF; --app-bg:#F8FAFC;
+    --radius:14px; --shadow:0 1px 3px rgba(15,23,42,.08),0 4px 12px rgba(15,23,42,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--canvas);color:var(--ink);line-height:1.45}
+  .page-header{max-width:1060px;margin:0 auto;padding:28px 20px 10px}
+  .page-header h1{font-size:22px;font-weight:700}
+  .page-header p{color:var(--ink-soft);font-size:14px;margin-top:6px;max-width:720px}
+  .demo-wrap{max-width:1060px;margin:0 auto;padding:16px 20px 60px;display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+
+  /* ── Phone frame ── */
+  .phone{width:390px;flex:0 0 390px;background:#0F172A;border-radius:38px;padding:10px;box-shadow:0 20px 60px rgba(15,23,42,.25)}
+  .phone-inner{background:var(--app-bg);border-radius:30px;overflow:hidden;display:flex;flex-direction:column;height:760px;position:relative}
+  .statusbar{display:flex;justify-content:space-between;padding:10px 22px 4px;font-size:12px;font-weight:600;color:var(--ink)}
+  .app-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px 10px;background:var(--app-bg)}
+  .app-header .ttl{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .back-btn{border:none;background:none;color:var(--primary);font-size:15px;font-weight:600;cursor:pointer;padding:4px 6px 4px 0;display:none}
+  .bell{position:relative;border:none;background:var(--paper);border:1px solid var(--line);width:38px;height:38px;border-radius:12px;cursor:pointer;font-size:17px;box-shadow:var(--shadow)}
+  .bell .bdg{position:absolute;top:-5px;right:-5px;background:#DC2626;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px}
+  .bell .bdg.show{display:flex}
+  .screen{flex:1;overflow-y:auto;padding:4px 16px 16px;scrollbar-width:thin}
+
+  /* ── Tab bar ── */
+  .tabbar{display:flex;border-top:1px solid var(--line);background:var(--paper);padding:6px 8px calc(10px + env(safe-area-inset-bottom))}
+  .tab{flex:1;border:none;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;color:var(--ink-mute);font-size:11px;font-weight:600;border-radius:10px}
+  .tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .tab.active{color:var(--primary)}
+  .tab .tbdg{position:relative}
+  .tab .tbdg::after{content:attr(data-n);position:absolute;top:-4px;right:-10px;background:#DC2626;color:#fff;font-size:10px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px}
+  .tab .tbdg.on::after{display:flex}
+
+  /* ── Cards & UI ── */
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+  .card.tap{cursor:pointer;transition:transform .08s}
+  .card.tap:active{transform:scale(.985)}
+  .sec-label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-mute);margin:16px 2px 8px;display:flex;justify-content:space-between;align-items:center}
+  .sec-label .cnt{font-weight:600;letter-spacing:0;text-transform:none}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+  .b-ok{background:var(--ok-soft);color:var(--ok)}
+  .b-warn{background:var(--warn-soft);color:var(--warn)}
+  .b-upd{background:var(--danger-soft);color:var(--danger)}
+  .b-draft{background:#F1F5F9;color:var(--ink-mute)}
+  .b-warn.pulse::before{animation:pulse 1.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;font-weight:600;font-size:15px;border-radius:12px;padding:12px 16px;transition:filter .15s}
+  .btn:active{filter:brightness(.93)}
+  .btn-primary{background:var(--primary);color:#fff;width:100%}
+  .btn-ghost{background:var(--primary-soft);color:var(--primary);width:100%}
+  .btn-sm{padding:8px 12px;font-size:13px;width:auto}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .muted{color:var(--ink-soft);font-size:13px}
+  .tiny{color:var(--ink-mute);font-size:12px}
+  .doc-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+  .doc-row:last-child{border-bottom:none}
+  .doc-row .nm{font-size:14px;font-weight:600}
+  .doc-row .sub{font-size:12px;color:var(--ink-mute);margin-top:1px}
+  .chev{color:var(--ink-mute);font-size:16px;flex:0 0 auto}
+
+  /* ── Ring ── */
+  .ring-wrap{display:flex;gap:16px;align-items:center}
+  .ring-box{position:relative;width:118px;height:118px;flex:0 0 auto}
+  .ring-box svg{transform:rotate(-90deg)}
+  .ring-val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring-val b{font-size:26px;font-weight:800}
+  .ring-val span{font-size:10px;color:var(--ink-mute);font-weight:600}
+  circle.track{stroke:var(--line)}
+  circle.prog{stroke:var(--ok);transition:stroke-dashoffset 1s ease,stroke .5s}
+  circle.prog.mid{stroke:var(--warn)}
+
+  /* ── Push toast inside phone ── */
+  .push{position:absolute;top:8px;left:10px;right:10px;background:rgba(15,23,42,.94);color:#fff;border-radius:16px;padding:11px 14px;display:flex;gap:10px;align-items:flex-start;z-index:40;transform:translateY(-120%);transition:transform .45s cubic-bezier(.2,.9,.3,1.2);cursor:pointer}
+  .push.show{transform:translateY(0)}
+  .push .ic{font-size:20px}
+  .push b{font-size:13px;display:block}
+  .push span{font-size:12px;color:#CBD5E1}
+  .toast{position:absolute;bottom:86px;left:24px;right:24px;background:var(--ink);color:#fff;font-size:13px;font-weight:600;padding:11px 14px;border-radius:12px;text-align:center;opacity:0;transform:translateY(8px);transition:all .3s;z-index:40;pointer-events:none}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  /* ── Modal ── */
+  .modal-back{position:absolute;inset:0;background:rgba(15,23,42,.45);display:none;align-items:flex-end;z-index:50}
+  .modal-back.show{display:flex}
+  .modal{background:var(--paper);border-radius:20px 20px 30px 30px;padding:20px 18px;width:100%}
+  .modal h3{font-size:16px;margin-bottom:6px}
+
+  /* ── Side panel ── */
+  .panel{flex:1;min-width:300px;max-width:560px}
+  .panel .card{padding:18px}
+  .panel h2{font-size:16px;margin-bottom:10px}
+  .steps{list-style:none;display:flex;flex-direction:column;gap:9px;margin:12px 0 16px}
+  .steps li{display:flex;gap:10px;font-size:14px;color:var(--ink-soft)}
+  .steps li .n{flex:0 0 22px;height:22px;border-radius:50%;background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .steps li.done .n{background:var(--ok-soft);color:var(--ok)}
+  .steps li.done{color:var(--ink-mute);text-decoration:line-through}
+  .sim-btn{background:linear-gradient(135deg,#7C3AED,#2563EB);color:#fff;width:100%;font-size:16px;padding:14px}
+  .sim-btn:disabled{background:var(--line);color:var(--ink-mute);cursor:default}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .note{font-size:12px;color:var(--ink-mute);margin-top:14px;line-height:1.5}
+
+  /* ── Law cards ── */
+  .law-hot{border:1.5px solid var(--danger);background:var(--danger-soft)}
+  .impact{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;margin-top:8px;color:var(--danger);cursor:pointer}
+  .impact.none{color:var(--ink-mute);cursor:default}
+  .impact.done{color:var(--ok);cursor:default}
+
+  /* ── Doc preview ── */
+  .preview{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;position:relative;overflow:hidden;margin:10px 0}
+  .pline{height:7px;border-radius:4px;background:#E8EDF4;margin-bottom:7px}
+  .preview .wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:rgba(37,99,235,.10);transform:rotate(-18deg);letter-spacing:.2em}
+
+  /* ── Versions ── */
+  .ver{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:13px}
+  .ver:last-child{border:none}
+  .ver .dot{width:9px;height:9px;border-radius:50%;background:var(--line);flex:0 0 auto}
+  .ver.cur .dot{background:var(--ok)}
+  .ver .dl{margin-left:auto;color:var(--primary);font-weight:600;cursor:pointer;font-size:12.5px}
+  .ver.new{animation:vin .5s ease}
+  @keyframes vin{from{background:var(--ok-soft)}to{background:transparent}}
+
+  /* ── Segmented (A/B/C) ── */
+  .seg{display:flex;background:#E8EDF4;border-radius:12px;padding:4px;margin-bottom:14px}
+  .seg button{flex:1;border:none;background:none;padding:9px 4px;font-size:13px;font-weight:700;border-radius:9px;cursor:pointer;color:var(--ink-soft);position:relative}
+  .seg button.active{background:#fff;color:var(--ink);box-shadow:var(--shadow)}
+  .seg button .rec{position:absolute;top:-9px;right:2px;background:var(--ok);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:8px}
+  .ent{display:flex;justify-content:space-between;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line);font-size:13.5px}
+  .ent:last-child{border:none}
+  .ent .v{font-weight:700;white-space:nowrap}
+
+  /* ── People ── */
+  .avatar{width:40px;height:40px;border-radius:50%;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:0 0 auto}
+  .kit-ok{color:var(--ok);font-size:12.5px;font-weight:600}
+  .kit-warn{color:var(--danger);font-size:12.5px;font-weight:600}
+
+  /* ── Menu (Ще) ── */
+  .menu-row{display:flex;align-items:center;gap:12px;padding:14px 2px;border-bottom:1px solid var(--line);cursor:pointer;font-size:15px;font-weight:600}
+  .menu-row:last-child{border:none}
+  .menu-row .mi{font-size:20px;width:28px;text-align:center}
+
+  /* ── Notifications ── */
+  .ntf{display:flex;gap:10px;padding:12px 2px;border-bottom:1px solid var(--line)}
+  .ntf:last-child{border:none}
+  .ntf .ic{font-size:18px}
+  .ntf b{font-size:13.5px;display:block}
+  .ntf.unread b::after{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--primary);margin-left:6px}
+  .ntf span{font-size:12.5px;color:var(--ink-soft)}
+  .ntf .dt{margin-left:auto;font-size:11px;color:var(--ink-mute);flex:0 0 auto}
+
+  /* ── Feature requests ── */
+  .fr{display:flex;gap:10px;align-items:flex-start;padding:11px 2px;border-bottom:1px solid var(--line)}
+  .fr:last-child{border:none}
+  .vote{border:1px solid var(--line);background:var(--paper);border-radius:10px;padding:4px 9px;font-size:12px;font-weight:700;cursor:pointer;color:var(--ink-soft);flex:0 0 auto;text-align:center}
+  .vote.voted{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+  .fr-st{font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;white-space:nowrap}
+  .st-plan{background:var(--primary-soft);color:var(--primary)}
+  .st-review{background:#F1F5F9;color:var(--ink-soft)}
+  .st-done{background:var(--ok-soft);color:var(--ok)}
+
+  .attn{border-left:3.5px solid var(--danger);padding:10px 12px;background:var(--paper);border-radius:0 12px 12px 0;margin-bottom:8px;box-shadow:var(--shadow);cursor:pointer}
+  .attn.soft{border-left-color:var(--ink-mute)}
+  .attn b{font-size:13.5px}
+  .attn div{font-size:12.5px;color:var(--ink-soft)}
+  .trust{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-soft);background:var(--ok-soft);border:1px solid #DCFCE7;border-radius:12px;padding:10px 12px;margin-bottom:12px}
+  .qa{display:flex;gap:8px;margin-top:4px}
+  .qa .btn{flex:1;font-size:12.5px;padding:10px 6px}
+
+  @media (max-width:820px){.demo-wrap{justify-content:center}.panel{max-width:390px}}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Особистий кабінет медичного ФОП — концепт-макет</h1>
+  <p>Кликабельная демонстрация цикла <b>«живих документів»</b>: изменение закона → push → документы «потребують оновлення» → обновление в один тап → готовность восстановлена. Концепт для обсуждения, не финальный дизайн; данные вымышлены. Подробности: <b>cabinet-vision.md</b>.</p>
+</div>
+
+<div class="demo-wrap">
+
+  <!-- ═════════ PHONE ═════════ -->
+  <div class="phone"><div class="phone-inner">
+    <div class="push" id="push" onclick="openLawFromPush()">
+      <div class="ic">⚠️</div>
+      <div><b>Правовий помічник</b><span id="pushText">Змінився Наказ МОЗ №153 — це стосується 2 ваших документів</span></div>
+    </div>
+    <div class="statusbar"><span>9:41</span><span>Оксана · стоматологія</span><span>🔋</span></div>
+    <div class="app-header">
+      <div style="display:flex;align-items:center;gap:2px">
+        <button class="back-btn" id="backBtn" onclick="goBack()">‹ Назад</button>
+        <div class="ttl" id="screenTitle">Моя практика</div>
+      </div>
+      <button class="bell" onclick="showScreen('notifs')">🔔<span class="bdg" id="bellBdg">1</span></button>
+    </div>
+    <div class="screen" id="screenRoot"></div>
+    <nav class="tabbar">
+      <button class="tab active" data-tab="home" onclick="showScreen('home')">
+        <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5"/></svg>Головна</button>
+      <button class="tab" data-tab="docs" onclick="showScreen('docs')">
+        <span class="tbdg" id="docsBdg" data-n="2"><svg viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6"/></svg></span>Документи</button>
+      <button class="tab" data-tab="law" onclick="showScreen('law')">
+        <span class="tbdg" id="lawBdg" data-n="1"><svg viewBox="0 0 24 24"><path d="M12 3v18M5 7l7-4 7 4M5 7l-3 7a4 4 0 0 0 6 0L5 7zM19 7l-3 7a4 4 0 0 0 6 0l-3-7zM8 21h8"/></svg></span>Законодавство</button>
+      <button class="tab" data-tab="more" onclick="showScreen('more')">
+        <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>Ще</button>
+    </nav>
+    <div class="toast" id="toast"></div>
+    <div class="modal-back" id="modalBack"><div class="modal" id="modalBody"></div></div>
+  </div></div>
+
+  <!-- ═════════ SIDE PANEL ═════════ -->
+  <aside class="panel">
+    <div class="card">
+      <h2>🎬 Демо-сценарій (5 хвилин)</h2>
+      <ol class="steps" id="steps">
+        <li id="st1"><span class="n">1</span><span>Огляньте кабінет: <b>Головна</b> (кільце готовності), <b>Документи</b>, <b>Люди</b> (у «Ще»)</span></li>
+        <li id="st2"><span class="n">2</span><span>Натисніть <b>«Симулювати зміну закону»</b> нижче — прилетить push, 2 документи стануть «потребує оновлення», кільце впаде</span></li>
+        <li id="st3"><span class="n">3</span><span>Відкрийте стрічку <b>Законодавство</b> — картка зміни з поясненням юриста</span></li>
+        <li id="st4"><span class="n">4</span><span>Відкрийте документ «потребує оновлення» → <b>«Оновити документ»</b> → нова версія за секунду</span></li>
+        <li id="st5"><span class="n">5</span><span>Поверніться на Головну — <b>кільце відновилося</b>. Це і є цінність підписки</span></li>
+      </ol>
+      <button class="btn sim-btn" id="simBtn" onclick="simulateLawChange()">⚡ Симулювати зміну закону</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="location.reload()">↺ Скинути демо</button>
+      </div>
+      <div class="note"><b>Статуси документів:</b></div>
+      <div class="legend">
+        <span class="badge b-ok">актуальний</span>
+        <span class="badge b-warn">перевіряється</span>
+        <span class="badge b-upd">потребує оновлення</span>
+        <span class="badge b-draft">чернетка</span>
+      </div>
+      <div class="note">
+        Що за кадром (уже працює в продакшені): CRON-монітор zakon.rada.gov.ua → авто-заморозка шаблонів → ревʼю юриста в адмінці → публікація нової ревізії → fan-out на документи клієнтів. Макет показує, як це бачить клієнт.<br><br>
+        Екран <b>Підписка</b> (у «Ще») має перемикач трьох сценаріїв монетизації A/B/C — інструмент для обговорення, не рішення.
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+/* ═══════════ DATA ═══════════ */
+const PEOPLE=[
+  {id:'petrenko',name:'Петренко Ольга Миколаївна',role:'Медична сестра',init:'ПО'},
+  {id:'kovalenko',name:'Коваленко Ірина Василівна',role:'Асистент стоматолога',init:'КІ'},
+  {id:'shevchuk',name:'Шевчук Дмитро Іванович',role:'Адміністратор',init:'ШД'},
+  {id:'bondarenko',name:'Бондаренко Марія Петрівна',role:'Медична сестра',init:'БМ'},
+  {id:'tkachuk',name:'Ткачук Олена Сергіївна',role:'Молодша медична сестра',init:'ТО'},
+];
+const DOCS={};
+function reg(d){DOCS[d.id]=d}
+/* організаційні */
+reg({id:'polozhennya',group:'org',title:'Положення про медичний кабінет',affected:true,
+  laws:['Наказ МОЗ №153','ЗУ «Основи охорони здоровʼя» 2801-XII'],closes:'п. 12, 14 чек-листа',
+  reason:'Наказ МОЗ №153 від 09.07.2026 — оновлено вимоги до організації робочого місця. Шаблон оновлено юристом 10.07.2026.',
+  vers:[{v:2,d:'12.03.2026'},{v:1,d:'02.01.2026'}]});
+reg({id:'rozporyadok',group:'org',title:'Правила внутрішнього трудового розпорядку',laws:['КЗпП України'],closes:'п. 63 чек-листа',vers:[{v:1,d:'02.01.2026'}]});
+reg({id:'ohorona',group:'org',title:'Інструкція з охорони праці',laws:['ЗУ «Про охорону праці»'],closes:'п. 58, 59 чек-листа',vers:[{v:1,d:'02.01.2026'}]});
+reg({id:'vidpovidalni',group:'org',title:'Наказ про призначення відповідальних осіб',laws:['Ліцензійні умови, п. 13'],closes:'п. 13 чек-листа',vers:[{v:1,d:'02.01.2026'}]});
+reg({id:'sanepid',group:'org',title:'Програма виробничого контролю (санепідрежим)',laws:['ДСанПіН 2.2.4-171-10'],closes:'п. 74–77 чек-листа',vers:[{v:1,d:'14.01.2026'}]});
+/* кадрові: по 3 на людину */
+const HRDOC=[['td','Трудовий договір'],['pi','Посадова інструкція'],['mo','Картка медогляду']];
+PEOPLE.forEach(p=>HRDOC.forEach(([k,t])=>{
+  const affected=(p.id==='petrenko'&&k==='pi');
+  reg({id:k+'-'+p.id,group:'hr',person:p.id,title:t+' — '+p.name.split(' ')[0]+' '+p.name.split(' ')[1][0]+'.'+(p.name.split(' ')[2]?p.name.split(' ')[2][0]+'.':''),
+    short:t,affected,
+    laws:affected?['Наказ МОЗ №153','КЗпП України']:(k==='mo'?['Наказ МОЗ №246']:['КЗпП України']),
+    closes:affected?'п. 41, 42 чек-листа':(k==='mo'?'п. 44 чек-листа':'п. 40 чек-листа'),
+    reason:affected?'Наказ МОЗ №153 від 09.07.2026 — оновлено кваліфікаційні вимоги до середнього медперсоналу. Шаблон оновлено юристом 10.07.2026.':null,
+    vers:affected?[{v:2,d:'12.03.2026'},{v:1,d:'02.01.2026'}]:[{v:1,d:'02.01.2026'}]});
+}));
+/* журнали */
+reg({id:'j-medoglyad',group:'journal',title:'Журнал обліку медичних оглядів',draft:true,laws:['Наказ МОЗ №246'],closes:'п. 44 чек-листа',vers:[]});
+reg({id:'j-instruktazh',group:'journal',title:'Журнал реєстрації інструктажів з охорони праці',laws:['НПАОП 0.00-4.12-05'],closes:'п. 59 чек-листа',vers:[{v:1,d:'02.01.2026'}]});
+
+const LAW_FEED=[
+  {id:'l153',hot:true,title:'Наказ МОЗ №153 від 09.07.2026',date:'сьогодні',
+   sum:'Оновлено кваліфікаційні вимоги до середнього медперсоналу та вимоги до організації робочого місця. Ми вже оновили 2 шаблони — вам достатньо натиснути «Оновити» у документах.',
+   by:'Ольга К., юрист · 10.07.2026'},
+  {id:'l2118',title:'Наказ МОЗ №2118 — зміни до порядку ведення форм',date:'28.06',
+   sum:'Зміни стосуються стаціонарів. Для приватної стоматологічної практики — без наслідків.',by:'Ольга К., юрист',none:true},
+  {id:'l285',title:'Постанова КМУ №285 — тарифи НСЗУ',date:'15.06',
+   sum:'Стосується закладів із договорами НСЗУ. Вашої практики не стосується.',by:'Ольга К., юрист',none:true},
+];
+
+/* ═══════════ STATE ═══════════ */
+const state={
+  screen:'home', stack:[],
+  sim:false, updated:new Set(), voted:new Set(),
+  notifs:[
+    {ic:'📄',t:'Пакет документів сформовано',s:'22 документи готові до завантаження',d:'02.06',read:true},
+    {ic:'⚖️',t:'Перевірено: Наказ МОЗ №2118',s:'Змін для вашої практики немає',d:'28.06',read:true},
+  ],
+};
+function unread(){return state.notifs.filter(n=>!n.read).length}
+function docStatus(d){
+  if(d.draft)return 'draft';
+  if(state.sim&&d.affected&&!state.updated.has(d.id))return 'upd';
+  return 'ok';
+}
+function ringPct(){
+  if(!state.sim)return 78;
+  return 64+state.updated.size*7; /* 64 → 71 → 78 */
+}
+function affectedLeft(){return Object.values(DOCS).filter(d=>d.affected&&!state.updated.has(d.id)).length}
+
+/* ═══════════ HELPERS ═══════════ */
+const $=s=>document.querySelector(s);
+function badge(st,pulse){
+  const map={ok:['b-ok','актуальний'],upd:['b-upd','потребує оновлення'],warn:['b-warn','перевіряється'],draft:['b-draft','чернетка']};
+  return `<span class="badge ${map[st][0]}${pulse?' pulse':''}">${map[st][1]}</span>`;
+}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600)}
+function stepDone(n){$('#st'+n).classList.add('done')}
+
+/* ═══════════ SCREENS ═══════════ */
+const TITLES={home:'Моя практика',docs:'Мої документи',law:'Законодавство',more:'Ще',people:'Люди',notifs:'Сповіщення',sub:'Підписка',profile:'Профіль ФОПа',support:'Підтримка',community:'Спільнота',doc:'Документ',checklist:'Чек-лист самооцінки'};
+const ROOTS=['home','docs','law','more'];
+
+function showScreen(name,param,push=true){
+  if(push&&state.screen!==name)state.stack.push({name:state.screen,param:state.param});
+  if(ROOTS.includes(name))state.stack=[];
+  state.screen=name;state.param=param;
+  render();
+}
+function goBack(){
+  const prev=state.stack.pop()||{name:'home'};
+  state.screen=prev.name;state.param=prev.param;render();
+}
+
+function render(){
+  /* header/tabs/badges */
+  $('#screenTitle').textContent=TITLES[state.screen]||'Кабінет';
+  $('#backBtn').style.display=ROOTS.includes(state.screen)?'none':'inline-block';
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===state.screen||(b.dataset.tab==='more'&&['people','sub','profile','support','community'].includes(state.screen))));
+  const u=unread();$('#bellBdg').textContent=u;$('#bellBdg').classList.toggle('show',u>0);
+  const na=affectedLeft();
+  $('#docsBdg').dataset.n=na;$('#docsBdg').classList.toggle('on',state.sim&&na>0);
+  $('#lawBdg').classList.toggle('on',state.sim&&na>0);
+  const R={home,docs,law,more,people,notifs,sub,profile,support,community,doc:docDetail,checklist}[state.screen];
+  $('#screenRoot').innerHTML=R?R():'';
+  $('#screenRoot').scrollTop=0;
+  if(state.screen==='home')animateRing();
+}
+
+/* ── Головна ── */
+function home(){
+  const pct=ringPct(),mid=pct<75;
+  const attn=[];
+  if(state.sim){Object.values(DOCS).filter(d=>d.affected&&!state.updated.has(d.id)).forEach(d=>attn.push({b:d.group==='hr'?d.title:d.title,s:'Потребує оновлення — змінився Наказ МОЗ №153',act:`showScreen('doc','${d.id}')`}));}
+  attn.push({b:'Журнал обліку медичних оглядів',s:'Чернетка — заповніть 2 поля, і документ буде готовий',act:`showScreen('doc','j-medoglyad')`,soft:true});
+  attn.push({b:'Медогляд: Петренко О. М.',s:'Плановий медогляд через 14 днів',act:`showScreen('people')`,soft:true});
+  attn.push({b:'«Питання і пропозиції»',s:'Ваша пропозиція «Журнал стерилізації» — заплановано',act:`showScreen('community')`,soft:true});
+  const shown=attn.slice(0,3);
+  return `
+  <div class="card">
+    <div class="ring-wrap">
+      <div class="ring-box">
+        <svg width="118" height="118"><circle class="track" cx="59" cy="59" r="50" fill="none" stroke-width="11"/>
+        <circle class="prog${mid?' mid':''}" id="ringProg" cx="59" cy="59" r="50" fill="none" stroke-width="11" stroke-linecap="round"
+          stroke-dasharray="314" stroke-dashoffset="314"/></svg>
+        <div class="ring-val"><b id="ringNum">${pct}%</b><span>самооцінка</span></div>
+      </div>
+      <div>
+        <b style="font-size:15px">Готовність до перевірки</b>
+        <div class="muted" style="margin-top:4px">Високий ризик: <b style="color:${state.sim&&affectedLeft()?'var(--danger)':'var(--ok)'}">${state.sim&&affectedLeft()?affectedLeft()+' незакрито':'0 незакрито'}</b><br>Середній ризик: 4 незакрито</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="showScreen('checklist')">Повний чек-лист →</button>
+      </div>
+    </div>
+    <div class="tiny" style="margin-top:10px">Самооцінка за офіційним переліком (122 питання). Не є гарантією результату перевірки.</div>
+  </div>
+  <div class="trust">🛡️ <span>Законодавство перевірено: <b>сьогодні 06:15</b> · 20 законів під наглядом</span></div>
+  <div class="sec-label">Потребує уваги <span class="cnt">${shown.length} із ${attn.length}</span></div>
+  ${shown.map(a=>`<div class="attn${a.soft?' soft':''}" onclick="${a.act}"><b>${a.b}</b><div>${a.s}</div></div>`).join('')}
+  <div class="sec-label">Швидкі дії</div>
+  <div class="qa">
+    <button class="btn btn-ghost" onclick="showScreen('people')">+ Працівник</button>
+    <button class="btn btn-ghost" onclick="showScreen('support')">Замовити документ</button>
+    <button class="btn btn-ghost" onclick="showScreen('support')">До юриста</button>
+  </div>`;
+}
+function animateRing(){
+  const pct=ringPct();
+  requestAnimationFrame(()=>{const c=$('#ringProg');if(c)c.style.strokeDashoffset=314-(314*pct/100)});
+}
+
+/* ── Документи ── */
+function docRow(d){
+  const st=docStatus(d);
+  return `<div class="doc-row" onclick="showScreen('doc','${d.id}')">
+    <div><div class="nm">${d.title}</div><div class="sub">${d.vers.length?('версія від '+(state.updated.has(d.id)?'сьогодні':d.vers[0].d)):'ще не сформовано'}</div></div>
+    <div style="display:flex;align-items:center;gap:8px">${badge(st)}<span class="chev">›</span></div></div>`;
+}
+function docs(){
+  const org=Object.values(DOCS).filter(d=>d.group==='org');
+  const jr=Object.values(DOCS).filter(d=>d.group==='journal');
+  const needs=affectedLeft();
+  return `
+  ${state.sim&&needs?`<div class="attn"><b>⚠️ ${needs===1?'1 документ потребує':needs+' документи потребують'} оновлення</b><div>Змінився Наказ МОЗ №153 — відкрийте документ і натисніть «Оновити»</div></div>`:''}
+  <div class="sec-label">Організаційні <span class="cnt">${org.length}</span></div>
+  <div class="card" style="padding:4px 14px">${org.map(docRow).join('')}</div>
+  <div class="sec-label">Кадрові — за працівниками <span class="cnt">${PEOPLE.length} осіб</span></div>
+  ${PEOPLE.map(p=>{
+    const pd=Object.values(DOCS).filter(d=>d.person===p.id);
+    const bad=pd.filter(d=>docStatus(d)==='upd').length;
+    return `<div class="card" style="padding:10px 14px">
+      <div class="row" style="cursor:pointer" onclick="togglePerson('${p.id}')">
+        <div style="display:flex;gap:10px;align-items:center"><div class="avatar">${p.init}</div>
+        <div><b style="font-size:14px">${p.name}</b><div class="tiny">${p.role}</div></div></div>
+        <div class="${bad?'kit-warn':'kit-ok'}">${bad?bad+' потребує оновлення':pd.length+'/'+pd.length+' актуальні'}</div>
+      </div>
+      <div id="pp-${p.id}" style="display:${bad?'block':'none'};margin-top:6px">${pd.map(docRow).join('')}</div>
+    </div>`;
+  }).join('')}
+  <div class="sec-label">Журнали та форми <span class="cnt">${jr.length}</span></div>
+  <div class="card" style="padding:4px 14px">${jr.map(docRow).join('')}</div>`;
+}
+function togglePerson(id){const el=$('#pp-'+id);el.style.display=el.style.display==='none'?'block':'none'}
+
+/* ── Деталка документа ── */
+function docDetail(){
+  const d=DOCS[state.param];if(!d)return '<div class="card">Документ не знайдено</div>';
+  const st=docStatus(d);
+  const banner=
+    st==='upd'?`<div class="card" style="border:1.5px solid var(--danger);background:var(--danger-soft)">
+      <b style="font-size:14px">⚠️ Потребує оновлення</b>
+      <div class="muted" style="margin:6px 0 10px">${d.reason}</div>
+      <button class="btn btn-primary" id="updBtn" onclick="updateDoc('${d.id}')">Оновити документ</button></div>`
+   :st==='draft'?`<div class="card" style="background:#F8FAFC"><b style="font-size:14px">Чернетка</b>
+      <div class="muted" style="margin:6px 0 10px">Не вистачає 2 полів: № договору на вивіз відходів, дата останнього інструктажу.</div>
+      <button class="btn btn-primary">Заповнити 2 поля</button></div>`
+   :`<div class="card" style="background:var(--ok-soft);border-color:#DCFCE7"><div class="row"><b style="font-size:14px">✅ Актуальний</b>${badge('ok')}</div>
+      <div class="tiny" style="margin-top:4px">Шаблон і ваші дані відповідають поточній редакції — версія від ${state.updated.has(d.id)?'сьогодні':(d.vers[0]?d.vers[0].d:'—')}</div></div>`;
+  const vers=[...(state.updated.has(d.id)?[{v:d.vers.length?d.vers[0].v+1:1,d:'сьогодні',cur:true,fresh:true}]:[]),
+    ...d.vers.map((v,i)=>({...v,cur:!state.updated.has(d.id)&&i===0}))];
+  return `${banner}
+  <div class="card"><div class="preview"><div class="wm">ПЕРЕГЛЯД</div>
+    <div style="text-align:center;font-weight:700;font-size:12px;margin-bottom:10px">${d.short||d.title}</div>
+    <div class="pline" style="width:92%"></div><div class="pline" style="width:86%"></div><div class="pline" style="width:95%"></div><div class="pline" style="width:64%"></div><div class="pline" style="width:90%"></div><div class="pline" style="width:78%"></div><div class="pline" style="width:40%"></div>
+  </div>
+  <button class="btn btn-ghost" onclick="toast('Захищене посилання діє 24 години (signed URL)')">⬇️ Завантажити PDF</button>
+  <div class="tiny" style="text-align:center;margin-top:6px">доставка лише захищеним посиланням — файл не потрапляє в чат</div></div>
+  <div class="card"><b style="font-size:14px">Історія версій</b>
+    <div style="margin-top:6px" id="verList">${vers.map(v=>`<div class="ver${v.cur?' cur':''}${v.fresh?' new':''}"><span class="dot"></span>v${v.v} · від ${v.d} ${v.cur?'<b style="color:var(--ok)">· поточна</b>':''}<span class="dl" onclick="toast('Архівні версії завжди доступні')">завантажити</span></div>`).join('')||'<div class="tiny">Версій ще немає</div>'}</div></div>
+  <div class="card"><b style="font-size:14px">Підстава</b>
+    <div class="muted" style="margin-top:6px">Документ тримають: ${d.laws.map(l=>`<b>${l}</b>`).join(', ')}</div>
+    <div class="muted" style="margin-top:4px">Закриває: <b>${d.closes}</b> самооцінки</div>
+    <div class="tiny" style="margin-top:6px">Зміни цих актів відстежуються щодня. Якщо юрист оновить шаблон — ви отримаєте сповіщення.</div></div>`;
+}
+function updateDoc(id){
+  const btn=$('#updBtn');btn.disabled=true;btn.innerHTML='⏳ Формуємо нову версію…';
+  setTimeout(()=>{
+    state.updated.add(id);
+    state.notifs.unshift({ic:'✅',t:'Документ оновлено',s:DOCS[id].title+' — нова версія за оновленим шаблоном',d:'щойно',read:false});
+    stepDone(4);
+    if(affectedLeft()===0){stepDone(5);toast('✅ Всі документи актуальні — готовність відновлено');}
+    else toast('✅ Нова версія сформована');
+    render();
+  },1200);
+}
+
+/* ── Законодавство ── */
+function law(){
+  const items=state.sim?LAW_FEED:LAW_FEED.slice(1);
+  return `<div class="tiny" style="margin:4px 2px 10px">Стрічка формується під ваш профіль: стоматологія · ФОП · 5 працівників</div>`+
+  items.map(l=>{
+    const left=affectedLeft();
+    const impact=l.hot?(left?`<div class="impact" onclick="showScreen('docs')">⚠️ Стосується ${left===1?'1 вашого документа':'2 ваших документів'} →</div>`
+      :`<div class="impact done">✅ Ви оновили 2 документи</div>`)
+      :`<div class="impact none">Вас не стосується</div>`;
+    return `<div class="card ${l.hot?'law-hot':''}">
+      <div class="row"><b style="font-size:14px">${l.title}</b><span class="tiny">${l.date}</span></div>
+      <div class="muted" style="margin-top:6px">${l.sum}</div>
+      <div class="tiny" style="margin-top:6px">— ${l.by}</div>${impact}</div>`;
+  }).join('')+
+  `<div class="card" style="background:#F8FAFC"><div class="tiny">Ми перевіряємо 20 законів та наказів щодня о 06:00. Кожну зміну аналізує юрист — у стрічку потрапляє тільки перевірене.</div></div>`;
+}
+
+/* ── Люди ── */
+function people(){
+  return PEOPLE.map(p=>{
+    const pd=Object.values(DOCS).filter(d=>d.person===p.id);
+    const bad=pd.filter(d=>docStatus(d)==='upd').length;
+    return `<div class="card tap" onclick="showScreen('docs')">
+      <div class="row"><div style="display:flex;gap:10px;align-items:center"><div class="avatar">${p.init}</div>
+      <div><b style="font-size:14px">${p.name}</b><div class="tiny">${p.role} · прийнято 02.01.2026</div></div></div>
+      <div class="${bad?'kit-warn':'kit-ok'}">${bad?bad+' оновити':'3/3 ✓'}</div></div>
+      ${p.id==='petrenko'?'<div class="tiny" style="margin-top:8px">🩺 Плановий медогляд — через 14 днів</div>':''}
+    </div>`;}).join('')+
+  `<button class="btn btn-primary" onclick="toast('Демо: майстер додавання працівника')">+ Додати працівника</button>
+  <div class="tiny" style="margin-top:10px;text-align:center">Новий працівник → система запропонує його комплект документів</div>`;
+}
+
+/* ── Чек-лист ── */
+function checklist(){
+  const rows=[
+    ['12','Положення про медичний кабінет затверджено','Високий',state.sim&&!state.updated.has('polozhennya')?'upd':'ok'],
+    ['13','Призначено відповідальних осіб','Високий','ok'],
+    ['40','Трудові договори з усіма працівниками','Середній','ok'],
+    ['41','Кваліфікаційні вимоги до персоналу дотримано','Високий',state.sim&&!state.updated.has('pi-petrenko')?'upd':'ok'],
+    ['44','Журнал медоглядів ведеться','Середній','draft'],
+    ['58','Інструкції з охорони праці розроблено','Середній','ok'],
+    ['74','Програма виробничого контролю','Середній','ok'],
+  ];
+  return `<div class="tiny" style="margin:4px 2px 10px">Фрагмент офіційного переліку (122 питання). Закривається: автоматично документами · з профілю · самооцінкою.</div>
+  <div class="card" style="padding:6px 14px">${rows.map(r=>`
+    <div class="doc-row" style="cursor:default"><div><div class="nm" style="font-size:13px">Питання ${r[0]}. ${r[1]}</div>
+    <div class="sub">Ступінь ризику: ${r[2]}</div></div>${badge(r[3]==='ok'?'ok':r[3]==='upd'?'upd':'draft')}</div>`).join('')}</div>
+  <div class="tiny" style="text-align:center">…і ще 115 питань. Самооцінка не є гарантією результату перевірки.</div>`;
+}
+
+/* ── Сповіщення ── */
+function notifs(){
+  state.notifs.forEach(n=>n.read=true);
+  setTimeout(()=>{const u=unread();$('#bellBdg').classList.toggle('show',u>0)},50);
+  return `<div class="card" style="padding:6px 14px">${state.notifs.map(n=>`
+    <div class="ntf${n.read?'':' unread'}"><span class="ic">${n.ic}</span>
+    <div><b>${n.t}</b><span>${n.s}</span></div><span class="dt">${n.d}</span></div>`).join('')}</div>
+  <div class="tiny" style="text-align:center">Кожен push дублюється тут — нічого не губиться</div>`;
+}
+
+/* ── Ще ── */
+function more(){
+  const rows=[['👥','Люди','people'],['🧑‍⚖️','Підтримка','support'],['💬','Спільнота','community'],['🪪','Профіль ФОПа','profile'],['💳','Підписка та оплати','sub']];
+  return `<div class="card" style="padding:2px 14px">${rows.map(r=>`<div class="menu-row" onclick="showScreen('${r[2]}')"><span class="mi">${r[0]}</span>${r[1]}<span class="chev" style="margin-left:auto">›</span></div>`).join('')}</div>
+  <div class="tiny" style="text-align:center;margin-top:8px">Оксана Іваненко · ФОП · стоматологічна практика<br>м. Київ, вул. Саксаганського 12, каб. 4</div>`;
+}
+
+/* ── Підписка (A/B/C) ── */
+let scen='C';
+function setScen(s){scen=s;render()}
+function sub(){
+  const M={
+    A:{name:'Разовий пакет',price:'9 900 грн · разово',rows:[
+      ['Пакет документів (24 шт.)','💰 у пакеті'],['Завантаження + історія версій','✓ назавжди'],
+      ['Оновлення при змінах законів','✗ немає'],['Стрічка «Законодавство» + push','тизер'],
+      ['Підтримка юриста','✗ / разово'],['Спільнота лікарів','✗']],
+      churn:'Документи ваші назавжди, але вони застарівають — без оновлень продукт вироджується в разову послугу.'},
+    B:{name:'Лише підписка',price:'2 000 грн / міс',rows:[
+      ['Пакет документів (24 шт.)','🔒 у підписці'],['Завантаження + історія версій','🔒'],
+      ['Оновлення при змінах законів','🔒'],['Стрічка «Законодавство» + push','🔒'],
+      ['Підтримка юриста','🔒'],['Спільнота лікарів','🔒']],
+      churn:'Після відписки — read-only 90 днів, далі видалення (з експортом). Високий поріг входу: платити до першої цінності.'},
+    C:{name:'Пакет + Супровід',price:'Стартовий пакет 7 900 грн + Супровід 2 000 грн/міс',rows:[
+      ['Стартовий пакет (24 док., вкл. 2 міс супроводу)','💰 разово'],['Завантаження + історія версій','✓ назавжди'],
+      ['Оновлення при змінах законів','🔒 Супровід'],['Стрічка «Законодавство» + push','🔒 Супровід'],
+      ['Підтримка юриста','🔒 Супровід'],['Спільнота лікарів','🔒 Супровід']],
+      churn:'Документи залишаються вашими. Банер: «Супровід призупинено — 2 документи могли застаріти» = чесний win-back.'},
+  };
+  const m=M[scen];
+  return `<div class="tiny" style="margin:4px 2px 10px">⚙️ Перемикач сценаріїв монетизації — інструмент обговорення концепції, не фінальне рішення.</div>
+  <div class="seg">
+    <button class="${scen==='A'?'active':''}" onclick="setScen('A')">A · Пакет</button>
+    <button class="${scen==='B'?'active':''}" onclick="setScen('B')">B · Підписка</button>
+    <button class="${scen==='C'?'active':''}" onclick="setScen('C')">C · Гібрид<span class="rec">реко</span></button>
+  </div>
+  <div class="card"><b style="font-size:15px">${m.name}</b><div class="muted" style="margin:2px 0 8px">${m.price}</div>
+  ${m.rows.map(r=>`<div class="ent"><span>${r[0]}</span><span class="v">${r[1]}</span></div>`).join('')}</div>
+  <div class="card" style="background:#F8FAFC"><b style="font-size:13px">Що буде, якщо піти:</b><div class="muted" style="margin-top:4px">${m.churn}</div></div>
+  <div class="card"><div class="row"><div><b style="font-size:14px">Безкоштовно завжди</b><div class="tiny" style="margin-top:2px">Профіль · чек-лист самооцінки · превʼю документів · експорт своїх даних</div></div></div></div>
+  <button class="btn btn-primary" onclick="toast('MVP: рахунок-фактура + ручна активація. Провайдер — v1.1')">Отримати рахунок</button>`;
+}
+
+/* ── Профіль ── */
+function profile(){
+  return `<div class="card" style="padding:6px 14px">
+    ${[['Особисті дані','Іваненко Оксана Петрівна · РНОКПП ****1234','4 документи'],
+       ['Діяльність','КВЕД 86.23 · Стоматологічна практика','9 документів'],
+       ['Ліцензія','Наказ МОЗ №1077 від 12.11.2024','6 документів'],
+       ['Адреса та режим','м. Київ, вул. Саксаганського 12 · пн–пт 9–18','8 документів'],
+       ['Банківські реквізити','UA85 3052 99…','3 документи']]
+      .map(r=>`<div class="doc-row" onclick="waveDemo('${r[0]}')"><div><div class="nm">${r[0]}</div><div class="sub">${r[1]}</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="tiny">${r[2]}</span><span class="chev">›</span></div></div>`).join('')}
+  </div>
+  <div class="card" style="background:var(--primary-soft);border-color:#DBEAFE"><div class="tiny" style="color:var(--ink-soft)">💡 Профіль — єдине джерело даних. Зміните адресу — система запропонує оновити всі документи, де вона використовується. Спробуйте: натисніть «Адреса та режим».</div></div>
+  <div class="card" style="padding:6px 14px">
+    ${[['Згоди','надано 02.06.2026 · версія тексту 1.2'],['Дані та приватність','експорт архіву · видалення акаунта']]
+      .map(r=>`<div class="doc-row" onclick="toast('Демо-розділ')"><div><div class="nm">${r[0]}</div><div class="sub">${r[1]}</div></div><span class="chev">›</span></div>`).join('')}
+  </div>`;
+}
+function waveDemo(section){
+  if(section!=='Адреса та режим'){toast('Демо: редагування «'+section+'»');return}
+  $('#modalBody').innerHTML=`<h3>Змінити адресу кабінету?</h3>
+    <div class="muted" style="margin-bottom:12px">Нова адреса використовується у <b>8 документах</b>. Після збереження вони потребуватимуть оновлення.</div>
+    <button class="btn btn-primary" onclick="closeModal();toast('Демо: 8 документів оновлено новими версіями')">Зберегти й оновити зараз</button>
+    <button class="btn btn-ghost" style="margin-top:8px" onclick="closeModal();toast('Демо: документи позначено «потребує оновлення»')">Зберегти, оновлю пізніше</button>`;
+  $('#modalBack').classList.add('show');
+}
+function closeModal(){$('#modalBack').classList.remove('show')}
+
+/* ── Підтримка ── */
+function support(){
+  return `<div class="card tap" onclick="toast('Демо: тред звернення')">
+    <div class="row"><b style="font-size:14px">Чи потрібен договір з зуботехнічною лабораторією?</b><span class="fr-st st-done">відповідь</span></div>
+    <div class="muted" style="margin-top:4px">Ольга К.: «Так, якщо ви передаєте відбитки — потрібен договір + пункт про ПД пацієнтів…»</div>
+    <div class="tiny" style="margin-top:4px">оновлено 05.07</div></div>
+  <button class="btn btn-primary" onclick="toast('Демо: форма нового звернення')">Нове звернення</button>
+  <div class="tiny" style="text-align:center;margin:6px 0 14px">відповідаємо протягом робочого дня</div>
+  <div class="card"><b style="font-size:14px">🧑‍⚖️ Юрист на замовлення</b>
+    <div class="muted" style="margin-top:4px">Нестандартний документ або консультація під вашу ситуацію — за окрему оплату. 3 схожі замовлення = ми додаємо шаблон у каталог для всіх.</div>
+    <button class="btn btn-ghost" style="margin-top:10px" onclick="toast('Демо: заявка юристу')">Замовити</button></div>`;
+}
+
+/* ── Спільнота ── */
+function community(){
+  const FR=[['fr1','Шаблон договору із зуботехнічною лабораторією',12,'st-plan','заплановано'],
+            ['fr2','Журнал обліку стерилізації для кабінету',8,'st-review','розглядається'],
+            ['fr3','Нагадування про строки медоглядів',21,'st-done','зроблено']];
+  return `<div class="card"><b style="font-size:14px">💬 Закрита група лікарів-ФОП</b>
+    <div class="muted" style="margin-top:4px">Обговорення реальних ситуацій: перевірки, пацієнти, документи. <b>Анонімно</b>: ви пишете боту — бот публікує без вашого імені.</div>
+    <button class="btn btn-primary" style="margin-top:10px" onclick="toast('Демо: інвайт видається після перевірки підписки')">Приєднатися (для підписників)</button></div>
+  <div class="sec-label">Питання і пропозиції <span class="cnt">голосуйте — ми реагуємо</span></div>
+  <div class="card" style="padding:6px 14px">${FR.map(f=>`
+    <div class="fr"><button class="vote ${state.voted.has(f[0])?'voted':''}" onclick="vote('${f[0]}')">▲<br>${f[2]+(state.voted.has(f[0])?1:0)}</button>
+    <div style="flex:1"><b style="font-size:13.5px">${f[1]}</b></div><span class="fr-st ${f[3]}">${f[4]}</span></div>`).join('')}</div>
+  <button class="btn btn-ghost" onclick="toast('Демо: форма пропозиції')">+ Запропонувати</button>`;
+}
+function vote(id){if(state.voted.has(id))state.voted.delete(id);else state.voted.add(id);render()}
+
+/* ═══════════ SIMULATION ═══════════ */
+function simulateLawChange(){
+  if(state.sim)return;
+  state.sim=true;
+  state.notifs.unshift({ic:'⚠️',t:'Змінився Наказ МОЗ №153',s:'Стосується 2 ваших документів — відкрийте, щоб оновити',d:'щойно',read:false});
+  const btn=$('#simBtn');btn.disabled=true;btn.textContent='✓ Зміну закону симульовано';
+  stepDone(2);
+  $('#push').classList.add('show');
+  setTimeout(()=>$('#push').classList.remove('show'),5200);
+  render();
+}
+function openLawFromPush(){$('#push').classList.remove('show');stepDone(3);showScreen('law')}
+
+/* boot */
+render();
+window.showScreen=showScreen;window.goBack=goBack;window.togglePerson=togglePerson;window.updateDoc=updateDoc;
+window.simulateLawChange=simulateLawChange;window.openLawFromPush=openLawFromPush;window.setScen=setScen;
+window.waveDemo=waveDemo;window.closeModal=closeModal;window.vote=vote;
+</script>
+</body>
+</html>

@@ -10,6 +10,16 @@
 
 ---
 
+### 2026-07-13 (session 84) — feat(doc-engine): движок автозаповнення юр-документів «з 0» — PoC → Tier-2 спека → Фаза A ядра
+**Status:** гілка `feat/doc-engine` (від `docs/cabinet-vision`), ЗАПУШЕНО (`d84fa9b`). PR не відкрито. Перед PR перебазувати на main.
+**Why:** Сергій хотів рушій генерації юр-документів «з 0» з низьким порогом для юриста (пише в Word), щоб додавання послуги не вимагало нас (розробників) на кожен документ. Окремий трек — дядин `mcp-server`/`declension.ts` НЕ чіпаємо. Спершу зняли всі ризики PoC-ом (десктоп, scratchpad), потім /interview → спека → почали імплементацію.
+**What:**
+- **PoC (scratchpad, десктопні артефакти):** доведено наскрізь на простому договорі + РЕАЛЬНІЙ аліментній позовній заяві (канонічний текст з `mcp__legal-docs__generate_alimony_document`). Склонення pymorphy3 = 1-в-1 з Groq на 4 падежах, локально/офлайн. `keep_with_next` тримає підпис — перевірено В Gotenberg. Артефакти: `poc-dogovir/`, `poc-alimony/`, `court-docs-ua/` на робочому столі.
+- **Спека Tier-2:** `specs/features/template-doc-engine/` (requirements+plan+validation) — 7 рішень з /interview (окремий Python-сервіс; шаблон=джерело правди; юрист виділяє поля, AI пропонує умови; склонення=каскад словник→LLM→Оля+бібліотека; мульти-док задел; критерій=parity+автоперевірки+підпис Олі; авторська панель у admin, не Word-плагін).
+- **Фаза A ядра:** `apps/doc-engine/` (Python) — declension (gender-aware каскад, ніколи не тихо), dates, fill+preflight, pdf (Gotenberg). 11 тестів зелені (parity склонення vs MCP + дати, офлайн).
+**Files:** `apps/doc-engine/**` (новий сервіс: 5 модулів + 2 тести + README + requirements + conftest) · `specs/features/template-doc-engine/{requirements,plan,validation}.md` (нові) · `apps/client/.claude/session-summary.md` · `apps/client/.claude/changelog.md`
+**Next:** 🎯 основний фокус Сергія ДО СЕРЕДИ 15.07 — БІЗНЕС-МОДЕЛЬ (не doc-engine). Doc-engine Фаза A хвіст (шаблон+FastAPI+parity через Gotenberg) — ПІСЛЯ, у свіжому чаті.
+
 ### 2026-07-11 (session 83) — docs(strategy): концепція особистого кабінету мед-ФОП — vision-док + кликабельний макет
 **Status:** гілка `docs/cabinet-vision`, docs-only. Чекає ревʼю Сергія → merge у main.
 **Why:** Після пивоту s81 (підписка 2000 грн/міс для мед-ФОП) потрібна концепція головної поверхні продукту — особистого кабінету. Сергій: «спершу спланувати, що там має бути і як, потім впроваджувати». Це підготовка до обговорення з Олею (юрконтент, 122-чекліст) і дядею (архітектура), НЕ спека імплементації.

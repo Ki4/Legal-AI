@@ -1,0 +1,7 @@
+# doc-engine core
+docxtpl>=0.20
+pymorphy3>=2.0
+pymorphy3-dicts-uk
+# PDF rendering talks to Gotenberg over HTTP (stdlib urllib) — no client lib needed.
+# Dev/test
+pytest>=8

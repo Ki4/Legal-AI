@@ -32,6 +32,7 @@ from docx.oxml import parse_xml
 from docxtpl import DocxTemplate
 from jinja2 import Environment, nodes
 
+from .docx_meta import read_from_docx
 from .preflight import declared_variables
 
 # ── engine-B computed layer ──────────────────────────────────────────────────
@@ -105,26 +106,47 @@ def guard_variables(tpl: DocxTemplate) -> set[str]:
     return guards
 
 
-def _load_metadata(meta_path: Path) -> dict[str, Any]:
-    blob = json.loads(meta_path.read_text(encoding="utf-8"))
+def _validate_metadata(blob: dict[str, Any], origin: str) -> dict[str, Any]:
     for key in ("service", "tabs", "fields"):
         if key not in blob:
-            raise ValueError(f"{meta_path.name}: missing required key '{key}'")
+            raise ValueError(f"{origin}: missing required key '{key}'")
     return blob
+
+
+def load_metadata(template_path: Path, meta_path: Path | None = None) -> tuple[dict[str, Any], str]:
+    """The lawyer-authored blob + where it came from.
+
+    Embedded-in-the-.docx wins: that is the target state (the Word add-in writes there, and
+    the file stays self-contained). An explicit meta_path or a `<name>.meta.json` sidecar is
+    the fallback for templates not yet migrated.
+    """
+    if meta_path is not None:
+        return _validate_metadata(json.loads(Path(meta_path).read_text(encoding="utf-8")), Path(meta_path).name), "sidecar"
+
+    embedded = read_from_docx(template_path)
+    if embedded is not None:
+        return _validate_metadata(embedded, f"{template_path.name}:customXml"), "embedded"
+
+    sidecar = template_path.with_suffix(".meta.json")
+    if sidecar.exists():
+        return _validate_metadata(json.loads(sidecar.read_text(encoding="utf-8")), sidecar.name), "sidecar"
+
+    raise ValueError(
+        f"{template_path.name}: no metadata — embed it (customXml) or add {sidecar.name}"
+    )
 
 
 def extract(template_path: str | Path, meta_path: str | Path | None = None) -> dict[str, Any]:
     """Read a Word template + its metadata blob → the bridge's raw material."""
     template_path = Path(template_path)
-    if meta_path is None:
-        meta_path = template_path.with_suffix(".meta.json")
-    meta = _load_metadata(Path(meta_path))
+    meta, meta_origin = load_metadata(template_path, Path(meta_path) if meta_path else None)
 
     tpl = DocxTemplate(str(template_path))
     field_types = {f["id"]: f.get("type") for f in meta["fields"]}
 
     return {
         "template": template_path.name,
+        "metadata_origin": meta_origin,  # 'embedded' (target) | 'sidecar' (fallback)
         "variables": sorted(declared_variables(tpl)),
         "guards": sorted(guard_variables(tpl)),
         "derived": derived_sources(field_types),

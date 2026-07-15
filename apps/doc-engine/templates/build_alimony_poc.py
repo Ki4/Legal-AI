@@ -16,13 +16,19 @@ Template conventions proven by the PoC (see fill.py):
 """
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from doc_engine.docx_meta import embed_in_docx  # noqa: E402
+
 OUT = Path(__file__).parent / "alimony-poc.docx"
+META = Path(__file__).parent / "alimony-poc.meta.json"
 
 
 def _p(doc, text, *, align=None, bold=False, size=12, space_after=6):
@@ -109,9 +115,13 @@ def build() -> Path:
     _p(doc, "{{ last_name }} {{ first_name }} {{ middle_name }}     _______________", space_after=0)
 
     doc.save(OUT)
+    # The .docx is the artifact: metadata goes INSIDE it, so the file is self-contained
+    # exactly as a Word add-in would leave it. alimony-poc.meta.json stays only as the
+    # git-diffable authoring input for this PoC builder.
+    embed_in_docx(OUT, json.loads(META.read_text(encoding="utf-8")))
     return OUT
 
 
 if __name__ == "__main__":
     path = build()
-    print(f"wrote {path}")
+    print(f"wrote {path} (metadata embedded in customXml)")

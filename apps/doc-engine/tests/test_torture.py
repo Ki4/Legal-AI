@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -18,7 +19,11 @@ from docx import Document
 from doc_engine import MissingFieldsError, build_context, extract, render_to_bytes
 
 TEMPLATES = Path(__file__).resolve().parents[1] / "templates"
-TPL = TEMPLATES / "torture-poc.docx"
+
+#: Point this at a copy that a live Word (and the add-in) has saved, and the SAME suite
+#: becomes the round-trip proof: green means Word destroyed nothing.
+#:   TORTURE_TPL=<path> python -m pytest tests/test_torture.py
+TPL = Path(os.environ.get("TORTURE_TPL") or TEMPLATES / "torture-poc.docx")
 
 MAXIMAL = dict(
     case_ref="123/4567/26",

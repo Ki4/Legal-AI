@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Legal AI — spike</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    body { font: 13px/1.5 "Segoe UI", system-ui, sans-serif; margin: 0; padding: 12px; color: #222; }
+    h1 { font-size: 14px; font-weight: 600; margin: 0 0 8px; }
+    h2 { font-size: 12px; font-weight: 600; margin: 14px 0 6px; color: #555; text-transform: uppercase; letter-spacing: .04em; }
+    button { display: block; width: 100%; margin: 4px 0; padding: 7px 10px; font: inherit; text-align: left;
+             background: #f3f2f1; border: 1px solid #d0cec9; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #e8e6e3; }
+    button:disabled { opacity: .5; cursor: default; }
+    #log { background: #1e1e1e; color: #d4d4d4; font: 11px/1.45 Consolas, monospace; padding: 8px;
+           border-radius: 4px; white-space: pre-wrap; word-break: break-word; max-height: 340px; overflow: auto; }
+    .ok { color: #4ec9b0; } .bad { color: #f48771; } .note { color: #dcdcaa; }
+  </style>
+</head>
+<body>
+  <h1>Спайк: що вміє надстройка</h1>
+
+  <h2>1. Середовище</h2>
+  <button id="probe">Перевірити API (requirement sets)</button>
+
+  <h2>2. customXml — блоб послуги</h2>
+  <button id="read">Прочитати блоб</button>
+  <button id="rewrite">Перезаписати блоб БЕЗ змін (round-trip)</button>
+  <button id="addField">Додати тестове поле у блоб</button>
+
+  <h2>3. Розмітка (виділи текст у документі)</h2>
+  <button id="insertField">Замінити виділення на {{ spike_field }}</button>
+  <button id="wrap">Обгорнути виділення в {%p if %} / {%p endif %}</button>
+  <button id="cc">Обгорнути виділення в Content Control</button>
+  <button id="hidden">Чи можна сховати текст (w:vanish)?</button>
+
+  <h2>Лог</h2>
+  <div id="log">…</div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

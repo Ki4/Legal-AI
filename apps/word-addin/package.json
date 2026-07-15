@@ -1,0 +1,21 @@
+{
+  "name": "legal-word-addin",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Spike: Word task-pane add-in for authoring a service. Throwaway — proves mechanics, not UX.",
+  "scripts": {
+    "dev": "vite",
+    "sideload": "office-addin-debugging start manifest.xml desktop",
+    "stop": "office-addin-debugging stop manifest.xml",
+    "validate": "office-addin-manifest validate manifest.xml"
+  },
+  "devDependencies": {
+    "@types/office-js": "^1.0.377",
+    "office-addin-debugging": "^6.0.3",
+    "office-addin-dev-certs": "^2.0.3",
+    "office-addin-manifest": "^2.0.3",
+    "typescript": "~5.8.3",
+    "vite": "^7.1.3"
+  }
+}

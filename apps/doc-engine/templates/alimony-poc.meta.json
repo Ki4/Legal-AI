@@ -1,0 +1,105 @@
+{
+  "$comment": "Word-authored service metadata. PoC: sidecar next to the .docx. Target: this exact blob lives INSIDE alimony-poc.docx at customXml/item1.xml, written by the Word add-in task pane. Field ids/labels/options are reused verbatim from the live `alimony` service so the PoC is realistic.",
+  "schema_version": 1,
+  "service": {
+    "slug": "alimony-poc",
+    "title": "Аліменти (Word-PoC)",
+    "subtitle": "Демо: услуга, зібрана з Word-шаблону",
+    "description": "PoC: послуга, згенерована з Word-шаблону (docxtpl) через міст word-to-service. Не для продакшену.",
+    "category": "family",
+    "icon": "📄",
+    "price": 0
+  },
+  "tabs": [
+    { "id": "plaintiff", "label": "Позивач" },
+    { "id": "defendant", "label": "Відповідач" },
+    { "id": "family", "label": "Діти" },
+    { "id": "alimony", "label": "Аліменти" }
+  ],
+  "fields": [
+    { "id": "last_name", "tab": "plaintiff", "type": "text", "label": "Прізвище", "required": true, "validation": "name" },
+    { "id": "first_name", "tab": "plaintiff", "type": "text", "label": "Ім'я", "required": true, "validation": "name" },
+    { "id": "middle_name", "tab": "plaintiff", "type": "text", "label": "По батькові", "required": true, "validation": "name" },
+    { "id": "birth_date", "tab": "plaintiff", "type": "date", "label": "Дата народження", "required": true },
+    {
+      "id": "registered_address",
+      "tab": "plaintiff",
+      "type": "text",
+      "label": "Адреса реєстрації",
+      "required": true,
+      "hint": "Адреса зазначена в паспорті як місце реєстрації."
+    },
+
+    { "id": "defendant_last_name", "tab": "defendant", "type": "text", "label": "Прізвище", "required": true, "validation": "name" },
+    { "id": "defendant_first_name", "tab": "defendant", "type": "text", "label": "Ім'я", "required": true, "validation": "name" },
+    { "id": "defendant_middle_name", "tab": "defendant", "type": "text", "label": "По батькові", "required": true, "validation": "name" },
+    { "id": "defendant_registered_address", "tab": "defendant", "type": "text", "label": "Адреса реєстрації відповідача", "required": true },
+
+    {
+      "id": "children_details",
+      "tab": "family",
+      "type": "textarea",
+      "label": "Дані про дітей",
+      "required": true,
+      "hint": "Кожна дитина — окремий рядок. Формат: ПІБ, дата народження, свідоцтво № ... від ..."
+    },
+    {
+      "id": "abandonment_date",
+      "tab": "family",
+      "type": "date",
+      "label": "З якої дати відповідач не утримує дитину",
+      "required": true,
+      "hint": "Вкажіть приблизну дату, з якої відповідач перестав надавати фінансову допомогу."
+    },
+
+    {
+      "id": "alimony_type",
+      "tab": "alimony",
+      "type": "choice",
+      "label": "Форма стягнення аліментів",
+      "required": true,
+      "options": [
+        { "value": "percent", "label": "Частка від заробітку (1/4, 1/3 або 1/2)" },
+        { "value": "fixed", "label": "Тверда грошова сума (фіксована)" }
+      ],
+      "hint": "% від доходу — автоматично розраховується судом. Фіксована сума — зручна якщо дохід відповідача нерегулярний або невідомий."
+    },
+    {
+      "id": "alimony_fixed_amount",
+      "tab": "alimony",
+      "type": "text",
+      "label": "Сума аліментів (грн/місяць)",
+      "required": false,
+      "show_if": { "field": "alimony_type", "operator": "==", "value": "fixed" },
+      "hint": "Вкажіть бажану суму. Не менше 50% прожиткового мінімуму для дитини."
+    },
+    {
+      "id": "alimony_start_date",
+      "tab": "alimony",
+      "type": "date",
+      "label": "Дата подачі позову (з якої стягувати)",
+      "required": true,
+      "hint": "Зазвичай — сьогоднішня дата. Аліменти стягуються починаючи з дати подачі позову."
+    },
+    {
+      "id": "defendant_employed",
+      "tab": "alimony",
+      "type": "choice",
+      "label": "Чи працевлаштований відповідач?",
+      "required": true,
+      "options": [
+        { "value": "yes", "label": "Так, офіційно працевлаштований" },
+        { "value": "no", "label": "Ні, не працевлаштований" },
+        { "value": "unknown", "label": "Невідомо" }
+      ]
+    },
+    {
+      "id": "defendant_employer",
+      "tab": "alimony",
+      "type": "text",
+      "label": "Місце роботи відповідача",
+      "required": false,
+      "show_if": { "field": "defendant_employed", "operator": "==", "value": "yes" }
+    }
+  ]
+}

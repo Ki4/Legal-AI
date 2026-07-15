@@ -1,0 +1,106 @@
+{
+  "$comment": "TORTURE template metadata. Fictional service whose only purpose is to exercise every authoring gotcha we already paid for (see build_torture_poc.py). This is the baseline the Word add-in spike must reproduce: whatever the add-in writes into customXml must round-trip to this shape.",
+  "schema_version": 1,
+  "service": {
+    "slug": "torture-poc",
+    "title": "Тестовий шаблон (torture)",
+    "subtitle": "Вигаданий позов — перевірка можливостей рушія та надстройки",
+    "description": "НЕ юридична послуга. Вигаданий документ, який навмисно містить усі складні місця авторингу: сусідні розгалуження, голий boolean-гард, вкладений if/else, табличний цикл {%tr%}, опційне поле, склонення жін./чол., дати прописом, колонтитул, підпис із keep_with_next.",
+    "category": "family",
+    "icon": "🧪",
+    "price": 0
+  },
+  "tabs": [
+    { "id": "case", "label": "Справа" },
+    { "id": "plaintiff", "label": "Позивач" },
+    { "id": "defendant", "label": "Відповідач" },
+    { "id": "claim", "label": "Вимоги" }
+  ],
+  "fields": [
+    {
+      "id": "case_ref",
+      "tab": "case",
+      "type": "text",
+      "label": "Номер справи",
+      "required": true,
+      "hint": "Друкується у колонтитулі — перевіряє, що рушій бачить змінні в headers/footers."
+    },
+    {
+      "id": "filing_date",
+      "tab": "case",
+      "type": "date",
+      "label": "Дата подання",
+      "required": true,
+      "hint": "Друкується прописом над підписом; абзац має keep_with_next."
+    },
+
+    { "id": "last_name", "tab": "plaintiff", "type": "text", "label": "Прізвище", "required": true, "validation": "name" },
+    { "id": "first_name", "tab": "plaintiff", "type": "text", "label": "Ім'я", "required": true, "validation": "name" },
+    { "id": "middle_name", "tab": "plaintiff", "type": "text", "label": "По батькові", "required": true, "validation": "name" },
+    { "id": "birth_date", "tab": "plaintiff", "type": "date", "label": "Дата народження", "required": true },
+    { "id": "registered_address", "tab": "plaintiff", "type": "text", "label": "Адреса реєстрації", "required": true },
+
+    { "id": "defendant_last_name", "tab": "defendant", "type": "text", "label": "Прізвище відповідача", "required": true, "validation": "name" },
+    { "id": "defendant_first_name", "tab": "defendant", "type": "text", "label": "Ім'я відповідача", "required": true, "validation": "name" },
+    { "id": "defendant_middle_name", "tab": "defendant", "type": "text", "label": "По батькові відповідача", "required": true, "validation": "name" },
+    { "id": "defendant_registered_address", "tab": "defendant", "type": "text", "label": "Адреса реєстрації відповідача", "required": true },
+    {
+      "id": "defendant_birth_date",
+      "tab": "defendant",
+      "type": "date",
+      "label": "Дата народження відповідача",
+      "required": false,
+      "hint": "Опційне. ЦЕ САМЕ ТЕ поле, на якому рушій A друкував '________ року народження' (знахідка A з демо D7)."
+    },
+
+    {
+      "id": "has_contract",
+      "tab": "claim",
+      "type": "boolean",
+      "label": "Чи є письмовий договір?",
+      "required": true,
+      "hint": "Гард голого {% if has_contract %} — без порівняння. На такому записі s85 зловив реальний баг обходу AST."
+    },
+    {
+      "id": "contract_date",
+      "tab": "claim",
+      "type": "date",
+      "label": "Дата укладення договору",
+      "required": false,
+      "show_if": { "field": "has_contract", "operator": "==", "value": true }
+    },
+    { "id": "debt_amount", "tab": "claim", "type": "text", "label": "Сума боргу (грн)", "required": true },
+    {
+      "id": "claim_type",
+      "tab": "claim",
+      "type": "choice",
+      "label": "Тип вимоги",
+      "required": true,
+      "options": [
+        { "value": "main", "label": "Основна вимога" },
+        { "value": "additional", "label": "Додаткова вимога" }
+      ]
+    },
+    {
+      "id": "interest_claimed",
+      "tab": "claim",
+      "type": "boolean",
+      "label": "Стягувати проценти?",
+      "required": true
+    },
+    {
+      "id": "evidence",
+      "tab": "claim",
+      "type": "multicheck",
+      "label": "Докази, що додаються",
+      "required": true,
+      "options": [
+        { "value": "Копія договору позики", "label": "Копія договору позики" },
+        { "value": "Розписка про отримання коштів", "label": "Розписка про отримання коштів" },
+        { "value": "Банківська виписка", "label": "Банківська виписка" },
+        { "value": "Листування сторін", "label": "Листування сторін" }
+      ],
+      "hint": "Живить табличний цикл {%tr for ... %} — рядки таблиці множаться за кількістю обраних."
+    }
+  ]
+}

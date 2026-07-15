@@ -10,6 +10,21 @@
 
 ---
 
+### 2026-07-15 (session 85) — feat(word-to-service): міст «Word = ядро авторингу» → MCP-tool народжується сам (PoC доведено)
+**Status:** гілка `feat/word-to-service-poc` (від `feat/doc-engine`), НЕ запушено (`755ef29`, `5a61b16`). Рядок у живу БД НЕ писали.
+**Why:** Сергій: «є можливість перенести білдер послуги в Word, написавши кастомне розширення». Уточнене бачення: **Word = єдине ядро авторингу** (шаблон + ветвлення + метадані полів) → з нього народжується MCP-tool = послуга; **веб перестає бути білдером** (лишається дзеркалом: граф/анатомія/новини/статистика); **інтейк = чат по скілу**, керований схемою тула. Питання було одне: «чи можна це зробити?».
+**What:** **Так, можна — і дешевше, ніж здавалось.** Ключ: MCP-tool УЖЕ синтезується з даних (`registry.ts::buildRegistry` → `formConfigToJsonSchema`), тож увесь міст = `.docx → FormConfig → services-рядок`. Доведено наскрізь.
+- **Розвідка (3 Explore + 1 Plan субагенти):** у репо ДВА движки — A (продакшн: plain-text `.txt` + кастомний Handlebars, Groq-склонення) і B (`apps/doc-engine`, docxtpl/.docx/pymorphy3, DRAFT). Word-PoC Сергія = движок B, НЕ те, що в проді. Тому «Word як ядро» = форк у бік B — PoC зроблено оборотним.
+- **`extract.py`:** docxtpl-змінні (реюз `preflight.declared_variables`) + guard-змінні з `{% if %}` + метадані-блоб → один JSON. Власна карта деривації движка B (дати прописом, склонення) — свідомо НЕ реюз `serviceAnatomy` (там модель вычисляемого шару движка A; згодувати їй docx-рефи = позначити всі computed-ключі мертвими).
+- **`word-to-service.mjs`:** 4 гейти (shape / coverage / guards / schema) → services-рядок як `needs_review`, `document_template=NULL`. Реюз verbatim: `collectDeadRefs`, `collectBrokenShowIf`, `formConfigToJsonSchema`.
+- **`--dry-run`:** `buildRegistry` приймає `CatalogSource` через інʼєкцію → доводимо тул на in-memory каталозі, БЕЗ запису в спільну Supabase. Результат: `generate_alimony_poc_document` синтезувався сам (16 параметрів), контракт інтервʼю у схемі, `generate` → `service_unavailable` (kill-switch).
+- **Рендер движком B:** обидва ветвлення на реальних даних — потрібний блок є, зайвий ЗНИК (7/7 перевірок); склонення жін./чол. коректне («Коваленко Олени Петрівни» / «Коваленка Ігоря Васильовича»), дати прописом, 0 HITL-флагів, PDF %PDF-1.7 через Gotenberg.
+- **Знайдено і виправлено реальний баг** (негативним тестом): jinja2 `find_all()` обходить лише нащадків, тож голий `{% if flag %}` (найприродніший запис для boolean!) був НЕВИДИМИЙ для гейта — проходили тільки складені `{% if x == 'y' %}`. Закрито `tests/test_extract.py`.
+- **Спрощення проти плану:** бінарний .docx у БД не потрібен — движок A його не торкнеться (статус-гейт коротко замикає першим), движок B рендерить з диска.
+**Files:** `apps/doc-engine/src/doc_engine/extract.py` (новий) · `apps/doc-engine/tests/test_extract.py` (новий, 7 тестів) · `apps/doc-engine/templates/{build_alimony_poc.py,alimony-poc.docx,alimony-poc.meta.json}` (нові) · `scripts/word-to-service.mjs` (новий) · `apps/client/.claude/{session-summary,changelog}.md`
+**Tests:** 18 doc-engine + 75 mcp-server — зелені, регресій нема.
+**Next:** рішення Сергія — (1) чи писати рядок `alimony-poc` у живу Supabase (заблоковано класифікатором, і слушно: спільна БД живить реєстр тулів + бота); (2) метадані sidecar → `customXml` всередині .docx; (3) Word-надстройка (Office Add-in) = Фаза 2, тижні.
+
 ### 2026-07-13 (session 84) — feat(doc-engine): движок автозаповнення юр-документів «з 0» — PoC → Tier-2 спека → Фаза A ядра
 **Status:** гілка `feat/doc-engine` (від `docs/cabinet-vision`), ЗАПУШЕНО (`d84fa9b`). PR не відкрито. Перед PR перебазувати на main.
 **Why:** Сергій хотів рушій генерації юр-документів «з 0» з низьким порогом для юриста (пише в Word), щоб додавання послуги не вимагало нас (розробників) на кожен документ. Окремий трек — дядин `mcp-server`/`declension.ts` НЕ чіпаємо. Спершу зняли всі ризики PoC-ом (десктоп, scratchpad), потім /interview → спека → почали імплементацію.

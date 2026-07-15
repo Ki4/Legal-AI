@@ -10,15 +10,20 @@
  * Usage (from monorepo root):
  *   node scripts/word-to-service.mjs alimony-poc            # run gates + upsert
  *   node scripts/word-to-service.mjs alimony-poc --check    # gates only, no write
+ *   node scripts/word-to-service.mjs alimony-poc --dry-run  # gates + prove the tool
+ *                                                           # via buildRegistry on an
+ *                                                           # in-memory catalog (no DB)
  *
  * Reads VITE_SUPABASE_URL / SUPABASE_SERVICE_KEY from apps/client/.env.local.
  *
  * Deliberate PoC boundaries:
  * - The row lands as status='needs_review' → the tool is LISTED (bridge proven) but generate
  *   returns the existing structured refusal instead of engine A trying to parse a .docx it
- *   cannot read. Rendering is proven separately by engine B (see verify-render.py).
+ *   cannot read. Rendering is proven separately by engine B (render_to_bytes + docx_to_pdf).
  * - document_template stays NULL: the .docx lives in git, not the DB. Engine A never touches
  *   it (status gate short-circuits first), and engine B renders from disk.
+ * - --dry-run proves the whole bridge without any DB write; the upsert is only needed to
+ *   expose the service to a running MCP server.
  *
  * Reuse note (why the template half of serviceAnatomy is NOT used):
  *   analyzeTemplate/diffFormVsTemplate model engine A — Handlebars syntax plus engine A's
@@ -49,9 +54,10 @@ const GUARD_TYPES = new Set(['boolean', 'choice']);
 
 const name = process.argv[2];
 const checkOnly = process.argv.includes('--check');
+const dryRun = process.argv.includes('--dry-run');
 if (!name) {
-  console.error('Usage: node scripts/word-to-service.mjs <template-name> [--check]');
-  console.error('  e.g. node scripts/word-to-service.mjs alimony-poc');
+  console.error('Usage: node scripts/word-to-service.mjs <template-name> [--check|--dry-run]');
+  console.error('  e.g. node scripts/word-to-service.mjs alimony-poc --dry-run');
   process.exit(1);
 }
 
@@ -100,7 +106,10 @@ const outdir = mkdtempSync(join(tmpdir(), 'word-to-service-'));
 
 async function loadTs(entry, outname) {
   const outfile = join(outdir, outname);
-  await esbuild.build({ entryPoints: [entry], bundle: true, format: 'esm', outfile, logLevel: 'silent' });
+  // platform:'node' — registry.ts reaches env.ts, which imports node: builtins.
+  await esbuild.build({
+    entryPoints: [entry], bundle: true, format: 'esm', platform: 'node', outfile, logLevel: 'silent',
+  });
   return import(pathToFileURL(outfile).href);
 }
 
@@ -200,19 +209,7 @@ console.log(
   `Gate 4/4  schema ........ OK (tool: ${toolName}, ${Object.keys(schema.properties).length} params, ${schema.required.length} required)`,
 );
 
-if (checkOnly) {
-  console.log('\n--check: all gates passed, no write performed.');
-  process.exit(0);
-}
-
-// ── upsert the services row ─────────────────────────────────────────────────
-loadEnv(join(ROOT, 'apps', 'client', '.env.local'));
-const { sbGet, sbInsert, sbPatch } = createSupabaseClient(
-  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY,
-);
-
-const existing = await sbGet('services', `slug=eq.${encodeURIComponent(slug)}&select=id,slug,status`);
+// ── the services row this template produces ─────────────────────────────────
 const row = {
   slug,
   title: service.title,
@@ -227,6 +224,56 @@ const row = {
   status: 'needs_review',
   document_template: null,
 };
+
+if (checkOnly) {
+  console.log('\n--check: all gates passed, no write performed.');
+  process.exit(0);
+}
+
+// ── --dry-run: prove the tool WITHOUT touching the shared database ───────────
+// buildRegistry takes its CatalogSource by injection, so an in-memory catalog exercises
+// the real registry code path: same tool synthesis, same schema, same kill-switch.
+if (dryRun) {
+  const { buildRegistry } = await loadTs(
+    join(ROOT, 'apps', 'mcp-server', 'src', 'registry.ts'), 'registry.mjs',
+  );
+  const fakeSource = {
+    fetchAll: async () => [row],
+    fetchFresh: async (s) =>
+      s === slug ? { status: row.status, document_template: row.document_template, required_checklist: null } : null,
+  };
+  const tools = await buildRegistry({ source: fakeSource, groqApiKey: null, outDir: outdir });
+  const names = tools.map((t) => t.name);
+  console.log(`\n--dry-run: registry built from this template alone (no DB).`);
+  console.log(`  tools: ${names.join(', ')}`);
+
+  const generated = tools.find((t) => t.name === toolName);
+  if (!generated) fail(`--dry-run: '${toolName}' was NOT synthesized.`);
+  console.log(`  ✓ '${generated.name}' synthesized, ${Object.keys(generated.inputSchema.properties).length} params`);
+
+  // the interview contract the chat/skill actually reads
+  const branchField = generated.inputSchema.properties.alimony_fixed_amount;
+  if (branchField?.description) console.log(`  ✓ interview contract: "${branchField.description.slice(0, 96)}…"`);
+
+  const listed = await tools.find((t) => t.name === 'list_services').execute({});
+  const catalog = JSON.parse(listed.content[0].text);
+  console.log(`  ✓ list_services → ${JSON.stringify(catalog.services ?? catalog)}`);
+
+  const refusal = await generated.execute({});
+  const payload = JSON.parse(refusal.content[0].text);
+  console.log(`  ✓ generate → isError=${refusal.isError}, error_type='${payload.error_type}' (needs_review kill-switch)`);
+  console.log('\n--dry-run complete: the tool falls out of the Word template. No DB write.');
+  process.exit(0);
+}
+
+// ── upsert the services row ─────────────────────────────────────────────────
+loadEnv(join(ROOT, 'apps', 'client', '.env.local'));
+const { sbGet, sbInsert, sbPatch } = createSupabaseClient(
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+);
+
+const existing = await sbGet('services', `slug=eq.${encodeURIComponent(slug)}&select=id,slug,status`);
 
 if (existing.length) {
   await sbPatch('services', `slug=eq.${encodeURIComponent(slug)}`, row);

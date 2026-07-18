@@ -10,6 +10,17 @@
 
 ---
 
+### 2026-07-18 (session 88) — docs: ревізія гілок + запис планів/досліджень у main (код НЕ чіпали)
+**Status:** гілка `docs/record-plans-research` → merge у main. Група A вже влита в main (`071624a..d24470d`).
+**Why:** Треба було звести всі запушені + локальні гілки, вирішити що безпечно мержити, а що = експеримент. Правило Сергія: перевірене + ідеї/плани/дослідження → в main як документи; непроверений КОД → далі перевіряємо в окремих гілках.
+**What:**
+- **Група A (docs) → main:** 3 чисті гілки `--no-ff`; 2 старі («excel-registry», «healthcare») внесено лише документами (їхній конфлікт був ТІЛЬКИ у службових `changelog/session-summary`). Виправив власне помилкове твердження «вся A мержиться чисто» фактом `merge-tree`.
+- **Група B → main новими записами IMPROVEMENTS:** #106 Groq deprecation (🟠 дедлайн 2026-08-16), #107 пакети документів, #108 context-hygiene v2, #109 Headroom. Перенумеровано з гілок (їхні #100/#102/#106/#107); «категорії» пропущено — вже #103 у main. Гілки цілком не мержив (коллізія номерів + обидві правлять один файл).
+- **Група C → main лише ПЛАН/ІДЕЯ:** новий `docs/architecture/word-to-service-compiler-plan-2026-07.md` (теза «білдер=компілятор» з session 87, feasibility-вердикт, таблиця статусу верифікації, фазовий шлях) + `word-addin-feasibility-2026-07-15.md` + `cabinet-vision.md/.html` + `specs/features/template-doc-engine/` + gdpr-бриф + uadopomoga-дослідження (були untracked). **Код (`doc-engine`, `word-addin`, `word-to-service.mjs`) лишається в `feat/word-to-service-poc` + `feat/doc-engine` — не мержимо, не видаляємо.**
+- **НЕ в main:** `med-vertical-market-brief` (дубль влитого licence-registry аналізу).
+**Files touched:** `docs/architecture/{word-to-service-compiler-plan-2026-07,word-addin-feasibility-2026-07-15,IMPROVEMENTS}.md`, `docs/strategy/{cabinet-vision.md,cabinet-mockup.html,uadopomoga-implications-legal-ai.md}`, `docs/research/{gdpr-med-data-brief-2026-07,competitor-uadopomoga-2026-07,uadopomoga-business-model-analysis,business-model-report-2026-07-share}.md`, `specs/features/template-doc-engine/*`, `apps/client/.claude/{session-summary,changelog}.md` + Group-A merges.
+**Commit:** 0b3653b (+ Group A merge commits on main).
+
 ### 2026-07-12→15 (session 86) — docs: бізнес-модель — deep-research ринку, конкурентний аналіз, зафіксовано сегмент + MVP (код НЕ чіпали)
 **Status:** гілка `docs/business-model-med-fop` (від `main`), **НЕ в main**. Лише документи. Продуктовий код, шаблони, БД не чіпав.
 **Why:** Юрист поставила співпрацю на паузу з 3 бізнес-ризиками (документи копіюються між лікарями; конкуренти вже відкотили підписку на документи; «навіщо юристу платформа, якщо пакет продам сама»). Треба було знайти модель, де виграють клієнт, юрист і розробник одночасно — і перевірити її фактами, а не думками.

@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>Legal-AI — пітч для техліда</title>
+<style>
+  :root {
+    --accent: #2563EB;
+    --accent-strong: #1D4ED8;
+    --navy: #17233A;
+    --ink: #1E2836;
+    --muted: #5A6675;
+    --ground: #F6F8FB;
+    --ground-2: #EDF1F7;
+    --panel: #FFFFFF;
+    --line: #E1E7EF;
+    --good: #15803D;
+    --good-bg: #E7F4EC;
+    --warn: #B45309;
+    --warn-bg: #FBF0E1;
+    --shadow: 0 1px 2px rgba(20,30,50,.05), 0 10px 30px rgba(20,30,50,.07);
+    --serif: Georgia, "Times New Roman", "PT Serif", serif;
+    --sans: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --maxw: 62rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --accent: #5B8DEF;
+      --accent-strong: #7BA5F5;
+      --navy: #E9EEF6;
+      --ink: #CFD8E4;
+      --muted: #92A0B4;
+      --ground: #0D1424;
+      --ground-2: #131C2E;
+      --panel: #16203457;
+      --panel: #172134;
+      --line: #26324A;
+      --good: #4ADE80;
+      --good-bg: rgba(34,197,94,.13);
+      --warn: #FBBF24;
+      --warn-bg: rgba(217,119,6,.16);
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="light"] {
+    --accent: #2563EB; --accent-strong: #1D4ED8; --navy: #17233A; --ink: #1E2836;
+    --muted: #5A6675; --ground: #F6F8FB; --ground-2: #EDF1F7; --panel: #FFFFFF;
+    --line: #E1E7EF; --good: #15803D; --good-bg: #E7F4EC; --warn: #B45309;
+    --warn-bg: #FBF0E1; --shadow: 0 1px 2px rgba(20,30,50,.05), 0 10px 30px rgba(20,30,50,.07);
+  }
+  :root[data-theme="dark"] {
+    --accent: #5B8DEF; --accent-strong: #7BA5F5; --navy: #E9EEF6; --ink: #CFD8E4;
+    --muted: #92A0B4; --ground: #0D1424; --ground-2: #131C2E; --panel: #172134;
+    --line: #26324A; --good: #4ADE80; --good-bg: rgba(34,197,94,.13); --warn: #FBBF24;
+    --warn-bg: rgba(217,119,6,.16); --shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 34px rgba(0,0,0,.4);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+
+  .deck {
+    height: 100vh;
+    overflow-y: scroll;
+    scroll-snap-type: y mandatory;
+    scroll-padding-top: 0;
+  }
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(2rem, 5vw, 5rem) clamp(1.25rem, 5vw, 3rem);
+    position: relative;
+    border-bottom: 1px solid var(--line);
+  }
+  .slide > .inner { width: 100%; max-width: var(--maxw); margin: 0 auto; }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: .55rem;
+    font-size: .72rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.4rem;
+  }
+  .eyebrow .num {
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+  }
+  .eyebrow::before {
+    content: ""; width: 1.6rem; height: 2px; background: var(--accent); border-radius: 2px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: clamp(2.6rem, 7vw, 4.6rem);
+    line-height: 1.03;
+    letter-spacing: -.015em;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+  }
+  h2 {
+    font-family: var(--serif);
+    color: var(--navy);
+    font-weight: 700;
+    font-size: clamp(1.7rem, 4vw, 2.7rem);
+    line-height: 1.1;
+    letter-spacing: -.01em;
+    margin: 0 0 1.4rem;
+    text-wrap: balance;
+  }
+  .lead {
+    font-size: clamp(1.05rem, 2.1vw, 1.4rem);
+    color: var(--ink);
+    max-width: 46ch;
+    margin: 0 0 1rem;
+  }
+  .sub { color: var(--muted); font-size: 1rem; max-width: 52ch; }
+  p { margin: 0 0 .6rem; }
+  strong { color: var(--navy); font-weight: 700; }
+
+  .scroll-hint {
+    position: absolute; bottom: 1.6rem; left: 50%; transform: translateX(-50%);
+    font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: .35rem;
+  }
+  .scroll-hint .chev { width: 9px; height: 9px; border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted); transform: rotate(45deg); animation: bob 1.8s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{ transform: rotate(45deg) translateY(0);} 50%{ transform: rotate(45deg) translateY(3px);} }
+  @media (prefers-reduced-motion: reduce) { .chev { animation: none; } }
+
+  ul.points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .85rem; }
+  ul.points li { position: relative; padding-left: 1.6rem; font-size: 1.08rem; max-width: 58ch; }
+  ul.points li::before {
+    content: ""; position: absolute; left: 0; top: .62em;
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  }
+
+  .grid { display: grid; gap: 1rem; }
+  .grid.two { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 640px) { .grid.two { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.15rem 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { margin: 0 0 .35rem; font-family: var(--sans); font-size: 1.02rem; color: var(--navy); font-weight: 700; }
+  .card p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .card .big { font-family: var(--serif); font-size: 1.9rem; color: var(--accent); font-weight: 700; line-height: 1; display: block; margin-bottom: .3rem; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .82rem; font-weight: 600; padding: .28rem .7rem; border-radius: 999px;
+    line-height: 1.2;
+  }
+  .pill.good { background: var(--good-bg); color: var(--good); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  .checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .7rem; }
+  .checklist li { display: flex; align-items: flex-start; gap: .7rem; font-size: 1.05rem; max-width: 60ch; }
+  .checklist .tick {
+    flex: none; margin-top: .12rem; width: 1.15rem; height: 1.15rem; border-radius: 50%;
+    background: var(--good-bg); color: var(--good);
+    display: grid; place-items: center; font-size: .72rem; font-weight: 900;
+  }
+  .checklist .tick.warn { background: var(--warn-bg); color: var(--warn); }
+
+  .note {
+    margin-top: 1.6rem; border-left: 3px solid var(--warn); background: var(--warn-bg);
+    padding: .85rem 1.1rem; border-radius: 0 10px 10px 0; font-size: .95rem; color: var(--ink);
+    max-width: 60ch;
+  }
+  .note strong { color: var(--warn); }
+  .note.good { border-left-color: var(--good); background: var(--good-bg); }
+  .note.good strong { color: var(--good); }
+
+  .quote {
+    font-family: var(--serif); font-size: clamp(1.3rem, 3vw, 2rem); color: var(--navy);
+    line-height: 1.28; max-width: 26ch; margin: 1.6rem 0 0; text-wrap: balance;
+  }
+  .quote .accent { color: var(--accent); }
+
+  .emph {
+    margin-top: 1.5rem; font-size: 1.1rem; color: var(--ink); max-width: 56ch;
+    padding-top: 1.1rem; border-top: 1px solid var(--line);
+  }
+  .emph strong { color: var(--accent); }
+
+  table.phases { width: 100%; border-collapse: collapse; font-size: 1rem; }
+  table.phases th, table.phases td { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.phases th { font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  table.phases td:first-child { font-weight: 700; color: var(--navy); white-space: nowrap; }
+  table.phases tr.here td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  table.phases tr.here td:first-child { color: var(--accent); }
+  .here-tag { display: inline-block; margin-left: .5rem; font-size: .68rem; font-weight: 800; letter-spacing: .08em;
+    text-transform: uppercase; color: #fff; background: var(--accent); padding: .12rem .45rem; border-radius: 5px; vertical-align: middle; }
+
+  .asks { list-style: none; margin: 1rem 0 0; padding: 0; counter-reset: ask; display: flex; flex-direction: column; gap: .9rem; }
+  .asks li { display: flex; gap: .9rem; align-items: flex-start; font-size: 1.06rem; max-width: 60ch; }
+  .asks li::before {
+    counter-increment: ask; content: counter(ask);
+    flex: none; width: 1.7rem; height: 1.7rem; border-radius: 50%;
+    background: var(--accent); color: #fff; font-weight: 800; font-size: .9rem;
+    display: grid; place-items: center; font-variant-numeric: tabular-nums;
+  }
+
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: .4rem; }
+  @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+  .split .band { border-radius: 12px; padding: 1rem 1.15rem; border: 1px solid var(--line); background: var(--panel); }
+  .split .band .k { font-size: .74rem; letter-spacing: .09em; text-transform: uppercase; font-weight: 700; margin-bottom: .35rem; }
+  .split .band.simple .k { color: var(--good); }
+  .split .band.hard .k { color: var(--warn); }
+  .split .band p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+  .precond { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.2rem; }
+  .precond .pill { background: var(--ground-2); color: var(--ink); border: 1px solid var(--line); }
+
+  .team { font-size: 1.02rem; color: var(--ink); max-width: 62ch; margin-bottom: 1.4rem; }
+  .team strong { color: var(--navy); }
+
+  .goal {
+    margin-top: 1.6rem; background: var(--navy); color: #fff; border-radius: 14px;
+    padding: 1.1rem 1.3rem; font-family: var(--serif); font-size: 1.25rem; line-height: 1.3; max-width: 48ch;
+  }
+  @media (prefers-color-scheme: dark) { .goal { background: #0A1120; border: 1px solid var(--line); } }
+  :root[data-theme="dark"] .goal { background: #0A1120; border: 1px solid var(--line); }
+  :root[data-theme="light"] .goal { background: var(--navy); border: none; }
+  .goal .accent { color: var(--accent-strong); }
+  @media (prefers-color-scheme: dark) { .goal .accent { color: var(--accent); } }
+
+  .dots { position: fixed; right: clamp(.7rem, 2vw, 1.4rem); top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: .6rem; z-index: 20; }
+  .dots button { width: 9px; height: 9px; border-radius: 50%; border: none; padding: 0; cursor: pointer;
+    background: var(--line); transition: background .2s, transform .2s; }
+  .dots button:hover { background: var(--muted); }
+  .dots button[aria-current="true"] { background: var(--accent); transform: scale(1.35); }
+  .dots button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  @media (max-width: 720px) { .dots { display: none; } }
+
+  .brandbar { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 25;
+    background: linear-gradient(90deg, var(--accent) var(--prog,0%), transparent 0); }
+
+  .kicker { font-family: var(--serif); font-weight: 700; color: var(--accent); font-size: 1.05rem; letter-spacing: .02em; }
+  .metar { display: flex; gap: 2rem; flex-wrap: wrap; margin: .4rem 0 0; }
+  .metar .m { }
+  .metar .m .v { font-family: var(--serif); font-size: clamp(1.8rem,4vw,2.6rem); color: var(--navy); font-weight: 700; line-height: 1; }
+  .metar .m .l { color: var(--muted); font-size: .9rem; margin-top: .3rem; max-width: 22ch; }
+</style>
+
+<div class="brandbar" id="brandbar"></div>
+
+<nav class="dots" id="dots" aria-label="Слайди"></nav>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · Титул -->
+  <section class="slide" id="s1">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">01</span> · Пітч для техліда · 07.07.2026</span>
+      <h1>Legal&#8209;AI</h1>
+      <p class="lead">Рушій, що виробляє українські <strong>court&#8209;ready</strong> документи там, де це безпечно — і <strong>чесно передає юристу</strong> там, де є ризик.</p>
+      <p class="sub">Не «ІІ&#8209;юрист». Продукт — це не divorce чи alimony, а <strong>машина, що виробляє послуги</strong>.</p>
+    </div>
+    <div class="scroll-hint">Гортай <span class="chev"></span></div>
+  </section>
+
+  <!-- 2 · Проблема + JTBD -->
+  <section class="slide" id="s2">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">02</span> · Проблема / JTBD</span>
+      <h2>Люди платять за впевненість, а не за PDF</h2>
+      <ul class="points">
+        <li>Типовий позов (розлучення, аліменти) — це юрист за <strong>₴3&#8202;000–5&#8202;000</strong> і ~2 тижні очікування.</li>
+        <li>Безкоштовні шаблони / Дія / Е&#8209;суд є — але <strong>головний страх клієнта: суд відмовить</strong> і місяць втрачено.</li>
+        <li>Тригер емоційний: партнер подав першим / перестали платити аліменти → «треба швидко і правильно».</li>
+      </ul>
+      <p class="quote">Клієнт купує не документ, а <span class="accent">«перевірено, суд прийме»</span>.</p>
+    </div>
+  </section>
+
+  <!-- 3 · Що вже реально працює (PoC) -->
+  <section class="slide" id="s3">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">03</span> · Що вже працює (не слайдвар)</span>
+      <h2>Наскрізний PoC на живих даних</h2>
+      <ul class="checklist">
+        <li><span class="tick">&#10003;</span><span><strong>2 живі послуги</strong> у проді — розлучення + аліменти (обидві <code>generation_mode='template'</code>).</span></li>
+        <li><span class="tick">&#10003;</span><span><strong>Наскрізний потік:</strong> Telegram Mini App → форма → зашифровані <code>cases</code> → рендер court&#8209;ready PDF у приватний Storage → витяг&#8209;превʼю → екран оплати → signed URL 24 год.</span></li>
+        <li><span class="tick">&#10003;</span><span><strong>Агент «зміни законів» живий:</strong> у минулій сесії авто&#8209;задетектив реальну зміну Сімейного кодексу → позначив divorce+alimony на рецензію.</span></li>
+        <li><span class="tick">&#10003;</span><span><strong>Захист даних у бойовому режимі:</strong> AES&#8209;256&#8209;GCM шифрування PII, rate&#8209;limit 20/24год на профіль.</span></li>
+        <li><span class="tick warn">!</span><span><strong>Оплата поки заглушка</strong> — реального прийому платежів ще немає. Це навмисна межа PoC (див. слайд 07).</span></li>
+      </ul>
+      <div class="note good"><strong>Суть:</strong> техніка вже працює наскрізно на реальних зашифрованих даних — це <strong>PoC, що замкнений</strong>, а не мокап.</div>
+    </div>
+  </section>
+
+  <!-- 4 · Движок: услуга = данные -->
+  <section class="slide" id="s4">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">04</span> · Архітектурний важіль</span>
+      <h2>Послуга — це <span class="kicker">дані</span>, а не код</h2>
+      <ul class="points">
+        <li>Один рушій рендерингу — спільний для всіх послуг.</li>
+        <li>«Послуга» = рядок у <code>services</code>: <strong>форма + шаблон + generation_mode + цитати законів + чек&#8209;лист</strong>.</li>
+        <li>Додати послугу = <strong>описати її дані</strong>, а не писати нову програму.</li>
+      </ul>
+      <p class="emph">Для техліда це головне: <strong>юніт&#8209;вартість нової вертикалі — майже нуль</strong>. Масштаб не в найманні розробників, а в описі послуг. Тому одна медична вертикаль коштує стільки ж, скільки сімейна.</p>
+    </div>
+  </section>
+
+  <!-- 5 · Доверие = продукт (HITL) -->
+  <section class="slide" id="s5">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">05</span> · Довіра = продукт</span>
+      <h2>Людський контроль — це фіча і рів, а не обмеження</h2>
+      <div class="grid two">
+        <div class="card"><h3>~95% детермінований шаблон</h3><p>ІІ (Groq) лише на відмінках ПІБ → <strong>нуль галюцинацій у даних</strong>. Не «ІІ пише позов».</p></div>
+        <div class="card"><h3>Publish&#8209;gate + рецензія</h3><p>Документ не публікується зі структурною дірою; зміну закону підтверджує юрист.</p></div>
+        <div class="card"><h3>«Перевірено юристом»</h3><p>Badge довіри + чесний hand&#8209;off складного до живого юриста.</p></div>
+        <div class="card"><h3>Юридичний рів</h3><p>«ІІ&#8209;юрист» = позов: DoNotPay → штраф FTC <strong>$193K</strong>. HITL зашитий з 1&#8209;го дня.</p></div>
+      </div>
+      <p class="emph">У праві <strong>довіра і є продукт</strong> — і водночас захист від регуляторного ризику.</p>
+    </div>
+  </section>
+
+  <!-- 6 · Рынок: движок → вертикали -->
+  <section class="slide" id="s6">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">06</span> · Ринок</span>
+      <h2>Один рушій → багато вертикалей</h2>
+      <div class="grid two">
+        <div class="card">
+          <h3>Сімейне ядро — попит доведено твердо</h3>
+          <p><span class="big">33&#8202;447</span>заяв на аліменти (2025) · <strong>38,7&#8202;тис.</strong> судових розлучень (H1&#8202;2025, ~75% усіх). Конкуренти вже беруть <strong>₴199–5&#8202;000</strong> за документ.</p>
+        </div>
+        <div class="card">
+          <h3>Медична вертикаль — наступний ринок</h3>
+          <p><span class="big">37,6&#8202;тис.</span>приватних ліцензіатів (ФОП + малі клініки) з реєстру МОЗ. Дедлайн МОЗ <strong>08.07.2026</strong> + порожня ніша між шаблоном ₴900 і юристом ₴3&#8202;000+.</p>
+        </div>
+      </div>
+      <p class="emph">Той самий рушій виробляє обидві. <strong>Вертикалі множаться дешево</strong> — сімейка вже жива, медицина порахована.</p>
+    </div>
+  </section>
+
+  <!-- 7 · Честный водораздел: WTP -->
+  <section class="slide" id="s7">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">07</span> · Головне питання</span>
+      <h2>Чесно: чи готові платити <span class="kicker">саме нам</span>?</h2>
+      <p class="lead" style="max-width:54ch">Ринок платить за <strong>категорію</strong> (конкуренти, обсяги справ це доводять). Але що заплатять <strong>нам за self&#8209;service</strong> проти безкоштовних Дія/Е&#8209;суд — ще не доведено.</p>
+      <ul class="checklist">
+        <li><span class="tick warn">!</span><span>CustDev: <strong>0 з 8–12</strong> інтервью проведено.</span></li>
+        <li><span class="tick warn">!</span><span>Платний smoke&#8209;тест — <strong>не запускався</strong>.</span></li>
+        <li><span class="tick warn">!</span><span>Оплата в проді — <strong>заглушка</strong>, живих транзакцій нема.</span></li>
+      </ul>
+      <div class="note"><strong>Це єдиний блокер</strong> між «демо» і «першою гривнею». Я кладу його на стіл відкрито — бо саме на цьому питанні є сенс вмикати техліда.</div>
+    </div>
+  </section>
+
+  <!-- 8 · План закрыть WTP -->
+  <section class="slide" id="s8">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">08</span> · Як закриваємо — дешево і швидко</span>
+      <h2>План валідації WTP з go / no&#8209;go</h2>
+      <table class="phases">
+        <thead><tr><th>Крок</th><th>Що робимо · поріг «go»</th></tr></thead>
+        <tbody>
+          <tr class="here"><td>A · $0 <span class="here-tag">старт зараз</span></td><td>8–12 теплих CustDev через мережу Олі. Ключове питання (The Mom Test): «коли востаннє платили за юрпослугу — за що і скільки?». Поріг: ≥50% мали проблему за 12 міс + називають реальні суми.</td></tr>
+          <tr><td>B · €300–500</td><td>Холодний Meta smoke&#8209;тест лендинга з <strong>реальною передоплатою</strong>. Поріг: CPL ≤ €3, лендинг→бот ≥15%, ≥ N передоплат.</td></tr>
+          <tr><td>C · перша ₴</td><td>Замінити заглушку на <strong>Telegram Payments</strong> — 1 послуги досить для першої реальної транзакції.</td></tr>
+        </tbody>
+      </table>
+      <div class="note"><strong>Чому саме так:</strong> теплі ($0) канали <em>завищують</em> готовність платити — холодний тест потрібен саме щоб це спростувати. Спочатку дешева якісна перевірка, лише потім гроші на трафік.</div>
+    </div>
+  </section>
+
+  <!-- 9 · Что просим у Tech Lead -->
+  <section class="slide" id="s9">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">09</span> · Прохання до техліда</span>
+      <h2>Де вмикаєшся саме ти</h2>
+      <p class="team"><strong>Команда:</strong> Сергій (продукт / білд) · Оля (юридична експертиза, джерело правди) · <strong>ти — техлід</strong> (активація «після підтвердженого PoC» — цей момент настав) · юристи&#8209;контриб'ютори за % доходу.</p>
+      <ul class="asks">
+        <li><strong>Co&#8209;own валідацію WTP</strong> — разом ведемо A→B→C і дивимось на пороги без самообману.</li>
+        <li><strong>Побудувати payment&#8209;loop</strong> — закрити заглушку (Telegram Payments / ФОП), щоб PoC став продаваним.</li>
+        <li><strong>Домовитись про формат</strong> участі й ролі — сьогодні як стартова розмова, не контракт.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 10 · Следующие шаги + timeline -->
+  <section class="slide" id="s10">
+    <div class="inner">
+      <span class="eyebrow"><span class="num">10</span> · Наступні кроки</span>
+      <h2>Що і коли</h2>
+      <table class="phases">
+        <thead><tr><th>Коли</th><th>Хто · що</th></tr></thead>
+        <tbody>
+          <tr><td>Цього тижня</td><td>Сергій + Оля: запустити 8–12 CustDev (крок A). Ти: подивитись PoC зсередини + рішення про формат участі.</td></tr>
+          <tr><td>2–3 тижні</td><td>Готуємо лендинг + Telegram Payments; запуск €300–500 smoke&#8209;тесту (крок B).</td></tr>
+          <tr><td>Далі</td><td>go → перша реальна транзакція + 3&#8209;тя/4&#8209;та послуги; no&#8209;go → перепозиціонування ніші за даними, не за здогадами.</td></tr>
+        </tbody>
+      </table>
+      <p class="goal">Ціль зустрічі: ти бачиш, що <span class="accent">рушій і ринок реальні</span>, а єдина діра — WTP — має дешевий план перевірки. Домовляємось, чи заходиш ти зараз.</p>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  (function () {
+    var deck = document.getElementById('deck');
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var dotsWrap = document.getElementById('dots');
+    var brandbar = document.getElementById('brandbar');
+
+    slides.forEach(function (s, i) {
+      var b = document.createElement('button');
+      b.setAttribute('aria-label', 'Слайд ' + (i + 1));
+      b.addEventListener('click', function () {
+        s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      dotsWrap.appendChild(b);
+    });
+    var dots = Array.prototype.slice.call(dotsWrap.children);
+
+    var current = 0;
+    function setActive(i) {
+      current = i;
+      dots.forEach(function (d, j) { d.setAttribute('aria-current', j === i ? 'true' : 'false'); });
+    }
+
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) setActive(slides.indexOf(e.target));
+        });
+      }, { root: deck, threshold: 0.55 });
+      slides.forEach(function (s) { io.observe(s); });
+    } else {
+      setActive(0);
+    }
+
+    function onScroll() {
+      var max = deck.scrollHeight - deck.clientHeight;
+      var p = max > 0 ? (deck.scrollTop / max) * 100 : 0;
+      brandbar.style.setProperty('--prog', p + '%');
+    }
+    deck.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    function go(delta) {
+      var next = Math.min(slides.length - 1, Math.max(0, current + delta));
+      slides[next].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    window.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); go(1); }
+      else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); go(-1); }
+      else if (e.key === 'Home') { e.preventDefault(); slides[0].scrollIntoView({ behavior: 'smooth' }); }
+      else if (e.key === 'End') { e.preventDefault(); slides[slides.length - 1].scrollIntoView({ behavior: 'smooth' }); }
+    });
+
+    setActive(0);
+  })();
+</script>
+
+</body>
+</html>

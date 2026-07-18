@@ -1,0 +1,52 @@
+{
+  "snapshot": "2026-04-10",
+  "input": "/root/.claude/uploads/69bf02c0-e6c2-5cb3-a180-f10f729ea319/277e2bc5-__10.04.2026.xlsx",
+  "rows_total": 130001,
+  "rows_dropped_orphan": 2727,
+  "rows_usable": 127274,
+  "decision_records_total": 59435,
+  "subjects_total": 47759,
+  "subjects_never_issued": 26,
+  "subjects_fully_annulled": 31,
+  "subjects_expired": 2387,
+  "subjects_active": 45315,
+  "benchmark_opendatabot_2025": {
+    "active_total": 43939,
+    "fop": 29614,
+    "legal": 14325,
+    "source": "https://opendatabot.ua/analytics/moz-licenses-2025"
+  },
+  "entity_type": {
+    "fop": 29969,
+    "private_legal": 8339,
+    "public": 5959,
+    "unclassified": 1048
+  },
+  "segments": {
+    "fop_solo": 25003,
+    "private_small": 7644,
+    "public": 5959,
+    "fop_multi": 4966,
+    "unclassified": 1048,
+    "private_mid_plus": 695
+  },
+  "icp_total": 37613,
+  "note_fop_key": "FOP subjects deduped by full name; namesakes collapse",
+  "top_icp_specialties": {
+    "мол.  Сестринська справа": 15495,
+    "Стоматологія": 12467,
+    "Терапевтична стоматологія": 9969,
+    "Ортопедична стоматологія": 8752,
+    "Організація і управління охороною здоров'я": 6574,
+    "Хірургічна стоматологія": 6325,
+    "Ортодонтія": 5032,
+    "Ультразвукова діагностика": 4775,
+    "Дерматовенерологія": 4164,
+    "Терапія": 3912,
+    "Акушерство і гінекологія": 3750,
+    "Дитяча стоматологія": 3640,
+    "Неврологія": 3502,
+    "Загальна практика - сімейна медицина": 3120,
+    "мол. Рентгенологія": 2864
+  }
+}

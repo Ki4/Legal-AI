@@ -52,9 +52,13 @@ conditional `show_if` logic), so new services are added as configuration, not ne
 
 `form-submit` is the main pipeline (52 nodes): the Mini App form posts to an n8n webhook,
 which validates the Telegram signature, checks the rate limit and the service, and stores the
-encrypted case in Supabase. Groq is called for one job only: declining names into the right
-grammatical cases. A deterministic template builds the document, which goes to Google Docs, gets
-exported to PDF and lands back in Telegram. An error trigger sends every failure to the admin.
+encrypted case in Supabase. For template services Groq does one job: declining names into the
+right grammatical cases. Hybrid services add a retrieval-and-critic step on top. A deterministic
+template builds the document, which goes to Google Docs, gets exported to PDF and lands back in
+Telegram. An error trigger sends every failure to the admin.
+
+Inside a node: [the declension prompt builder](docs/assets/n8n-node-detail.png). The workflow itself
+is [`n8n/workflows/current/form-submit.json`](n8n/workflows/current/form-submit.json).
 
 ---
 

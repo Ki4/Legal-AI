@@ -46,6 +46,22 @@ conditional `show_if` logic), so new services are added as configuration, not ne
 
 ---
 
+## Workflow (n8n)
+
+![n8n form-submit workflow](docs/assets/n8n-form-submit.png)
+
+`form-submit` is the main pipeline (52 nodes): the Mini App form posts to an n8n webhook,
+which validates the Telegram signature, checks the rate limit and the service, and stores the
+encrypted case in Supabase. For template services Groq does one job: declining names into the
+right grammatical cases. Hybrid services add a retrieval-and-critic step on top. A deterministic
+template builds the document, which goes to Google Docs, gets exported to PDF and lands back in
+Telegram. An error trigger sends every failure to the admin.
+
+Inside a node: [the declension prompt builder](docs/assets/n8n-node-detail.png). The workflow itself
+is [`n8n/workflows/current/form-submit.json`](n8n/workflows/current/form-submit.json).
+
+---
+
 ## The key engineering decision — hybrid generation
 
 Legal documents must be **court-ready**, and LLMs happily hallucinate statute numbers.
